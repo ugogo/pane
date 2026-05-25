@@ -1,0 +1,82 @@
+<winuiex:WindowEx
+    x:Class="CleanShotW.Views.RegionSelectorWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:winuiex="using:WinUIEx">
+
+    <Grid x:Name="RootGrid" Background="Transparent">
+        <Image
+            x:Name="ScreenBackground"
+            Visibility="Collapsed"
+            Stretch="Fill"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            IsHitTestVisible="False" />
+
+        <Canvas
+            x:Name="OverlayCanvas"
+            Background="Transparent"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+            <Border
+                x:Name="TopShade"
+                Background="{StaticResource ShadeOverlayBrush}"
+                IsHitTestVisible="False" />
+            <Border
+                x:Name="BottomShade"
+                Background="{StaticResource ShadeOverlayBrush}"
+                IsHitTestVisible="False" />
+            <Border
+                x:Name="LeftShade"
+                Background="{StaticResource ShadeOverlayBrush}"
+                IsHitTestVisible="False" />
+            <Border
+                x:Name="RightShade"
+                Background="{StaticResource ShadeOverlayBrush}"
+                IsHitTestVisible="False" />
+
+            <Border
+                x:Name="SelectionBorder"
+                Visibility="Collapsed"
+                BorderBrush="{StaticResource SelectionStrokeBrush}"
+                BorderThickness="2"
+                Background="{StaticResource SelectionFillBrush}"
+                CornerRadius="4"
+                IsHitTestVisible="False" />
+
+            <Border
+                x:Name="SizeLabelHost"
+                Visibility="Collapsed"
+                Padding="10,5"
+                CornerRadius="{StaticResource RadiusPill}"
+                Background="{StaticResource GlassMidBrush}"
+                BorderBrush="{StaticResource GlassEdgeBrush}"
+                BorderThickness="1"
+                IsHitTestVisible="False">
+                <TextBlock
+                    x:Name="SizeLabel"
+                    FontFamily="{StaticResource BodyFont}"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource InkPrimaryBrush}" />
+            </Border>
+
+            <Border
+                x:Name="HelpLabelHost"
+                Visibility="Collapsed"
+                Padding="14,8"
+                CornerRadius="{StaticResource RadiusPill}"
+                Background="{StaticResource GlassMidBrush}"
+                BorderBrush="{StaticResource GlassEdgeBrush}"
+                BorderThickness="1"
+                IsHitTestVisible="False">
+                <TextBlock
+                    FontFamily="{StaticResource BodyFont}"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource InkPrimaryBrush}"
+                    Text="Hold Space to move · Esc to cancel" />
+            </Border>
+        </Canvas>
+    </Grid>
+</winuiex:WindowEx>

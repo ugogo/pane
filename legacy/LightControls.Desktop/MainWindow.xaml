@@ -1,0 +1,426 @@
+<Window x:Class="LightControls.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Light Controls"
+        Height="780" Width="920"
+        MinHeight="640" MinWidth="780"
+        Loaded="Window_Loaded"
+        Closing="Window_Closing"
+        StateChanged="Window_StateChanged"
+        Background="{StaticResource WindowBackdropBrush}"
+        Foreground="{StaticResource TextPrimaryBrush}"
+        FontFamily="Bahnschrift">
+
+    <Grid>
+        <!-- Ambient backdrop -->
+        <Ellipse Width="520" Height="520" HorizontalAlignment="Left" VerticalAlignment="Top"
+                 Margin="-180,-160,0,0" IsHitTestVisible="False" Opacity="0.18">
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop Color="#F0A030" Offset="0" />
+                    <GradientStop Color="Transparent" Offset="1" />
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+        </Ellipse>
+        <Ellipse Width="400" Height="400" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                 Margin="0,0,-120,-100" IsHitTestVisible="False" Opacity="0.12">
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop Color="#4060FF" Offset="0" />
+                    <GradientStop Color="Transparent" Offset="1" />
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+        </Ellipse>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Background="{StaticResource HeaderGradientBrush}"
+                    BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
+                <Grid Margin="28,22">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Logo mark -->
+                    <Border Width="44" Height="44" CornerRadius="10" VerticalAlignment="Center">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#FFBE5C" Offset="0" />
+                                <GradientStop Color="#F0A030" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Viewbox Width="24" Height="24">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="#1A1208"
+                                      Data="M12,2 L14.5,9.5 L22,12 L14.5,14.5 L12,22 L9.5,14.5 L2,12 L9.5,9.5 Z" />
+                            </Canvas>
+                        </Viewbox>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="LIGHT CONTROLS"
+                                   Style="{StaticResource DisplayText}"
+                                   FontSize="20" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="{StaticResource AccentAmberBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock x:Name="StatusText"
+                                       Text="Checking lighting support..."
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="13" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <CheckBox x:Name="RunAtStartupCheckBox"
+                                  Content="Start with Windows"
+                                  Foreground="{StaticResource TextSecondaryBrush}"
+                                  FontSize="13"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,16,0"
+                                  Checked="RunAtStartupCheckBox_Changed"
+                                  Unchecked="RunAtStartupCheckBox_Changed"
+                                  ToolTip="Launch Light Controls when you sign in to Windows" />
+                        <Button x:Name="ApplyButton"
+                                Content="Apply again"
+                                Style="{StaticResource GhostButton}"
+                                Click="ApplyButton_Click"
+                                ToolTip="Re-apply each device's saved color and brightness" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Body -->
+            <Grid Grid.Row="1" Margin="28,24">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Setup panel -->
+                <Border x:Name="SetupPanel" Style="{StaticResource HeroCard}" MaxWidth="720" HorizontalAlignment="Center">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Width="64" Height="64" CornerRadius="16" VerticalAlignment="Top" Margin="0,0,24,0">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#2A2218" Offset="0" />
+                                    <GradientStop Color="#1E2230" Offset="1" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Viewbox Width="32" Height="32">
+                                <Canvas Width="24" Height="24">
+                                    <Path Stroke="#F0A030" StrokeThickness="1.5" Fill="Transparent"
+                                          Data="M12,3 C8,3 5,6 5,10 C5,14 12,21 12,21 C12,21 19,14 19,10 C19,6 16,3 12,3 Z" />
+                                    <Ellipse Canvas.Left="9.5" Canvas.Top="8" Width="5" Height="5" Fill="#F0A030" />
+                                </Canvas>
+                            </Viewbox>
+                        </Border>
+
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="SET UP LIGHTING"
+                                       Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="Set up lighting support"
+                                       Style="{StaticResource DisplayText}"
+                                       FontSize="22"
+                                       Margin="0,4,0,0" />
+                            <TextBlock x:Name="SetupText"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="14"
+                                       LineHeight="22"
+                                       Margin="0,10,0,0" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                                <Button x:Name="SetupButton"
+                                        Content="Download &amp; set up"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Click="SetupButton_Click"
+                                        Margin="0,0,10,0" />
+                                <Button Content="Retry"
+                                        Style="{StaticResource GhostButton}"
+                                        Click="RetrySetupButton_Click"
+                                        Margin="0,0,10,0" />
+                                <Button Content="Open OpenRGB releases"
+                                        Style="{StaticResource GhostButton}"
+                                        Click="OpenReleasesButton_Click" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Main panel -->
+                <Border x:Name="MainPanel"
+                        Grid.Row="1"
+                        Style="{StaticResource Card}"
+                        Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="340" MinWidth="280" MaxWidth="420" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Devices -->
+                        <DockPanel Grid.Column="0" Margin="0,0,20,0">
+                            <Grid DockPanel.Dock="Top" Margin="0,0,0,16">
+                                <TextBlock Text="Devices"
+                                           Style="{StaticResource DisplayText}"
+                                           FontSize="18"
+                                           VerticalAlignment="Center" />
+                                <Button x:Name="RefreshButton"
+                                        Content="Refresh"
+                                        Style="{StaticResource GhostButton}"
+                                        Click="RefreshButton_Click"
+                                        HorizontalAlignment="Right"
+                                        Padding="12,6"
+                                        FontSize="12"
+                                        ToolTip="Refresh connected devices" />
+                            </Grid>
+
+                            <StackPanel x:Name="DevicesEmptyPanel"
+                                        Visibility="Collapsed"
+                                        VerticalAlignment="Center"
+                                        HorizontalAlignment="Center"
+                                        Margin="0,24,0,0">
+                                <TextBlock Text="No compatible hardware reported"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           FontSize="14"
+                                           TextAlignment="Center" />
+                                <TextBlock Text="Check USB connections and OpenRGB, then refresh."
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           FontSize="12"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Margin="0,6,0,14"
+                                           MaxWidth="220" />
+                                <Button Content="Refresh devices"
+                                        Style="{StaticResource GhostButton}"
+                                        Click="RefreshButton_Click"
+                                        HorizontalAlignment="Center"
+                                        Padding="14,8"
+                                        FontSize="12" />
+                            </StackPanel>
+
+                            <ScrollViewer x:Name="DevicesListPanel"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
+                                <ListBox x:Name="DevicesListBox"
+                                         ItemsSource="{Binding Devices}"
+                                         SelectionChanged="DevicesListBox_SelectionChanged"
+                                         BorderThickness="0"
+                                         Background="Transparent">
+                                    <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse Width="8" Height="8"
+                                                     VerticalAlignment="Top"
+                                                     Margin="0,5,10,0">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Fill" Value="#3DD68C" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsSupported}" Value="False">
+                                                                <Setter Property="Fill" Value="#5C6378" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="14" />
+                                                <TextBlock Text="{Binding Details}"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           FontSize="12"
+                                                           Margin="0,3,0,0"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <Border Grid.Column="2"
+                                                    Width="22" Height="22"
+                                                    CornerRadius="11"
+                                                    BorderBrush="#FFFFFF22"
+                                                    BorderThickness="1.5"
+                                                    Margin="10,0,8,0"
+                                                    VerticalAlignment="Center"
+                                                    Background="{Binding PreviewBrush}" />
+                                            <TextBlock Grid.Column="3"
+                                                       Text="{Binding BrightnessLabel}"
+                                                       Style="{StaticResource MonoText}"
+                                                       FontSize="12"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                                </ListBox>
+                            </ScrollViewer>
+                        </DockPanel>
+
+                        <Border Grid.Column="1" Style="{StaticResource PanelDivider}" />
+
+                        <!-- Color -->
+                        <StackPanel Grid.Column="2" Margin="20,0,0,0">
+                            <TextBlock Text="Color"
+                                       Style="{StaticResource DisplayText}"
+                                       FontSize="18" />
+                            <TextBlock x:Name="SelectedDeviceText"
+                                       Text="Select a device"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="13"
+                                       Margin="0,6,0,20" />
+
+                            <Button x:Name="ColorPreviewButton"
+                                    Style="{StaticResource ColorPreviewButton}"
+                                    Click="ColorPreviewButton_Click"
+                                    ToolTip="Choose custom color"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,0,0,20">
+                                <Grid Width="140" Height="140">
+                                    <Ellipse x:Name="ColorGlow" Width="140" Height="140" Opacity="0.35">
+                                        <Ellipse.Fill>
+                                            <SolidColorBrush x:Name="ColorGlowBrush" Color="#00A8FF" />
+                                        </Ellipse.Fill>
+                                    </Ellipse>
+                                    <Border x:Name="ColorPreview"
+                                            Width="96" Height="96"
+                                            CornerRadius="48"
+                                            BorderBrush="#FFFFFF20"
+                                            BorderThickness="2"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center">
+                                        <Border.Background>
+                                            <SolidColorBrush Color="#00A8FF" />
+                                        </Border.Background>
+                                        <Border.Effect>
+                                            <DropShadowEffect Color="#00A8FF" BlurRadius="24" ShadowDepth="0" Opacity="0.6" />
+                                        </Border.Effect>
+                                    </Border>
+                                </Grid>
+                            </Button>
+
+                            <TextBlock x:Name="ColorText"
+                                       Style="{StaticResource MonoText}"
+                                       FontSize="16"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,20" />
+
+                            <Grid Margin="0,0,0,24">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="44" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Brightness"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           FontSize="13"
+                                           Margin="0,0,14,0" />
+                                <Slider x:Name="BrightnessSlider"
+                                        Grid.Column="1"
+                                        Minimum="1"
+                                        Maximum="100"
+                                        Value="100"
+                                        IsMoveToPointEnabled="True"
+                                        VerticalAlignment="Center"
+                                        PreviewMouseLeftButtonDown="BrightnessSlider_PreviewMouseLeftButtonDown"
+                                        PreviewMouseLeftButtonUp="BrightnessSlider_PreviewMouseLeftButtonUp"
+                                        ValueChanged="BrightnessSlider_ValueChanged" />
+                                <TextBlock x:Name="BrightnessText"
+                                           Grid.Column="2"
+                                           Text="100%"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Right"
+                                           Style="{StaticResource MonoText}"
+                                           FontSize="13"
+                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                            </Grid>
+
+                            <TextBlock Text="SWATCHES" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
+                            <ItemsControl ItemsSource="{Binding BuiltInSwatches}"
+                                          Width="176"
+                                          Height="88"
+                                          HorizontalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="4" Rows="2" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Tag="{Binding Hex}"
+                                                Background="{Binding Brush}"
+                                                Style="{StaticResource SelectedColorSwatchButton}"
+                                                Click="SwatchButton_Click"
+                                                ToolTip="{Binding Hex}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="LAST USED"
+                                       Style="{StaticResource SectionTitle}"
+                                       Margin="0,16,0,8" />
+                            <Grid HorizontalAlignment="Center" Width="176">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="44" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0"
+                                        Background="#2A2F3D"
+                                        Style="{StaticResource CustomSwatchButton}"
+                                        Click="CustomSwatchButton_Click"
+                                        ToolTip="Pick a custom color">
+                                    <TextBlock Text="+"
+                                               FontSize="18"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextMutedBrush}" />
+                                </Button>
+                                <ItemsControl Grid.Column="1"
+                                              ItemsSource="{Binding RecentCustomSwatches}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Tag="{Binding Hex}"
+                                                    Background="{Binding Brush}"
+                                                    Style="{StaticResource SelectedColorSwatchButton}"
+                                                    Click="SwatchButton_Click"
+                                                    ToolTip="{Binding Hex}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
+                            <TextBlock x:Name="RecentCustomEmptyText"
+                                       Text="Custom colors you pick will appear here."
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       FontSize="12"
+                                       TextAlignment="Center"
+                                       Margin="0,10,0,0" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

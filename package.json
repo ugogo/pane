@@ -1,0 +1,13 @@
+{
+  "name": "home",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Windows utility suite — DX Light, Light Controls, CleanShot",
+  "scripts": {
+    "build": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build.ps1",
+    "test": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/test.ps1",
+    "start:dx-light": "dotnet run --project legacy/DXLight.Tray/DXLight.Tray.csproj -c Release",
+    "start:light-controls": "dotnet run --project legacy/LightControls.Desktop/LightControls.Desktop.csproj -c Release",
+    "start:cleanshot": "dotnet build legacy/CleanShotW/CleanShotW.csproj -c Release -p:Platform=x64 && dotnet run --project legacy/CleanShotW/CleanShotW.csproj -c Release -p:Platform=x64"
+  }
+}

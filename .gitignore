@@ -1,0 +1,11 @@
+bin/
+obj/
+dist/
+.vs/
+*.user
+*.suo
+*.cache
+*.log
+node_modules/
+.DS_Store
+Thumbs.db
