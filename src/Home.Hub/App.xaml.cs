@@ -11,8 +11,8 @@ namespace Home.Hub;
 
 public partial class App : Application
 {
-    private const string MutexName = @"Local\Home_Hub_SingleInstance";
-    private const string ActivateEventName = @"Local\Home_Hub_Activate";
+    private const string MutexName = @"Local\Home_Hub_SingleInstance_v2";
+    private const string ActivateEventName = @"Local\Home_Hub_Activate_v2";
 
     private SingleInstanceGate? _singleInstanceGate;
     private MainWindow? _mainWindow;
@@ -20,6 +20,7 @@ public partial class App : Application
 
     public App()
     {
+        UnhandledException += OnUnhandledException;
         InitializeComponent();
     }
 
@@ -81,7 +82,15 @@ public partial class App : Application
         });
 
         _mainWindow = new MainWindow();
-        _mainWindow.Activate();
+
+        if (StandaloneModuleId is null && settings.StartMinimizedToTray)
+        {
+            _mainWindow.HideToTray();
+        }
+        else
+        {
+            _mainWindow.Activate();
+        }
     }
 
     private static string? ParseStandaloneModule(IReadOnlyList<string> args)
@@ -109,5 +118,15 @@ public partial class App : Application
         {
             settings.EnabledModules[key] = string.Equals(key, moduleId, StringComparison.OrdinalIgnoreCase);
         }
+    }
+
+    private static void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        var logPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Home",
+            "hub-errors.log");
+        Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+        File.AppendAllText(logPath, $"{DateTimeOffset.Now:u} {e.Exception}\n");
     }
 }

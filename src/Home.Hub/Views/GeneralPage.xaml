@@ -3,18 +3,24 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <StackPanel Padding="28" Spacing="20" MaxWidth="640">
-        <TextBlock
-            Text="General"
-            FontFamily="{StaticResource DisplayFont}"
-            FontSize="28"
-            FontWeight="SemiBold"
-            Foreground="{StaticResource InkPrimaryBrush}" />
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel
+            Padding="28"
+            Spacing="20"
+            MaxWidth="640"
+            HorizontalAlignment="Center">
+            <TextBlock
+                Text="General"
+                FontFamily="{StaticResource DisplayFont}"
+                FontSize="28"
+                FontWeight="SemiBold"
+                Foreground="{StaticResource InkPrimaryBrush}" />
 
-        <ToggleSwitch
-            Header="Run at startup"
-            OnContent="On"
-            OffContent="Off"
-            IsOn="{Binding RunAtStartup, Mode=TwoWay}" />
-    </StackPanel>
+            <ToggleSwitch
+                Header="Run at startup"
+                OnContent="On"
+                OffContent="Off"
+                IsOn="{Binding RunAtStartup, Mode=TwoWay}" />
+        </StackPanel>
+    </ScrollViewer>
 </Page>

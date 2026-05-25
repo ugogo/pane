@@ -5,34 +5,49 @@
     xmlns:windowex="using:WinUIEx"
     xmlns:notify="using:H.NotifyIcon">
 
-    <Grid Loaded="OnRootLoaded" Background="{StaticResource SurfaceBaseBrush}">
+    <Grid Loaded="OnRootLoaded" Background="{StaticResource HubBackdropBrush}">
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator
+                Key="K"
+                Modifiers="Control"
+                Invoked="OnSearchAcceleratorInvoked" />
+        </Grid.KeyboardAccelerators>
+
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <Grid x:Name="AppTitleBar" Height="48" Background="Transparent">
-            <TextBlock
-                Margin="16,0,0,0"
-                VerticalAlignment="Center"
-                Text="Home"
-                FontFamily="{StaticResource DisplayFont}"
-                FontWeight="SemiBold"
-                Foreground="{StaticResource InkPrimaryBrush}" />
+            <AutoSuggestBox
+                x:Name="SearchBox"
+                Style="{StaticResource HubSearchBoxStyle}"
+                QueryIcon="Find"
+                TextMemberPath="Label"
+                TextChanged="OnSearchTextChanged"
+                QuerySubmitted="OnSearchQuerySubmitted"
+                SuggestionChosen="OnSearchSuggestionChosen" />
         </Grid>
 
         <NavigationView
             x:Name="NavView"
             Grid.Row="1"
             IsBackButtonVisible="Collapsed"
+            IsSettingsVisible="False"
+            IsPaneToggleButtonVisible="False"
+            IsPaneOpen="True"
             PaneDisplayMode="Left"
-            Background="{StaticResource SurfaceBaseBrush}">
+            OpenPaneLength="200"
+            Background="Transparent">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="Home" Tag="home" Icon="Home" />
-                <NavigationViewItem Content="General" Tag="general" Icon="Setting" />
             </NavigationView.MenuItems>
 
-            <Frame x:Name="ContentFrame" />
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem Content="General" Tag="general" Icon="Setting" />
+            </NavigationView.FooterMenuItems>
+
+            <Frame x:Name="ContentFrame" Background="Transparent" />
         </NavigationView>
 
         <notify:TaskbarIcon

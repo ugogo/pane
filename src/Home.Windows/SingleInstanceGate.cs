@@ -17,12 +17,19 @@ public sealed class SingleInstanceGate : IDisposable
 
     public static bool TryAcquire(string mutexName, string activateEventName, [NotNullWhen(true)] out SingleInstanceGate? gate)
     {
-        var mutex = new Mutex(initiallyOwned: true, mutexName, out var createdNew);
-        if (!createdNew)
+        var mutex = new Mutex(initiallyOwned: false, mutexName, out _);
+        try
         {
-            mutex.Dispose();
-            gate = null;
-            return false;
+            if (!mutex.WaitOne(0))
+            {
+                mutex.Dispose();
+                gate = null;
+                return false;
+            }
+        }
+        catch (AbandonedMutexException)
+        {
+            // The previous owner exited without releasing the mutex; this process now owns it.
         }
 
         gate = new SingleInstanceGate(mutex, activateEventName);

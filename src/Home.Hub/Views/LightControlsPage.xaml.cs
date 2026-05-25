@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 
 namespace Home.Hub.Views;
@@ -17,7 +18,7 @@ public sealed partial class LightControlsPage : Page
     private readonly DispatcherQueueTimer _brightnessTimer;
 
     private LightControlsDevice? _selectedDevice;
-    private bool _busy;
+    private bool _connectionBusy;
     private bool _suppressDeviceSync;
 
     public LightControlsPage()
@@ -26,7 +27,7 @@ public sealed partial class LightControlsPage : Page
         _viewModel = App.Services.GetRequiredService<LightControlsPageViewModel>();
         _dispatcher = DispatcherQueue.GetForCurrentThread();
         _brightnessTimer = _dispatcher.CreateTimer();
-        _brightnessTimer.Interval = TimeSpan.FromMilliseconds(300);
+        _brightnessTimer.Interval = TimeSpan.FromMilliseconds(250);
         _brightnessTimer.Tick += OnBrightnessTimerTick;
         Loaded += OnLoaded;
     }
@@ -35,9 +36,28 @@ public sealed partial class LightControlsPage : Page
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        ConnectionFrame.Navigate(typeof(LightControlsSettingsPage));
         BuildBuiltInSwatches();
+        await LoadAdvancedSettingsAsync();
+        UpdateConnectionStatus();
+        if (Module.IsMainUiReady)
+        {
+            UpdatePresentation(Module.Status.Message);
+            return;
+        }
+
         await InitializeAsync();
+    }
+
+    private async Task LoadAdvancedSettingsAsync()
+    {
+        var settings = Module.IsEnabled
+            ? Module.Settings
+            : await Module.SettingsStore.LoadAsync();
+        HostBox.Text = settings.Host;
+        PortBox.Value = settings.Port;
+        OpenRgbPathBox.Text = settings.OpenRgbExecutablePath ?? string.Empty;
+        LogitechToggle.IsOn = settings.EnableLogitechDirect;
+        DxLightToggle.IsOn = settings.EnableDxLightDirect;
     }
 
     private async Task InitializeAsync()
@@ -45,13 +65,15 @@ public sealed partial class LightControlsPage : Page
         if (!Module.IsEnabled)
         {
             ShowSetup("Enable Light Controls on the Home page first.");
+            UpdateConnectionStatus();
             return;
         }
 
-        await RunBusyAsync("Checking lighting support...", async () =>
+        await RunConnectionAsync(async () =>
         {
             var message = await Module.InitializeUiAsync(CreateProgress());
             UpdatePresentation(message);
+            UpdateConnectionStatus();
         });
     }
 
@@ -92,21 +114,61 @@ public sealed partial class LightControlsPage : Page
 
     private async void OnSetupClicked(object sender, RoutedEventArgs e)
     {
-        await RunBusyAsync("Setting up lighting support...", async () =>
+        await RunConnectionAsync(async () =>
         {
             var message = await Module.RunSetupAsync(CreateProgress());
             UpdatePresentation(message);
+            UpdateConnectionStatus();
         });
     }
-
-    private async void OnRetryClicked(object sender, RoutedEventArgs e) => await InitializeAsync();
 
     private void OnOpenReleasesClicked(object sender, RoutedEventArgs e) =>
         LightControlsModule.OpenOpenRgbReleases();
 
+    private async void OnConnectClicked(object sender, RoutedEventArgs e) => await InitializeAsync();
+
+    private async void OnSaveAdvancedSettingsClicked(object sender, RoutedEventArgs e)
+    {
+        var host = HostBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            AdvancedSettingsStatusText.Text = "Enter an OpenRGB host.";
+            return;
+        }
+
+        var port = (int)PortBox.Value;
+        if (port is < 1 or > 65535)
+        {
+            AdvancedSettingsStatusText.Text = "Port must be between 1 and 65535.";
+            return;
+        }
+
+        var settings = Module.Settings;
+        settings.Host = host;
+        settings.Port = port;
+        settings.OpenRgbExecutablePath = string.IsNullOrWhiteSpace(OpenRgbPathBox.Text)
+            ? null
+            : OpenRgbPathBox.Text.Trim();
+        settings.EnableLogitechDirect = LogitechToggle.IsOn;
+        settings.EnableDxLightDirect = DxLightToggle.IsOn;
+
+        await Module.SettingsStore.SaveAsync(settings);
+        if (Module.IsEnabled)
+        {
+            await RunConnectionAsync(async () =>
+            {
+                await Module.ReloadAsync();
+                var message = await Module.InitializeUiAsync(CreateProgress());
+                UpdatePresentation(message);
+            });
+        }
+
+        AdvancedSettingsStatusText.Text = "Settings saved.";
+    }
+
     private async void OnRefreshClicked(object sender, RoutedEventArgs e)
     {
-        await RunBusyAsync("Refreshing devices...", async () =>
+        await RunConnectionAsync(async () =>
         {
             await Module.RefreshDevicesAsync();
             UpdatePresentation(Module.Status.Message);
@@ -115,10 +177,15 @@ public sealed partial class LightControlsPage : Page
 
     private async void OnApplyAllClicked(object sender, RoutedEventArgs e)
     {
-        await RunBusyAsync("Applying colors...", async () =>
+        string? result = null;
+        await RunConnectionAsync(async () =>
         {
-            StatusText.Text = await Module.ApplyAllSupportedAsync();
+            result = await Module.ApplyAllSupportedAsync();
         });
+        if (result is not null)
+        {
+            ConnectionStatusText.Text = result;
+        }
     }
 
     private void OnDeviceSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -139,6 +206,9 @@ public sealed partial class LightControlsPage : Page
         BrightnessText.Text = $"{device.BrightnessPercent}%";
         ColorPickerButton.IsEnabled = device.IsSupported;
         BrightnessSlider.IsEnabled = device.IsSupported;
+        DeviceControlsContent.Visibility = device.IsSupported
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         _suppressDeviceSync = false;
     }
 
@@ -190,13 +260,10 @@ public sealed partial class LightControlsPage : Page
             RefreshRecentSwatches();
         }
 
-        await RunBusyAsync($"Applying to {_selectedDevice.Name}...", async () =>
-        {
-            StatusText.Text = await Module.ApplyDeviceAsync(_selectedDevice.Id);
-        });
+        ApplySelectedDeviceInstant();
     }
 
-    private void OnBrightnessChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    private void OnBrightnessChanged(object sender, RangeBaseValueChangedEventArgs e)
     {
         if (_suppressDeviceSync || _selectedDevice is null)
         {
@@ -210,30 +277,40 @@ public sealed partial class LightControlsPage : Page
         _brightnessTimer.Start();
     }
 
-    private async void OnBrightnessTimerTick(DispatcherQueueTimer sender, object args)
+    private void OnBrightnessTimerTick(DispatcherQueueTimer sender, object args)
     {
         sender.Stop();
+        ApplySelectedDeviceInstant();
+    }
+
+    private void ApplySelectedDeviceInstant()
+    {
         if (_selectedDevice is null || !Module.IsMainUiReady)
         {
             return;
         }
 
-        var device = _selectedDevice;
-        await RunBusyAsync($"Applying to {device.Name}...", async () =>
+        var deviceId = _selectedDevice.Id;
+        _ = ApplyDeviceSilentlyAsync(deviceId);
+    }
+
+    private async Task ApplyDeviceSilentlyAsync(string deviceId)
+    {
+        try
         {
-            StatusText.Text = await Module.ApplyDeviceAsync(device.Id);
-        });
+            await Module.ApplyDeviceAsync(deviceId);
+        }
+        catch
+        {
+        }
     }
 
     private void UpdatePresentation(string message)
     {
         if (Module.IsMainUiReady)
         {
-            SetupPanel.Visibility = Visibility.Collapsed;
+            SetupPanelHost.Visibility = Visibility.Collapsed;
             MainPanel.Visibility = Visibility.Visible;
-            StatusText.Text = Module.Devices.Count == 0
-                ? "No compatible devices were reported."
-                : $"{Module.Devices.Count} device(s) detected.";
             DevicesList.ItemsSource = Module.Devices.ToList();
             DevicesEmptyText.Visibility = Module.Devices.Count == 0
                 ? Visibility.Visible
@@ -241,14 +318,11 @@ public sealed partial class LightControlsPage : Page
             DevicesList.Visibility = Module.Devices.Count == 0
                 ? Visibility.Collapsed
                 : Visibility.Visible;
+            DeviceControlsContent.Visibility = Module.Devices.Count == 0
+                ? Visibility.Collapsed
+                : Visibility.Visible;
 
-            var initial = Module.Devices.FirstOrDefault(device => device.IsSupported)
-                ?? Module.Devices.FirstOrDefault();
-            if (initial is not null)
-            {
-                DevicesList.SelectedItem = initial;
-                SelectDevice(initial);
-            }
+            SelectInitialDevice();
         }
         else
         {
@@ -256,24 +330,59 @@ public sealed partial class LightControlsPage : Page
         }
     }
 
-    private void ShowSetup(string message)
+    private void SelectInitialDevice()
     {
-        SetupPanel.Visibility = Visibility.Visible;
-        MainPanel.Visibility = Visibility.Collapsed;
-        SetupText.Text = message;
-        StatusText.Text = "Lighting support needs setup.";
+        var previousId = _selectedDevice?.Id;
+        var target = Module.Devices.FirstOrDefault(device => device.Id == previousId)
+            ?? Module.Devices.FirstOrDefault(device => device.IsSupported)
+            ?? Module.Devices.FirstOrDefault();
+
+        if (target is not null)
+        {
+            DevicesList.SelectedItem = target;
+            SelectDevice(target);
+            return;
+        }
+
+        _selectedDevice = null;
+        DevicesList.SelectedItem = null;
+        SelectedDeviceText.Text = "No devices detected";
     }
 
-    private async Task RunBusyAsync(string message, Func<Task> action)
+    private void ShowSetup(string message)
     {
-        if (_busy)
+        SetupPanelHost.Visibility = Visibility.Visible;
+        MainPanel.Visibility = Visibility.Collapsed;
+        SetupText.Text = message;
+    }
+
+    private void UpdateConnectionStatus()
+    {
+        if (!Module.IsEnabled)
+        {
+            ConnectionStatusText.Text = "Disabled - enable Light Controls on Home.";
+            ConnectButton.IsEnabled = false;
+            return;
+        }
+
+        ConnectButton.IsEnabled = !_connectionBusy;
+        ConnectionStatusText.Text = Module.IsMainUiReady
+            ? $"Connected - {Module.Devices.Count} device(s)"
+            : Module.Status.Message;
+    }
+
+    private async Task RunConnectionAsync(Func<Task> action)
+    {
+        if (_connectionBusy)
         {
             return;
         }
 
-        _busy = true;
-        _brightnessTimer.Stop();
-        StatusText.Text = message;
+        _connectionBusy = true;
+        ConnectionProgress.Visibility = Visibility.Visible;
+        ConnectionProgress.IsActive = true;
+        ConnectButton.IsEnabled = false;
+        ConnectButtonText.Text = "Connecting...";
         SetupButton.IsEnabled = false;
 
         try
@@ -282,8 +391,12 @@ public sealed partial class LightControlsPage : Page
         }
         finally
         {
-            _busy = false;
+            _connectionBusy = false;
+            ConnectionProgress.IsActive = false;
+            ConnectionProgress.Visibility = Visibility.Collapsed;
+            ConnectButtonText.Text = Module.IsMainUiReady ? "Reconnect" : "Connect";
             SetupButton.IsEnabled = true;
+            UpdateConnectionStatus();
         }
     }
 
@@ -293,7 +406,7 @@ public sealed partial class LightControlsPage : Page
             _dispatcher.TryEnqueue(() =>
             {
                 SetupText.Text = message;
-                StatusText.Text = message;
+                ConnectionStatusText.Text = message;
             });
         });
 

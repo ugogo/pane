@@ -1,3 +1,4 @@
+using CleanShot.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Home.Core;
 using Home.Core.Modules;
@@ -5,6 +6,7 @@ using Home.Hub.Modules;
 using Home.Hub.Navigation;
 using Home.Windows;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Home.Hub.ViewModels;
 
@@ -14,6 +16,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly GlobalHotkeyCoordinator _hotkeyCoordinator;
     private readonly CleanShotModule _cleanShotModule;
     private HubSettings _settings;
+    private IReadOnlyList<ShortcutItemViewModel> _shortcuts = [];
 
     public MainViewModel(
         ModuleRegistry registry,
@@ -27,9 +30,29 @@ public sealed partial class MainViewModel : ObservableObject
         Modules = _registry.Modules
             .Select(module => new ModuleItemViewModel(module, ToggleModuleAsync))
             .ToList();
+        RefreshHomeDashboard();
     }
 
     public IReadOnlyList<ModuleItemViewModel> Modules { get; }
+
+    public IReadOnlyList<ModuleItemViewModel> QuickAccessModules =>
+        Modules.Where(module => module.HasSettingsPage).ToList();
+
+    public IReadOnlyList<ShortcutItemViewModel> Shortcuts => _shortcuts;
+
+    public string ModuleStatusSummary
+    {
+        get
+        {
+            var enabledCount = Modules.Count(module => module.IsEnabled);
+            return enabledCount switch
+            {
+                0 => "No utilities running in the background",
+                1 => "1 utility running in the background",
+                _ => $"{enabledCount} utilities running in the background",
+            };
+        }
+    }
 
     public string? HotkeyConflictText { get; private set; }
 
@@ -65,6 +88,29 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    public bool StartMinimizedToTray
+    {
+        get => _settings.StartMinimizedToTray;
+        set
+        {
+            if (_settings.StartMinimizedToTray == value)
+            {
+                return;
+            }
+
+            _settings.StartMinimizedToTray = value;
+            OnPropertyChanged();
+            PersistSettings();
+        }
+    }
+
+    public void RefreshHomeDashboard()
+    {
+        RefreshShortcuts();
+        OnPropertyChanged(nameof(ModuleStatusSummary));
+        OnPropertyChanged(nameof(QuickAccessModules));
+    }
+
     public void RefreshHotkeyConflicts()
     {
         _hotkeyCoordinator.ClearConflicts();
@@ -86,6 +132,30 @@ public sealed partial class MainViewModel : ObservableObject
         {
             item.SyncFromModule();
         }
+
+        RefreshHomeDashboard();
+    }
+
+    private void RefreshShortcuts()
+    {
+        var shortcuts = new List<ShortcutItemViewModel>();
+        var cleanShot = Modules.FirstOrDefault(module =>
+            module.Id == HomeServiceCollectionExtensions.CleanShotModuleId);
+
+        if (cleanShot?.IsEnabled == true)
+        {
+            shortcuts.Add(new ShortcutItemViewModel(
+                "Capture full screen",
+                HotkeyConfiguration.FullScreenDisplay,
+                HomeServiceCollectionExtensions.CleanShotModuleId));
+            shortcuts.Add(new ShortcutItemViewModel(
+                "Capture region",
+                HotkeyConfiguration.RegionDisplay,
+                HomeServiceCollectionExtensions.CleanShotModuleId));
+        }
+
+        _shortcuts = shortcuts;
+        OnPropertyChanged(nameof(Shortcuts));
     }
 
     private async Task ToggleModuleAsync(ModuleItemViewModel item, bool enabled)
@@ -103,6 +173,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         item.RefreshStatus();
+        RefreshHomeDashboard();
         RefreshHotkeyConflicts();
         TryRefreshTrayMenu();
     }
@@ -143,6 +214,13 @@ public sealed partial class ModuleItemViewModel : ObservableObject
     public string DisplayName { get; }
 
     public string Description { get; }
+
+    public string IconGlyph => ModuleNavigation.GetIcon(Id) switch
+    {
+        Symbol.Camera => "\uE722",
+        Symbol.Switch => "\uE8E7",
+        _ => "\uE713",
+    };
 
     public bool HasSettingsPage => ModuleNavigation.HasSettingsPage(Id);
 

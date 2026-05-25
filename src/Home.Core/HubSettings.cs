@@ -6,6 +6,8 @@ public sealed class HubSettings
 {
     public bool RunAtStartup { get; set; }
 
+    public bool StartMinimizedToTray { get; set; }
+
     public bool LegacyImportCompleted { get; set; }
 
     public string LastOpenedPage { get; set; } = "home";
