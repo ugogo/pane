@@ -3,44 +3,27 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-        <StackPanel
-            Padding="28"
-            Spacing="20"
-            MaxWidth="640"
-            HorizontalAlignment="Center">
-            <StackPanel Spacing="6">
+    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+        <StackPanel Style="{StaticResource PageContentStackStyle}">
+            <StackPanel Style="{StaticResource PageHeadingBlockStyle}">
                 <TextBlock
                     Text="Light Controls"
-                    FontFamily="{StaticResource DisplayFont}"
-                    FontSize="28"
-                    FontWeight="SemiBold"
-                    Foreground="{StaticResource InkPrimaryBrush}" />
+                    Style="{StaticResource PageMainHeadingStyle}" />
                 <TextBlock
                     x:Name="StatusLabel"
-                    Foreground="{StaticResource InkMutedBrush}"
-                    FontFamily="{StaticResource BodyFont}"
-                    TextWrapping="Wrap" />
+                    Style="{StaticResource PageSubtitleStyle}" />
             </StackPanel>
 
-            <Border
-                Background="{StaticResource SurfaceRaisedBrush}"
-                BorderBrush="{StaticResource GlassEdgeBrush}"
-                BorderThickness="1"
-                CornerRadius="12"
-                Padding="20">
+            <Border Style="{StaticResource SettingsCardStyle}">
                 <StackPanel Spacing="16">
                     <TextBlock
                         Text="OpenRGB server"
-                        FontFamily="{StaticResource BodyFont}"
-                        FontSize="11"
-                        FontWeight="SemiBold"
-                        Foreground="{StaticResource InkMutedBrush}" />
+                        Style="{StaticResource SectionHeaderStyle}" />
 
                     <TextBox
                         x:Name="HostBox"
                         Header="Host"
-                        FontFamily="{StaticResource BodyFont}" />
+                        Style="{StaticResource HubInputTextBoxStyle}" />
 
                     <NumberBox
                         x:Name="PortBox"
@@ -52,20 +35,18 @@
                     <TextBox
                         x:Name="OpenRgbPathBox"
                         Header="OpenRGB executable (optional)"
-                        FontFamily="{StaticResource BodyFont}"
+                        Style="{StaticResource HubInputTextBoxStyle}"
                         PlaceholderText="Auto-detect if empty" />
 
                     <ToggleSwitch
                         x:Name="LogitechToggle"
                         Header="Enable Logitech direct control"
-                        OnContent="On"
-                        OffContent="Off" />
+                        Style="{StaticResource HubToggleSwitchStyle}" />
 
                     <ToggleSwitch
                         x:Name="DxLightToggle"
                         Header="Enable DX Light direct USB control"
-                        OnContent="On"
-                        OffContent="Off" />
+                        Style="{StaticResource HubToggleSwitchStyle}" />
 
                     <Button
                         Style="{StaticResource DebugTilePrimaryStyle}"
@@ -75,10 +56,7 @@
 
                     <TextBlock
                         x:Name="SaveStatusText"
-                        FontFamily="{StaticResource BodyFont}"
-                        FontSize="11"
-                        Foreground="{StaticResource InkMutedBrush}"
-                        TextWrapping="Wrap" />
+                        Style="{StaticResource StatusTextStyle}" />
                 </StackPanel>
             </Border>
         </StackPanel>

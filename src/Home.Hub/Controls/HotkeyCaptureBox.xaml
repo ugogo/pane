@@ -5,18 +5,18 @@
 
     <Border
         x:Name="RootBorder"
-        CornerRadius="6"
-        BorderBrush="#22FFFFFF"
+        CornerRadius="{StaticResource RadiusMedium}"
+        BorderBrush="{ThemeResource ControlStrokeStrongBrush}"
         BorderThickness="1"
-        Background="#FF090910">
+        Background="{ThemeResource ControlFillBrush}">
         <TextBox
             x:Name="InputBox"
             IsReadOnly="True"
             BorderThickness="0"
             Background="Transparent"
             FontFamily="Consolas"
-            FontSize="11"
-            Foreground="{StaticResource InkPrimaryBrush}"
+            FontSize="{StaticResource FontSizeCaption}"
+            Foreground="{ThemeResource TextPrimaryBrush}"
             ContextFlyout="{x:Null}"
             IsTextPredictionEnabled="False"
             IsSpellCheckEnabled="False"

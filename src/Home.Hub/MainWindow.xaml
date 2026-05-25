@@ -5,7 +5,7 @@
     xmlns:windowex="using:WinUIEx"
     xmlns:notify="using:H.NotifyIcon">
 
-    <Grid Loaded="OnRootLoaded" Background="{StaticResource HubBackdropBrush}">
+    <Grid Loaded="OnRootLoaded" Background="{ThemeResource HubBackdropBrush}">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator
                 Key="K"
@@ -18,9 +18,40 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid x:Name="AppTitleBar" Height="48" Background="Transparent">
+        <Grid x:Name="AppTitleBar" Height="48" Background="Transparent" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel
+                Orientation="Horizontal"
+                Spacing="10"
+                Margin="16,0,0,0"
+                VerticalAlignment="Center">
+                <Border
+                    Width="24"
+                    Height="24"
+                    CornerRadius="6"
+                    Background="{ThemeResource AccentPrimaryBrush}">
+                    <SymbolIcon
+                        Symbol="Home"
+                        Foreground="{ThemeResource TextOnAccentBrush}"
+                        Width="14"
+                        Height="14" />
+                </Border>
+                <TextBlock
+                    Text="Home"
+                    FontFamily="{StaticResource DisplayFont}"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource TextPrimaryBrush}"
+                    VerticalAlignment="Center" />
+            </StackPanel>
+
             <AutoSuggestBox
                 x:Name="SearchBox"
+                Grid.Column="1"
                 Style="{StaticResource HubSearchBoxStyle}"
                 QueryIcon="Find"
                 TextMemberPath="Label"
@@ -37,7 +68,9 @@
             IsPaneToggleButtonVisible="False"
             IsPaneOpen="True"
             PaneDisplayMode="Left"
-            OpenPaneLength="200"
+            OpenPaneLength="220"
+            PaneTitle="Utilities"
+            AlwaysShowHeader="False"
             Background="Transparent">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="Home" Tag="home" Icon="Home" />

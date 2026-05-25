@@ -4,23 +4,17 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:viewmodels="using:Home.Hub.ViewModels">
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
         <StackPanel
-            Padding="28"
-            Spacing="20"
-            MaxWidth="920"
-            HorizontalAlignment="Center">
-            <TextBlock
-                Text="Home"
-                FontFamily="{StaticResource DisplayFont}"
-                FontSize="28"
-                FontWeight="SemiBold"
-                Foreground="{StaticResource InkPrimaryBrush}" />
-
-            <TextBlock
-                Text="Enable utilities to run in the background from a single app."
-                Foreground="{StaticResource InkMutedBrush}"
-                FontFamily="{StaticResource BodyFont}" />
+            Style="{StaticResource PageWideContentStackStyle}">
+            <StackPanel Style="{StaticResource PageHeadingBlockStyle}">
+                <TextBlock
+                    Text="Home"
+                    Style="{StaticResource PageMainHeadingStyle}" />
+                <TextBlock
+                    Text="Enable utilities to run in the background from a single app."
+                    Style="{StaticResource PageSubtitleStyle}" />
+            </StackPanel>
 
             <InfoBar
                 Title="Hotkey conflict"
@@ -29,16 +23,11 @@
                 IsOpen="True"
                 IsClosable="False"
                 Visibility="{Binding HotkeyConflictVisibility, Mode=OneWay}" />
-            <Border
-                Background="{StaticResource SurfaceRaisedBrush}"
-                BorderBrush="{StaticResource GlassEdgeBrush}"
-                BorderThickness="1"
-                CornerRadius="12"
-                Padding="4">
+            <Border Style="{StaticResource SettingsListCardStyle}">
                 <ItemsControl ItemsSource="{Binding Modules}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="viewmodels:ModuleItemViewModel">
-                            <Grid Padding="16,12" ColumnSpacing="12">
+                            <Grid Style="{StaticResource SettingsListRowStyle}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
@@ -47,16 +36,14 @@
                                 <StackPanel Spacing="4">
                                     <TextBlock
                                         Text="{x:Bind DisplayName}"
-                                        FontWeight="SemiBold"
-                                        Foreground="{StaticResource InkPrimaryBrush}" />
+                                        Style="{StaticResource SettingsLabelStyle}" />
                                     <TextBlock
                                         Text="{x:Bind Description}"
-                                        Foreground="{StaticResource InkMutedBrush}"
-                                        TextWrapping="WrapWholeWords" />
+                                        Style="{StaticResource SettingsDescriptionStyle}" />
                                     <TextBlock
                                         Text="{x:Bind StatusText}"
-                                        Foreground="{StaticResource AccentPrimaryBrush}"
-                                        FontSize="12" />
+                                        Foreground="{ThemeResource AccentPrimaryBrush}"
+                                        FontSize="{StaticResource FontSizeCaption}" />
                                 </StackPanel>
                                 <Button
                                     Grid.Column="1"
@@ -69,6 +56,8 @@
                                 <ToggleSwitch
                                     Grid.Column="2"
                                     VerticalAlignment="Center"
+                                    Style="{StaticResource HubToggleSwitchStyle}"
+                                    AutomationProperties.Name="{x:Bind DisplayName}"
                                     IsOn="{x:Bind IsEnabled, Mode=TwoWay}" />
                             </Grid>
                         </DataTemplate>
