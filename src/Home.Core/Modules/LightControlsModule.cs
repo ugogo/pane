@@ -1,5 +1,6 @@
 using LightControls.Core;
 using LightControls.Core.Abstractions;
+using LightControls.Core.DxLight;
 using LightControls.Core.Logitech;
 using LightControls.Core.Models;
 using LightControls.Core.OpenRgb;
@@ -15,6 +16,7 @@ public sealed class LightControlsModule : IHomeModule, IDisposable
     private LightControlsSettings _settings = new();
     private OpenRgbBackend? _openRgbBackend;
     private LogitechDirectBackend? _logitechBackend;
+    private DxLightDirectBackend? _dxLightBackend;
     private CompositeRgbBackend? _backend;
     private OpenRgbSetupManager? _setupManager;
     private bool _isMainUiReady;
@@ -23,7 +25,7 @@ public sealed class LightControlsModule : IHomeModule, IDisposable
 
     public string DisplayName => "Light Controls";
 
-    public string Description => "RGB lighting via OpenRGB and Logitech direct control.";
+    public string Description => "RGB lighting via OpenRGB, Logitech, and DX Light.";
 
     public bool IsEnabled { get; private set; }
 
@@ -46,7 +48,6 @@ public sealed class LightControlsModule : IHomeModule, IDisposable
     public async Task EnableAsync(CancellationToken cancellationToken = default)
     {
         _settings = await _settingsStore.LoadAsync(cancellationToken);
-        _settings.EnableDxLightDirect = false;
         CreateBackends();
         IsEnabled = true;
         Status = ModuleStatus.Running("Enabled");
@@ -240,7 +241,8 @@ public sealed class LightControlsModule : IHomeModule, IDisposable
         DisposeBackends();
         _openRgbBackend = new OpenRgbBackend(_settings);
         _logitechBackend = new LogitechDirectBackend(_settings);
-        _backend = new CompositeRgbBackend(_openRgbBackend, _logitechBackend);
+        _dxLightBackend = new DxLightDirectBackend(_settings);
+        _backend = new CompositeRgbBackend(_openRgbBackend, _logitechBackend, _dxLightBackend);
         _setupManager = new OpenRgbSetupManager(_settings, _openRgbBackend);
     }
 
@@ -309,6 +311,7 @@ public sealed class LightControlsModule : IHomeModule, IDisposable
     {
         _logitechBackend?.Dispose();
         _logitechBackend = null;
+        _dxLightBackend = null;
         _openRgbBackend = null;
         _backend = null;
         _setupManager = null;

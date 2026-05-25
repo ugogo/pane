@@ -1,8 +1,9 @@
-using CleanShotW.Helpers;
+using CleanShot.Core.Interop;
+using CleanShot.Core.Services;
 
-namespace CleanShotW.Services;
+namespace CleanShot.Core.Services;
 
-internal sealed class HotkeyService : IDisposable
+public sealed class HotkeyService : IDisposable
 {
     public const int HotkeyFullScreen = 1;
     public const int HotkeyRegion = 2;
@@ -29,7 +30,7 @@ internal sealed class HotkeyService : IDisposable
 
         foreach (var binding in bindings)
         {
-            if (Win32Helper.RegisterHotKey(_hwnd, binding.Id, binding.Modifiers, binding.VirtualKey))
+            if (Win32Interop.RegisterHotKey(_hwnd, binding.Id, binding.Modifiers, binding.VirtualKey))
             {
                 _hasActiveBindings = true;
                 AppLog.Info($"Hotkey registered via API: {HotkeyParser.Format(binding.Modifiers, binding.VirtualKey)} (id {binding.Id})");
@@ -55,7 +56,7 @@ internal sealed class HotkeyService : IDisposable
 
     public bool TryHandleMessage(int message, IntPtr wParam)
     {
-        if (message != Win32Helper.WmHotkey)
+        if (message != Win32Interop.WmHotkey)
         {
             return false;
         }
@@ -72,13 +73,13 @@ internal sealed class HotkeyService : IDisposable
 
     private void UnregisterAll()
     {
-        Win32Helper.UnregisterHotKey(_hwnd, HotkeyFullScreen);
-        Win32Helper.UnregisterHotKey(_hwnd, HotkeyRegion);
+        Win32Interop.UnregisterHotKey(_hwnd, HotkeyFullScreen);
+        Win32Interop.UnregisterHotKey(_hwnd, HotkeyRegion);
         _hook.Clear();
         _hasActiveBindings = false;
     }
 
-    internal static IReadOnlyList<HotkeyBinding> BuildBindingsForTests() => BuildBindings();
+    public static IReadOnlyList<HotkeyBinding> BuildBindingsForTests() => BuildBindings();
 
     private static List<HotkeyBinding> BuildBindings()
     {

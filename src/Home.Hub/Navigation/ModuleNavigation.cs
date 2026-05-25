@@ -9,7 +9,6 @@ internal static class ModuleNavigation
     public static Type? GetSettingsPageType(string moduleId) => moduleId switch
     {
         HomeServiceCollectionExtensions.CleanShotModuleId => typeof(CleanShotSettingsPage),
-        HomeServiceCollectionExtensions.DxLightModuleId => typeof(DxLightSettingsPage),
         HomeServiceCollectionExtensions.LightControlsModuleId => typeof(LightControlsPage),
         _ => null,
     };
@@ -17,7 +16,6 @@ internal static class ModuleNavigation
     public static Symbol GetIcon(string moduleId) => moduleId switch
     {
         HomeServiceCollectionExtensions.CleanShotModuleId => Symbol.Camera,
-        HomeServiceCollectionExtensions.DxLightModuleId => Symbol.Favorite,
         HomeServiceCollectionExtensions.LightControlsModuleId => Symbol.Switch,
         _ => Symbol.Setting,
     };

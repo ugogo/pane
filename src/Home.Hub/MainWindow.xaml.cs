@@ -98,7 +98,6 @@ public sealed partial class MainWindow : WindowEx
     private static string GetStandaloneTitle(string moduleId) => moduleId switch
     {
         HomeServiceCollectionExtensions.CleanShotModuleId => "CleanShot",
-        HomeServiceCollectionExtensions.DxLightModuleId => "DX Light",
         HomeServiceCollectionExtensions.LightControlsModuleId => "Light Controls",
         _ => "Home",
     };

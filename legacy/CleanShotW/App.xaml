@@ -6,7 +6,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <ResourceDictionary Source="ms-appx:///Themes/PremiumTheme.xaml" />
+                <ResourceDictionary Source="ms-appx:///CleanShot.WinUI/Themes/PremiumTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <MenuFlyout x:Key="TrayMenu" />

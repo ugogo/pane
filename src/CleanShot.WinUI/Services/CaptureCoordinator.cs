@@ -1,10 +1,10 @@
-using CleanShotW.Views;
-using CleanShotW.Helpers;
+using CleanShot.WinUI.Views;
+using CleanShot.WinUI.Helpers;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using WinRT.Interop;
 
-namespace CleanShotW.Services;
+namespace CleanShot.WinUI.Services;
 
 public sealed class CaptureCoordinator
 {

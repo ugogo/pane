@@ -12,7 +12,6 @@ public sealed class HubSettings
 
     public Dictionary<string, bool> EnabledModules { get; set; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["dx-light"] = true,
         ["light-controls"] = true,
         ["cleanshot"] = true,
     };
@@ -34,23 +33,44 @@ public static class HubSettingsStore
         {
             if (!File.Exists(SettingsPath))
             {
-                return new HubSettings();
+                return NormalizeMergedModules(new HubSettings());
             }
 
             var json = File.ReadAllText(SettingsPath);
-            return JsonSerializer.Deserialize<HubSettings>(json) ?? new HubSettings();
+            return NormalizeMergedModules(JsonSerializer.Deserialize<HubSettings>(json) ?? new HubSettings());
         }
         catch
         {
-            return new HubSettings();
+            return NormalizeMergedModules(new HubSettings());
         }
     }
 
     public static void Save(HubSettings settings)
     {
+        NormalizeMergedModules(settings);
         var directory = Path.GetDirectoryName(SettingsPath)!;
         Directory.CreateDirectory(directory);
         var json = JsonSerializer.Serialize(settings, JsonOptions);
         File.WriteAllText(SettingsPath, json);
+    }
+
+    private static HubSettings NormalizeMergedModules(HubSettings settings)
+    {
+        if (settings.EnabledModules.Remove(HomeServiceCollectionExtensions.DxLightModuleId, out var dxEnabled) && dxEnabled)
+        {
+            settings.EnabledModules[HomeServiceCollectionExtensions.LightControlsModuleId] = true;
+        }
+
+        settings.EnabledModules.Remove(HomeServiceCollectionExtensions.DxLightModuleId, out _);
+
+        if (string.Equals(
+                settings.LastOpenedPage,
+                HomeServiceCollectionExtensions.DxLightModuleId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            settings.LastOpenedPage = HomeServiceCollectionExtensions.LightControlsModuleId;
+        }
+
+        return settings;
     }
 }

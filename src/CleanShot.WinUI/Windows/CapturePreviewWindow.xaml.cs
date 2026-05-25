@@ -1,5 +1,5 @@
-using CleanShotW.Helpers;
-using CleanShotW.Services;
+using CleanShot.WinUI.Helpers;
+using CleanShot.WinUI.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
@@ -12,7 +12,7 @@ using WinRT.Interop;
 using WinUIEx;
 using Windows.Graphics;
 
-namespace CleanShotW.Views;
+namespace CleanShot.WinUI.Views;
 
 public sealed partial class CapturePreviewWindow : WindowEx
 {

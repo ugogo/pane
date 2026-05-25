@@ -45,7 +45,8 @@ public partial class App : Application
 
         _singleInstanceGate = singleInstanceGate;
 
-        StandaloneModuleId = ParseStandaloneModule(Environment.GetCommandLineArgs());
+        StandaloneModuleId = HomeServiceCollectionExtensions.NormalizeModuleId(
+            ParseStandaloneModule(Environment.GetCommandLineArgs()));
 
         var dispatcher = DispatcherQueue.GetForCurrentThread();
         var settings = HubSettingsMigration.ApplyFirstRunImport(HubSettingsStore.Load());

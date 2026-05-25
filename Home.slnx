@@ -1,12 +1,12 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/CleanShot.Core/CleanShot.Core.csproj" />
+    <Project Path="src/CleanShot.WinUI/CleanShot.WinUI.csproj" />
     <Project Path="src/DXLight.Core/DXLight.Core.csproj" />
     <Project Path="src/Home.Core/Home.Core.csproj" />
     <Project Path="src/Home.Hub/Home.Hub.csproj" />
     <Project Path="src/Home.UI/Home.UI.csproj" />
     <Project Path="src/Home.Standalone.CleanShot/Home.Standalone.CleanShot.csproj" />
-    <Project Path="src/Home.Standalone.DxLight/Home.Standalone.DxLight.csproj" />
     <Project Path="src/Home.Standalone.LightControls/Home.Standalone.LightControls.csproj" />
     <Project Path="src/Home.Windows/Home.Windows.csproj" />
     <Project Path="src/LightControls.Core/LightControls.Core.csproj" />

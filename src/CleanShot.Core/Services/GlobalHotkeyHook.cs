@@ -159,4 +159,4 @@ internal sealed class GlobalHotkeyHook : IDisposable
     private static extern IntPtr GetModuleHandle(string? lpModuleName);
 }
 
-internal readonly record struct HotkeyBinding(int Id, uint Modifiers, uint VirtualKey);
+public readonly record struct HotkeyBinding(int Id, uint Modifiers, uint VirtualKey);

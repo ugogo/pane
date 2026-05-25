@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace CleanShotW.Services;
+namespace CleanShot.WinUI.Services;
 
 internal sealed class PreviewKeyboardHook : IDisposable
 {

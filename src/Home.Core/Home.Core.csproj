@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DXLight.Core\DXLight.Core.csproj" />
     <ProjectReference Include="..\LightControls.Core\LightControls.Core.csproj" />
     <ProjectReference Include="..\CleanShot.Core\CleanShot.Core.csproj" />
     <ProjectReference Include="..\Home.Windows\Home.Windows.csproj" />

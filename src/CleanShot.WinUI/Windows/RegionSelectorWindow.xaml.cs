@@ -1,6 +1,6 @@
 using System.Drawing;
-using CleanShotW.Helpers;
-using CleanShotW.Services;
+using CleanShot.WinUI.Helpers;
+using CleanShot.WinUI.Services;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -8,7 +8,7 @@ using Microsoft.UI.Xaml.Input;
 using WinRT.Interop;
 using WinUIEx;
 
-namespace CleanShotW.Views;
+namespace CleanShot.WinUI.Views;
 
 public sealed partial class RegionSelectorWindow : WindowEx
 {

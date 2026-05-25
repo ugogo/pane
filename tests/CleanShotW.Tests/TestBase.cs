@@ -1,4 +1,4 @@
-using CleanShotW.Helpers;
+using CleanShot.WinUI.Helpers;
 using CleanShot.Core.Services;
 using CleanShotW.Services;
 

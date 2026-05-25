@@ -1,48 +1,52 @@
 using System.Runtime.InteropServices;
+using CleanShot.WinUI.Helpers;
 
-namespace CleanShotW.Services;
+namespace CleanShot.WinUI.Services;
 
-internal sealed class RegionSelectorKeyboardHook : IDisposable
+internal sealed class PreviewMouseHook : IDisposable
 {
-    private const int WhKeyboardLl = 13;
-    private const int WmKeydown = 0x0100;
-    private const int WmKeyup = 0x0101;
-    private const int WmSyskeydown = 0x0104;
-    private const int WmSyskeyup = 0x0105;
-    private const int VkEscape = 0x1B;
-    private const int VkReturn = 0x0D;
-    private const int VkSpace = 0x20;
+    private const int WhMouseLl = 14;
+    private const int WmLbuttondown = 0x0201;
+    private const int WmLbuttonup = 0x0202;
+    private const int WmMousemove = 0x0200;
 
     private HookProc? _hookProc;
     private IntPtr _hookHandle;
     private bool _isInstalled;
+    private bool _leftButtonDown;
 
-    public event Action? EscapePressed;
-    public event Action? EnterPressed;
-    public event Action? SpacePressed;
-    public event Action? SpaceReleased;
+    public event Action<int, int>? LeftButtonDown;
+    public event Action<int, int>? LeftButtonDragged;
+    public event Action<int, int>? LeftButtonUp;
 
     private delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct KbdLlHookStruct
+    private struct Point
     {
-        public uint VkCode;
-        public uint ScanCode;
+        public int X;
+        public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MsLlHookStruct
+    {
+        public Point Pt;
+        public uint MouseData;
         public uint Flags;
         public uint Time;
         public IntPtr DwExtraInfo;
     }
 
-    public RegionSelectorKeyboardHook()
+    public PreviewMouseHook()
     {
         _hookProc = OnHook;
-        _hookHandle = SetWindowsHookEx(WhKeyboardLl, _hookProc, GetModuleHandle(null), 0);
+        _hookHandle = SetWindowsHookEx(WhMouseLl, _hookProc, GetModuleHandle(null), 0);
         _isInstalled = _hookHandle != IntPtr.Zero;
 
         if (!_isInstalled)
         {
-            AppLog.Error("Failed to install region selector keyboard hook");
+            AppLog.Error("Failed to install preview mouse hook");
         }
     }
 
@@ -50,23 +54,29 @@ internal sealed class RegionSelectorKeyboardHook : IDisposable
     {
         if (nCode >= 0)
         {
-            var hookStruct = Marshal.PtrToStructure<KbdLlHookStruct>(lParam);
+            var hookStruct = Marshal.PtrToStructure<MsLlHookStruct>(lParam);
             var message = wParam.ToInt32();
-            var isKeyDown = message is WmKeydown or WmSyskeydown;
 
-            switch (hookStruct.VkCode)
+            switch (message)
             {
-                case VkEscape when isKeyDown:
-                    EscapePressed?.Invoke();
+                case WmLbuttondown:
+                    _leftButtonDown = true;
+                    LeftButtonDown?.Invoke(hookStruct.Pt.X, hookStruct.Pt.Y);
                     break;
-                case VkReturn when isKeyDown:
-                    EnterPressed?.Invoke();
+                case WmMousemove:
+                    if (_leftButtonDown)
+                    {
+                        LeftButtonDragged?.Invoke(hookStruct.Pt.X, hookStruct.Pt.Y);
+                    }
+
                     break;
-                case VkSpace when isKeyDown:
-                    SpacePressed?.Invoke();
-                    break;
-                case VkSpace when !isKeyDown:
-                    SpaceReleased?.Invoke();
+                case WmLbuttonup:
+                    if (_leftButtonDown)
+                    {
+                        _leftButtonDown = false;
+                        LeftButtonUp?.Invoke(hookStruct.Pt.X, hookStruct.Pt.Y);
+                    }
+
                     break;
             }
         }
@@ -99,3 +109,4 @@ internal sealed class RegionSelectorKeyboardHook : IDisposable
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr GetModuleHandle(string? lpModuleName);
 }
+

@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
-using CleanShotW.Helpers;
-using CleanShotW.Services;
+using CleanShot.Core.Services;
+using CleanShot.WinUI.Helpers;
+using CleanShot.WinUI.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;

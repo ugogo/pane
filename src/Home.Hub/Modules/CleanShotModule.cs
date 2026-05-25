@@ -1,10 +1,8 @@
 using CleanShot.Core.Services;
-using CleanShotW.Helpers;
-using CleanShotW.Services;
+using CleanShot.WinUI.Services;
 using Home.Core;
 using Home.Windows;
 using Microsoft.UI.Dispatching;
-using WinRT.Interop;
 
 namespace Home.Hub.Modules;
 

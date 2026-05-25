@@ -30,18 +30,15 @@
     <Content Include="Assets\Square44x44Logo.scale-200.png" />
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
-    <Content Include="Assets\capture-shutter.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="CleanShotW.Tests" />
-    <InternalsVisibleTo Include="Home.Hub" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CleanShot.Core\CleanShot.Core.csproj" />
+    <ProjectReference Include="..\..\src\CleanShot.WinUI\CleanShot.WinUI.csproj" />
     <ProjectReference Include="..\..\src\Home.Windows\Home.Windows.csproj" />
   </ItemGroup>
 

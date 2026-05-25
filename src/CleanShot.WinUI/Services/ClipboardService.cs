@@ -1,9 +1,9 @@
 using System.Drawing;
-using CleanShotW.Helpers;
+using CleanShot.WinUI.Helpers;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage.Streams;
 
-namespace CleanShotW.Services;
+namespace CleanShot.WinUI.Services;
 
 internal static class ClipboardService
 {

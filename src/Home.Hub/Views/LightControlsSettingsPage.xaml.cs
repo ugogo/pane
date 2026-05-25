@@ -26,6 +26,7 @@ public sealed partial class LightControlsSettingsPage : Page
         PortBox.Value = settings.Port;
         OpenRgbPathBox.Text = settings.OpenRgbExecutablePath ?? string.Empty;
         LogitechToggle.IsOn = settings.EnableLogitechDirect;
+        DxLightToggle.IsOn = settings.EnableDxLightDirect;
         StatusLabel.Text = Module.IsEnabled
             ? Module.Status.Message
             : "Enable Light Controls on the Home page to connect to devices.";
@@ -54,7 +55,7 @@ public sealed partial class LightControlsSettingsPage : Page
             ? null
             : OpenRgbPathBox.Text.Trim();
         settings.EnableLogitechDirect = LogitechToggle.IsOn;
-        settings.EnableDxLightDirect = false;
+        settings.EnableDxLightDirect = DxLightToggle.IsOn;
 
         await Module.SettingsStore.SaveAsync(settings);
         if (Module.IsEnabled)

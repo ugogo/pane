@@ -1,11 +1,13 @@
 ﻿using System.Windows;
 using Home.Windows;
-using LightControls.Desktop.Startup;
 
 namespace LightControls.Desktop;
 
 public partial class App : System.Windows.Application
 {
+    private const string MutexName = "LightControls.Desktop.SingleInstance";
+    private const string ActivateEventName = "LightControls.Desktop.Activate";
+
     private SingleInstanceGate? _singleInstanceGate;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -16,9 +18,9 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        if (!SingleInstanceGate.TryAcquire(out var singleInstanceGate))
+        if (!SingleInstanceGate.TryAcquire(MutexName, ActivateEventName, out var singleInstanceGate))
         {
-            SingleInstanceGate.RequestActivation();
+            SingleInstanceGate.RequestActivation(ActivateEventName);
             Shutdown(0);
             return;
         }
@@ -31,7 +33,7 @@ public partial class App : System.Windows.Application
         MainWindow = mainWindow;
         mainWindow.Show();
 
-        _singleInstanceGate!.ListenForActivationRequests(() =>
+        singleInstanceGate.ListenForActivationRequests(() =>
         {
             Dispatcher.Invoke(mainWindow.ActivateFromSecondInstance);
         });

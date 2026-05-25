@@ -15,8 +15,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
-    <!-- CleanShotW is referenced as a DLL to avoid WinUI PRI conflicts; both apps include WinApp SDK auto-init types. -->
-    <NoWarn>$(NoWarn);CS0436</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -41,21 +39,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CleanShot.WinUI\CleanShot.WinUI.csproj" />
     <ProjectReference Include="..\Home.Core\Home.Core.csproj" />
     <ProjectReference Include="..\Home.UI\Home.UI.csproj" />
     <ProjectReference Include="..\Home.Windows\Home.Windows.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="CleanShotW">
-      <HintPath>..\..\legacy\CleanShotW\bin\x64\Release\net10.0-windows10.0.19041.0\CleanShotW.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <Target Name="BuildCleanShotW" BeforeTargets="Build">
-    <MSBuild
-      Projects="..\..\legacy\CleanShotW\CleanShotW.csproj"
-      Properties="Configuration=$(Configuration);Platform=x64"
-      Targets="Build" />
-  </Target>
 </Project>

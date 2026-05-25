@@ -1,6 +1,5 @@
-using CleanShotW.Helpers;
+using CleanShot.WinUI.Helpers;
 using CleanShot.Core.Services;
-using CleanShotW.Services;
 using FluentAssertions;
 
 namespace CleanShotW.Tests.Services;

@@ -1,5 +1,5 @@
 <winuiex:WindowEx
-    x:Class="CleanShotW.Views.RegionSelectorWindow"
+    x:Class="CleanShot.WinUI.Views.RegionSelectorWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:winuiex="using:WinUIEx">

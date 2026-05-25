@@ -1,8 +1,6 @@
 using CleanShot.Core.Services;
-using DXLight.Core;
 using H.NotifyIcon;
 using Home.Core;
-using Home.Core.Modules;
 using Home.Hub.Modules;
 using Home.Hub.Navigation;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,7 +40,6 @@ internal sealed class TrayMenuController
     {
         var menu = new MenuFlyout();
         var cleanShot = TryGetCleanShotModule();
-        var dxLight = TryGetDxLightModule();
 
         if (cleanShot?.IsEnabled == true && cleanShot.Coordinator is not null)
         {
@@ -59,30 +56,6 @@ internal sealed class TrayMenuController
             menu.Items.Add(new MenuFlyoutSeparator());
         }
 
-        if (dxLight?.IsEnabled == true)
-        {
-            var controller = dxLight.Controller;
-            var connected = controller.Status.State == ConnectionState.Connected;
-
-            menu.Items.Add(new MenuFlyoutItem
-            {
-                Command = CreateCommand(
-                    controller.IsOn ? "Turn DX Light off" : "Turn DX Light on",
-                    () => RunOnUiThread(() => _ = controller.TogglePowerAsync())),
-                IsEnabled = connected && !controller.IsBusy,
-            });
-
-            menu.Items.Add(new MenuFlyoutItem
-            {
-                Command = CreateCommand(
-                    "Refresh DX Light",
-                    () => RunOnUiThread(() => _ = controller.RefreshConnectionAsync())),
-                IsEnabled = !controller.IsBusy,
-            });
-
-            menu.Items.Add(new MenuFlyoutSeparator());
-        }
-
         menu.Items.Add(new MenuFlyoutItem
         {
             Command = CreateCommand("Open Home", _showHome),
@@ -94,6 +67,15 @@ internal sealed class TrayMenuController
             {
                 Command = CreateCommand("CleanShot settings", () =>
                     RunOnUiThread(() => App.MainWindow.NavigateToTag(HomeServiceCollectionExtensions.CleanShotModuleId))),
+            });
+        }
+
+        if (ModuleNavigation.HasSettingsPage(HomeServiceCollectionExtensions.LightControlsModuleId))
+        {
+            menu.Items.Add(new MenuFlyoutItem
+            {
+                Command = CreateCommand("Light Controls", () =>
+                    RunOnUiThread(() => App.MainWindow.NavigateToTag(HomeServiceCollectionExtensions.LightControlsModuleId))),
             });
         }
 
@@ -168,18 +150,6 @@ internal sealed class TrayMenuController
         try
         {
             return App.Services.GetService<CleanShotModule>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static DxLightModule? TryGetDxLightModule()
-    {
-        try
-        {
-            return App.Services.GetService<DxLightModule>();
         }
         catch
         {

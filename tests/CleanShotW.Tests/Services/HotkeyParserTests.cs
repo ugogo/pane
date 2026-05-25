@@ -1,7 +1,7 @@
-using CleanShotW.Helpers;
+using CleanShot.WinUI.Helpers;
 using CleanShot.Core.Services;
-using CleanShotW.Services;
 using CleanShot.Core.Interop;
+using CleanShotW.Services;
 using FluentAssertions;
 using Windows.System;
 

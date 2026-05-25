@@ -1,3 +1,4 @@
+using CleanShot.WinUI.Services;
 using CleanShotW.Services;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;

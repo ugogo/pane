@@ -1,11 +1,11 @@
 using System.Drawing;
 using System.Runtime.InteropServices;
-using CleanShotW.Services;
+using CleanShot.WinUI.Services;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage;
 using Windows.Storage.Streams;
 
-namespace CleanShotW.Helpers;
+namespace CleanShot.WinUI.Helpers;
 
 internal static class Win32Helper
 {

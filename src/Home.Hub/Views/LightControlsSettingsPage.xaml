@@ -57,12 +57,11 @@
                         OnContent="On"
                         OffContent="Off" />
 
-                    <TextBlock
-                        Text="DX Light direct USB is managed by the DX Light module when both are enabled in Home."
-                        Foreground="{StaticResource InkMutedBrush}"
-                        FontFamily="{StaticResource BodyFont}"
-                        FontSize="11"
-                        TextWrapping="WrapWholeWords" />
+                    <ToggleSwitch
+                        x:Name="DxLightToggle"
+                        Header="Enable DX Light direct USB control"
+                        OnContent="On"
+                        OffContent="Off" />
 
                     <Button
                         Style="{StaticResource DebugTilePrimaryStyle}"

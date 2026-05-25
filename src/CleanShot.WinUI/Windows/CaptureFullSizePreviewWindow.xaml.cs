@@ -1,6 +1,6 @@
 using System.Drawing;
-using CleanShotW.Helpers;
-using CleanShotW.Services;
+using CleanShot.WinUI.Helpers;
+using CleanShot.WinUI.Services;
 using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -9,7 +9,7 @@ using WinRT.Interop;
 using WinUIEx;
 using Windows.Graphics;
 
-namespace CleanShotW.Views;
+namespace CleanShot.WinUI.Views;
 
 public sealed partial class CaptureFullSizePreviewWindow : WindowEx
 {

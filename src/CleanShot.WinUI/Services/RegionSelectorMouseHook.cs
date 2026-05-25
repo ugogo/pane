@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
-using CleanShotW.Helpers;
+using CleanShot.WinUI.Helpers;
 
-namespace CleanShotW.Services;
+namespace CleanShot.WinUI.Services;
 
 internal sealed class RegionSelectorMouseHook : IDisposable
 {
