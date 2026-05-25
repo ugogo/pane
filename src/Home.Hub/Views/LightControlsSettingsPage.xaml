@@ -1,0 +1,83 @@
+<Page
+    x:Class="Home.Hub.Views.LightControlsSettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer>
+        <StackPanel Padding="28" Spacing="20" MaxWidth="640">
+            <StackPanel Spacing="6">
+                <TextBlock
+                    Text="Light Controls"
+                    FontFamily="{StaticResource DisplayFont}"
+                    FontSize="28"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource InkPrimaryBrush}" />
+                <TextBlock
+                    x:Name="StatusLabel"
+                    Foreground="{StaticResource InkMutedBrush}"
+                    FontFamily="{StaticResource BodyFont}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Border
+                Background="{StaticResource SurfaceRaisedBrush}"
+                BorderBrush="{StaticResource GlassEdgeBrush}"
+                BorderThickness="1"
+                CornerRadius="12"
+                Padding="20">
+                <StackPanel Spacing="16">
+                    <TextBlock
+                        Text="OpenRGB server"
+                        FontFamily="{StaticResource BodyFont}"
+                        FontSize="11"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource InkMutedBrush}" />
+
+                    <TextBox
+                        x:Name="HostBox"
+                        Header="Host"
+                        FontFamily="{StaticResource BodyFont}" />
+
+                    <NumberBox
+                        x:Name="PortBox"
+                        Header="Port"
+                        Minimum="1"
+                        Maximum="65535"
+                        SpinButtonPlacementMode="Inline" />
+
+                    <TextBox
+                        x:Name="OpenRgbPathBox"
+                        Header="OpenRGB executable (optional)"
+                        FontFamily="{StaticResource BodyFont}"
+                        PlaceholderText="Auto-detect if empty" />
+
+                    <ToggleSwitch
+                        x:Name="LogitechToggle"
+                        Header="Enable Logitech direct control"
+                        OnContent="On"
+                        OffContent="Off" />
+
+                    <TextBlock
+                        Text="DX Light direct USB is managed by the DX Light module when both are enabled in Home."
+                        Foreground="{StaticResource InkMutedBrush}"
+                        FontFamily="{StaticResource BodyFont}"
+                        FontSize="11"
+                        TextWrapping="WrapWholeWords" />
+
+                    <Button
+                        Style="{StaticResource DebugTilePrimaryStyle}"
+                        Click="OnSaveClicked">
+                        <TextBlock Text="Save and reconnect" FontWeight="SemiBold" />
+                    </Button>
+
+                    <TextBlock
+                        x:Name="SaveStatusText"
+                        FontFamily="{StaticResource BodyFont}"
+                        FontSize="11"
+                        Foreground="{StaticResource InkMutedBrush}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

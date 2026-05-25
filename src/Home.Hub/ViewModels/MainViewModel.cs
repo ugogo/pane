@@ -1,7 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Home.Core;
 using Home.Core.Modules;
+using Home.Hub.Navigation;
 using Home.Windows;
+using Microsoft.UI.Xaml;
 
 namespace Home.Hub.ViewModels;
 
@@ -65,6 +67,18 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         item.RefreshStatus();
+        TryRefreshTrayMenu();
+    }
+
+    private static void TryRefreshTrayMenu()
+    {
+        try
+        {
+            App.MainWindow.RefreshTrayMenu();
+        }
+        catch (InvalidOperationException)
+        {
+        }
     }
 
     private void PersistSettings() => HubSettingsStore.Save(_settings);
@@ -92,6 +106,10 @@ public sealed partial class ModuleItemViewModel : ObservableObject
     public string DisplayName { get; }
 
     public string Description { get; }
+
+    public bool HasSettingsPage => ModuleNavigation.HasSettingsPage(Id);
+
+    public Visibility SettingsVisibility => HasSettingsPage ? Visibility.Visible : Visibility.Collapsed;
 
     private bool _isEnabled;
 

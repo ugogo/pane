@@ -57,6 +57,17 @@ public sealed class LightControlsModule : IHomeModule, IDisposable
 
     public SettingsStore SettingsStore => _settingsStore;
 
+    public async Task ReloadAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsEnabled)
+        {
+            return;
+        }
+
+        await DisableAsync(cancellationToken);
+        await EnableAsync(cancellationToken);
+    }
+
     public void Dispose()
     {
         DisposeBackends();

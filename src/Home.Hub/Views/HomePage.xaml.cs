@@ -1,4 +1,5 @@
 using Home.Hub.ViewModels;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Home.Hub.Views;
@@ -9,5 +10,13 @@ public sealed partial class HomePage : Page
     {
         InitializeComponent();
         DataContext = App.MainViewModel;
+    }
+
+    private void OnModuleSettingsClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string moduleId })
+        {
+            App.MainWindow.NavigateToTag(moduleId);
+        }
     }
 }

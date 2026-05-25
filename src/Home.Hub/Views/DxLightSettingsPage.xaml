@@ -1,0 +1,98 @@
+<Page
+    x:Class="Home.Hub.Views.DxLightSettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer>
+        <StackPanel Padding="28" Spacing="20" MaxWidth="640">
+            <StackPanel Spacing="6">
+                <TextBlock
+                    Text="DX Light"
+                    FontFamily="{StaticResource DisplayFont}"
+                    FontSize="28"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource InkPrimaryBrush}" />
+                <TextBlock
+                    x:Name="StatusLabel"
+                    Foreground="{StaticResource InkMutedBrush}"
+                    FontFamily="{StaticResource BodyFont}" />
+            </StackPanel>
+
+            <Border
+                Background="{StaticResource SurfaceRaisedBrush}"
+                BorderBrush="{StaticResource GlassEdgeBrush}"
+                BorderThickness="1"
+                CornerRadius="12"
+                Padding="20">
+                <StackPanel Spacing="16">
+                    <ToggleSwitch
+                        x:Name="PowerToggle"
+                        Header="Light is on"
+                        Toggled="OnPowerToggled" />
+
+                    <StackPanel Spacing="8">
+                        <TextBlock
+                            Text="Brightness"
+                            FontFamily="{StaticResource BodyFont}"
+                            FontSize="11"
+                            Foreground="{StaticResource InkMutedBrush}" />
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Slider
+                                x:Name="BrightnessSlider"
+                                Grid.Column="0"
+                                Minimum="0"
+                                Maximum="100"
+                                ValueChanged="OnBrightnessChanged" />
+                            <TextBlock
+                                x:Name="BrightnessLabel"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Foreground="{StaticResource InkPrimaryBrush}"
+                                FontFamily="{StaticResource BodyFont}" />
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Spacing="8">
+                        <TextBlock
+                            Text="Color presets"
+                            FontFamily="{StaticResource BodyFont}"
+                            FontSize="11"
+                            Foreground="{StaticResource InkMutedBrush}" />
+                        <StackPanel x:Name="PresetPanel" Orientation="Horizontal" Spacing="8" />
+                        <Button
+                            x:Name="CustomColorButton"
+                            Style="{StaticResource DebugTileButtonStyle}"
+                            Click="OnChooseColorClicked">
+                            <TextBlock Text="Choose color" FontWeight="SemiBold" />
+                        </Button>
+                        <Button
+                            Style="{StaticResource DebugTileMutedStyle}"
+                            Click="OnSavePresetClicked">
+                            <TextBlock Text="Save current as preset" FontWeight="SemiBold" />
+                        </Button>
+                    </StackPanel>
+
+                    <ToggleSwitch
+                        x:Name="SmoothToggle"
+                        Header="Smooth transitions"
+                        Toggled="OnSmoothToggled" />
+
+                    <ToggleSwitch
+                        x:Name="UsbToggle"
+                        Header="Turn on when USB connects"
+                        Toggled="OnUsbToggled" />
+
+                    <Button
+                        Style="{StaticResource DebugTileButtonStyle}"
+                        Click="OnRefreshClicked">
+                        <TextBlock Text="Refresh connection" FontWeight="SemiBold" />
+                    </Button>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

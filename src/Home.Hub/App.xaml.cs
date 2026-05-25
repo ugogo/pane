@@ -29,6 +29,9 @@ public partial class App : Application
     public static MainViewModel MainViewModel =>
         Services.GetRequiredService<MainViewModel>();
 
+    public static MainWindow MainWindow =>
+        ((App)Current)._mainWindow ?? throw new InvalidOperationException("Main window not created.");
+
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         if (!SingleInstanceGate.TryAcquire(MutexName, ActivateEventName, out var singleInstanceGate))

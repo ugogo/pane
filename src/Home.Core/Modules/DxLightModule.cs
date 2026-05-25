@@ -23,6 +23,8 @@ public sealed class DxLightModule : IHomeModule
 
     public Type? SettingsPageType => null;
 
+    public LightController Controller => _controller;
+
     public Task EnableAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

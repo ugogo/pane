@@ -1,8 +1,12 @@
 using System.Runtime.InteropServices;
-using CleanShotW.Helpers;
+using H.NotifyIcon;
+using Home.Core;
 using Home.Hub.Modules;
+using Home.Hub.Navigation;
+using Home.Hub.Tray;
 using Home.Hub.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using WinRT.Interop;
@@ -15,8 +19,10 @@ public sealed partial class MainWindow : WindowEx
     private const int GwlpWndproc = -4;
 
     private bool _trayInitialized;
+    private bool _forceClose;
     private IntPtr _originalWndProc;
     private WndProcDelegate? _wndProcDelegate;
+    private TrayMenuController? _trayMenu;
 
     private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
@@ -37,17 +43,67 @@ public sealed partial class MainWindow : WindowEx
         SetTitleBar(AppTitleBar);
         SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop();
 
-        NavView.SelectedItem = NavView.MenuItems[0];
-        ContentFrame.Navigate(typeof(HomePage));
+        BuildModuleNavigation();
+
+        var settings = HubSettingsStore.Load();
+        SelectNavigationTag(settings.LastOpenedPage);
 
         NavView.SelectionChanged += OnNavigationSelectionChanged;
-        Closed += (_, _) => Application.Current.Exit();
+        AppWindow.Closing += OnAppWindowClosing;
     }
 
     public void ShowFromTray()
     {
         AppWindow.Show();
         Activate();
+    }
+
+    public void HideToTray() => AppWindow.Hide();
+
+    public void RefreshTrayMenu() => _trayMenu?.Refresh();
+
+    public void NavigateToTag(string tag)
+    {
+        ShowFromTray();
+
+        foreach (var item in NavView.MenuItems.OfType<NavigationViewItem>())
+        {
+            if (item.Tag as string == tag)
+            {
+                NavView.SelectedItem = item;
+                return;
+            }
+        }
+    }
+
+    private void BuildModuleNavigation()
+    {
+        var registry = App.Services.GetRequiredService<ModuleRegistry>();
+        var insertIndex = NavView.MenuItems.Count - 1;
+
+        foreach (var module in registry.Modules)
+        {
+            if (!ModuleNavigation.HasSettingsPage(module.Id))
+            {
+                continue;
+            }
+
+            NavView.MenuItems.Insert(insertIndex++, new NavigationViewItem
+            {
+                Content = module.DisplayName,
+                Tag = module.Id,
+                Icon = new SymbolIcon(ModuleNavigation.GetIcon(module.Id)),
+            });
+        }
+    }
+
+    private void SelectNavigationTag(string tag)
+    {
+        var match = NavView.MenuItems
+            .OfType<NavigationViewItem>()
+            .FirstOrDefault(item => item.Tag as string == tag);
+
+        NavView.SelectedItem = match ?? NavView.MenuItems[0];
     }
 
     private void OnNavigationSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -57,14 +113,39 @@ public sealed partial class MainWindow : WindowEx
             return;
         }
 
-        Type pageType = tag switch
+        var pageType = tag switch
         {
             "home" => typeof(HomePage),
             "general" => typeof(GeneralPage),
-            _ => typeof(HomePage),
+            _ => ModuleNavigation.GetSettingsPageType(tag) ?? typeof(HomePage),
         };
 
         ContentFrame.Navigate(pageType);
+        PersistLastOpenedPage(tag);
+    }
+
+    private static void PersistLastOpenedPage(string tag)
+    {
+        var settings = HubSettingsStore.Load();
+        settings.LastOpenedPage = tag;
+        HubSettingsStore.Save(settings);
+    }
+
+    private void OnAppWindowClosing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
+    {
+        if (_forceClose)
+        {
+            return;
+        }
+
+        args.Cancel = true;
+        HideToTray();
+    }
+
+    private void QuitApplication()
+    {
+        _forceClose = true;
+        Application.Current.Exit();
     }
 
     private async void OnRootLoaded(object sender, RoutedEventArgs e)
@@ -80,6 +161,8 @@ public sealed partial class MainWindow : WindowEx
             TrayIcon.Icon = new System.Drawing.Icon(iconPath);
         }
 
+        var dispatcher = DispatcherQueue.GetForCurrentThread();
+        _trayMenu = new TrayMenuController(TrayIcon, dispatcher, ShowFromTray, QuitApplication);
         TrayIcon.ForceCreate();
         _trayInitialized = true;
 
@@ -94,6 +177,8 @@ public sealed partial class MainWindow : WindowEx
             await cleanShotModule.DisableAsync();
             await cleanShotModule.EnableAsync();
         }
+
+        RefreshTrayMenu();
     }
 
     private void InstallHotkeyWindowHook(IntPtr hwnd)

@@ -33,6 +33,17 @@ public sealed class CleanShotModule : IHomeModule, IDisposable
 
     public CaptureCoordinator? Coordinator => _coordinator;
 
+    public bool TryApplyHotkeys(string fullScreenShortcut, string regionShortcut, out string error)
+    {
+        if (_coordinator is null)
+        {
+            error = "Enable CleanShot first.";
+            return false;
+        }
+
+        return _coordinator.TryApplyHotkeys(fullScreenShortcut, regionShortcut, out error);
+    }
+
     public void AttachMessageWindow(IntPtr hwnd)
     {
         _messageWindowHandle = hwnd;
