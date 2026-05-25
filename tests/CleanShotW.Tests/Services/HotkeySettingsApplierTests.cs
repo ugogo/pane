@@ -1,4 +1,4 @@
-using CleanShotW.Services;
+using CleanShot.Core.Services;
 using FluentAssertions;
 
 namespace CleanShotW.Tests.Services;

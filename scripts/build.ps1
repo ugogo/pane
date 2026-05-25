@@ -10,6 +10,8 @@ Set-Location $root
 Write-Host "Building core libraries..."
 dotnet build src/DXLight.Core/DXLight.Core.csproj -c $Configuration
 dotnet build src/LightControls.Core/LightControls.Core.csproj -c $Configuration
+dotnet build src/CleanShot.Core/CleanShot.Core.csproj -c $Configuration
+dotnet build src/Home.Windows/Home.Windows.csproj -c $Configuration
 
 Write-Host "Building legacy apps..."
 dotnet build legacy/DXLight.Tray/DXLight.Tray.csproj -c $Configuration

@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 
-namespace CleanShotW.Services;
+namespace CleanShot.Core.Services;
 
 internal static class SaveService
 {

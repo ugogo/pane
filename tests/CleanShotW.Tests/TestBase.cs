@@ -1,4 +1,5 @@
 using CleanShotW.Helpers;
+using CleanShot.Core.Services;
 using CleanShotW.Services;
 
 namespace CleanShotW.Tests;

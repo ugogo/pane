@@ -1,4 +1,3 @@
-using CleanShotW.Models;
 using CleanShotW.Views;
 using CleanShotW.Helpers;
 using Microsoft.UI.Dispatching;

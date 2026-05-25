@@ -1,4 +1,4 @@
-namespace CleanShotW.Services;
+namespace CleanShot.Core.Services;
 
 internal static class HotkeySettingsApplier
 {

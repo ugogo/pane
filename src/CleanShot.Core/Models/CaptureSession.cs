@@ -1,6 +1,6 @@
 using System.Drawing;
 
-namespace CleanShotW.Models;
+namespace CleanShot.Core.Models;
 
 public sealed class CaptureSession : IDisposable
 {

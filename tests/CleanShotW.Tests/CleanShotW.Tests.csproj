@@ -23,6 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\CleanShot.Core\CleanShot.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="CleanShotW">
       <HintPath>..\..\legacy\CleanShotW\bin\x64\Release\net10.0-windows10.0.19041.0\CleanShotW.dll</HintPath>
     </Reference>

@@ -9,21 +9,21 @@ namespace CleanShotW.Helpers;
 
 internal static class Win32Helper
 {
-    public const int SmXVirtualScreen = 76;
-    public const int SmYVirtualScreen = 77;
-    public const int SmCxVirtualScreen = 78;
-    public const int SmCyVirtualScreen = 79;
+    public const int SmXVirtualScreen = Win32Interop.SmXVirtualScreen;
+    public const int SmYVirtualScreen = Win32Interop.SmYVirtualScreen;
+    public const int SmCxVirtualScreen = Win32Interop.SmCxVirtualScreen;
+    public const int SmCyVirtualScreen = Win32Interop.SmCyVirtualScreen;
 
-    public const int WmHotkey = 0x0312;
+    public const int WmHotkey = Win32Interop.WmHotkey;
     public const int WmPowerBroadcast = 0x0218;
     public const int PbtApmResumeAutomatic = 0x0012;
     public const int PbtApmResumeSuspend = 0x0007;
-    public const uint ModAlt = 0x0001;
-    public const uint ModControl = 0x0002;
-    public const uint ModShift = 0x0004;
-    public const uint ModWin = 0x0008;
-    public const uint Vk3 = 0x33;
-    public const uint Vk4 = 0x34;
+    public const uint ModAlt = Win32Interop.ModAlt;
+    public const uint ModControl = Win32Interop.ModControl;
+    public const uint ModShift = Win32Interop.ModShift;
+    public const uint ModWin = Win32Interop.ModWin;
+    public const uint Vk3 = Win32Interop.Vk3;
+    public const uint Vk4 = Win32Interop.Vk4;
 
     public const int GwlExstyle = -20;
     public const int WsExToolwindow = 0x00000080;
@@ -39,19 +39,17 @@ internal static class Win32Helper
     [DllImport("user32.dll")]
     public static extern int GetSystemMetrics(int index);
 
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+    public static bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk) =>
+        Win32Interop.RegisterHotKey(hWnd, id, fsModifiers, vk);
 
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+    public static bool UnregisterHotKey(IntPtr hWnd, int id) =>
+        Win32Interop.UnregisterHotKey(hWnd, id);
+
+    public static void PostHotkeyMessage(IntPtr hwnd, int hotkeyId) =>
+        Win32Interop.PostHotkeyMessage(hwnd, hotkeyId);
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
-
-    public static void PostHotkeyMessage(IntPtr hwnd, int hotkeyId)
-    {
-        PostMessage(hwnd, WmHotkey, (IntPtr)hotkeyId, IntPtr.Zero);
-    }
 
     [DllImport("user32.dll")]
     public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
@@ -72,14 +70,8 @@ internal static class Win32Helper
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
-    public static Rectangle GetVirtualScreenBounds()
-    {
-        var x = GetSystemMetrics(SmXVirtualScreen);
-        var y = GetSystemMetrics(SmYVirtualScreen);
-        var width = GetSystemMetrics(SmCxVirtualScreen);
-        var height = GetSystemMetrics(SmCyVirtualScreen);
-        return new Rectangle(x, y, width, height);
-    }
+    public static Rectangle GetVirtualScreenBounds() =>
+        Win32Interop.GetVirtualScreenBounds();
 
     public static void MakeToolWindow(IntPtr hwnd)
     {

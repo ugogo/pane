@@ -1,5 +1,5 @@
 using System.Drawing;
-using CleanShotW.Models;
+using CleanShot.Core.Models;
 using CleanShotW.Tests;
 using FluentAssertions;
 

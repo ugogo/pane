@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace CleanShotW.Services;
+namespace CleanShot.Core.Services;
 
 internal static class AppSettingsService
 {

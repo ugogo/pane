@@ -6,15 +6,19 @@ Windows utility suite monorepo — **DX Light**, **Light Controls**, and **Clean
 
 - **.NET 10**
 - **WinUI 3** (hub — planned)
-- Legacy standalone apps preserved under `legacy/` during migration
+- Shared libraries: `CleanShot.Core`, `Home.Windows`
+- Legacy standalone apps under `legacy/` during migration
 
 ## Layout
 
 ```
-src/           Shared core libraries (DXLight.Core, LightControls.Core)
-legacy/        Standalone app shells (WinForms, WPF, WinUI)
-tests/         Unit tests (96 tests)
-tools/         Dev utilities
+src/
+  DXLight.Core/        Robobloq USB lighting
+  LightControls.Core/  OpenRGB + Logitech + DX Light backends
+  CleanShot.Core/      Screenshot/hotkey/settings logic
+  Home.Windows/        Shared single-instance, startup, hotkey coordination
+legacy/                Standalone app shells (WinForms, WPF, WinUI)
+tests/                 96 unit tests
 ```
 
 ## Commands
@@ -29,6 +33,6 @@ npm run start:cleanshot
 
 ## Status
 
-**Phase 1 complete** — three apps copied into monorepo, unified on .NET 10, all tests passing.
-
-Next: extract `CleanShot.Core`, build `Home.Hub` WinUI shell.
+- **Phase 1:** monorepo bootstrap + three apps copied
+- **Phase 2:** `CleanShot.Core` extracted, `Home.Windows` shared helpers added
+- **Next:** `Home.Hub` WinUI control panel

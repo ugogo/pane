@@ -1,13 +1,13 @@
 using System.Drawing;
-using CleanShotW.Helpers;
+using CleanShot.Core.Interop;
 
-namespace CleanShotW.Services;
+namespace CleanShot.Core.Services;
 
 internal static class ScreenshotService
 {
     public static Bitmap CaptureFullScreen()
     {
-        var bounds = Win32Helper.GetVirtualScreenBounds();
+        var bounds = Win32Interop.GetVirtualScreenBounds();
         return CaptureRegion(bounds);
     }
 

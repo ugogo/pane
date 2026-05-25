@@ -112,16 +112,16 @@ public sealed partial class HotkeyCaptureBox : UserControl
 
         e.Handled = true;
 
-        if (HotkeyParser.IsModifierKey(e.Key))
+        if (HotkeyCaptureHelper.IsModifierKey(e.Key))
         {
-            var activeModifiers = HotkeyParser.ReadActiveModifiers();
+            var activeModifiers = HotkeyCaptureHelper.ReadActiveModifiers();
             InputBox.Text = activeModifiers == 0
                 ? "Press shortcut…"
                 : $"{HotkeyParser.FormatModifiers(activeModifiers)}+…";
             return;
         }
 
-        if (!HotkeyParser.TryCapture(e.Key, out var modifiers, out var virtualKey, out var error))
+        if (!HotkeyCaptureHelper.TryCapture(e.Key, out var modifiers, out var virtualKey, out var error))
         {
             InputBox.Text = error;
             return;

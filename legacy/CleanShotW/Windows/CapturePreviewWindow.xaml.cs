@@ -1,5 +1,4 @@
 using CleanShotW.Helpers;
-using CleanShotW.Models;
 using CleanShotW.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Input;

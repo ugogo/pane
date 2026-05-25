@@ -1,6 +1,6 @@
 using System.Drawing;
 
-namespace CleanShotW.Services;
+namespace CleanShot.Core.Services;
 
 internal static class RegionSelectionMath
 {

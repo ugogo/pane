@@ -1,5 +1,4 @@
 using CleanShotW.Helpers;
-using CleanShotW.Services;
 using FluentAssertions;
 
 namespace CleanShotW.Tests.Helpers;

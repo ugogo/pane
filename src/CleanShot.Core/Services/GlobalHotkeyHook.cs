@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
-using CleanShotW.Helpers;
+using CleanShot.Core.Interop;
 
-namespace CleanShotW.Services;
+namespace CleanShot.Core.Services;
 
 internal sealed class GlobalHotkeyHook : IDisposable
 {
@@ -100,7 +100,7 @@ internal sealed class GlobalHotkeyHook : IDisposable
             {
                 if (binding.Modifiers == modifiers && binding.VirtualKey == virtualKey)
                 {
-                    Win32Helper.PostHotkeyMessage(_hwnd, binding.Id);
+                    Win32Interop.PostHotkeyMessage(_hwnd, binding.Id);
                     break;
                 }
             }
@@ -115,22 +115,22 @@ internal sealed class GlobalHotkeyHook : IDisposable
 
         if (IsKeyPressed(VkControl))
         {
-            modifiers |= Win32Helper.ModControl;
+            modifiers |= Win32Interop.ModControl;
         }
 
         if (IsKeyPressed(VkShift))
         {
-            modifiers |= Win32Helper.ModShift;
+            modifiers |= Win32Interop.ModShift;
         }
 
         if (IsKeyPressed(VkMenu))
         {
-            modifiers |= Win32Helper.ModAlt;
+            modifiers |= Win32Interop.ModAlt;
         }
 
         if (IsKeyPressed(VkLeftWindows) || IsKeyPressed(VkRightWindows))
         {
-            modifiers |= Win32Helper.ModWin;
+            modifiers |= Win32Interop.ModWin;
         }
 
         return modifiers;

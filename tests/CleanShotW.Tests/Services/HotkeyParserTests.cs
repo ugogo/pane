@@ -1,5 +1,7 @@
 using CleanShotW.Helpers;
+using CleanShot.Core.Services;
 using CleanShotW.Services;
+using CleanShot.Core.Interop;
 using FluentAssertions;
 using Windows.System;
 
@@ -44,8 +46,8 @@ public sealed class HotkeyParserTests : TestBase
     public void Format_orders_modifiers_consistently()
     {
         var formatted = HotkeyParser.Format(
-            Win32Helper.ModWin | Win32Helper.ModAlt | Win32Helper.ModShift | Win32Helper.ModControl,
-            Win32Helper.Vk3);
+            Win32Interop.ModWin | Win32Interop.ModAlt | Win32Interop.ModShift | Win32Interop.ModControl,
+            Win32Interop.Vk3);
 
         formatted.Should().Be("Ctrl+Shift+Alt+Win+3");
     }
@@ -53,7 +55,7 @@ public sealed class HotkeyParserTests : TestBase
     [Fact]
     public void FormatModifiers_omits_key()
     {
-        HotkeyParser.FormatModifiers(Win32Helper.ModControl | Win32Helper.ModShift)
+        HotkeyParser.FormatModifiers(Win32Interop.ModControl | Win32Interop.ModShift)
             .Should()
             .Be("Ctrl+Shift");
     }
@@ -66,7 +68,7 @@ public sealed class HotkeyParserTests : TestBase
     [InlineData(VirtualKey.Number3, false)]
     public void IsModifierKey_detects_modifier_keys(VirtualKey key, bool expected)
     {
-        HotkeyParser.IsModifierKey(key).Should().Be(expected);
+        HotkeyCaptureHelper.IsModifierKey(key).Should().Be(expected);
     }
 
     [Fact]
@@ -82,8 +84,8 @@ public sealed class HotkeyParserTests : TestBase
         var parsed = HotkeyParser.TryParse("Ctrl+Ctrl+3", out var modifiers, out var virtualKey, out _);
 
         parsed.Should().BeTrue();
-        modifiers.Should().Be(Win32Helper.ModControl);
-        virtualKey.Should().Be(Win32Helper.Vk3);
+        modifiers.Should().Be(Win32Interop.ModControl);
+        virtualKey.Should().Be(Win32Interop.Vk3);
     }
 
     private static bool RoundTrip(string shortcut)
