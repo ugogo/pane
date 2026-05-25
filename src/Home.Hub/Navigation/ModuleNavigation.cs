@@ -10,7 +10,7 @@ internal static class ModuleNavigation
     {
         HomeServiceCollectionExtensions.CleanShotModuleId => typeof(CleanShotSettingsPage),
         HomeServiceCollectionExtensions.DxLightModuleId => typeof(DxLightSettingsPage),
-        HomeServiceCollectionExtensions.LightControlsModuleId => typeof(LightControlsSettingsPage),
+        HomeServiceCollectionExtensions.LightControlsModuleId => typeof(LightControlsPage),
         _ => null,
     };
 

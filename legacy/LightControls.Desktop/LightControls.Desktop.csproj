@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\LightControls.Core\LightControls.Core.csproj" />
+    <ProjectReference Include="..\..\src\Home.Windows\Home.Windows.csproj" />
   </ItemGroup>
 
 </Project>

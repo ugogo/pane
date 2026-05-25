@@ -1,5 +1,6 @@
 using CleanShotW.Services;
 using CleanShotW.Views;
+using Home.Windows;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
@@ -17,6 +18,12 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        if (HubProcessGate.TryRedirectToHub())
+        {
+            Exit();
+            return;
+        }
+
         if (!SingleInstanceService.TryAcquire())
         {
             Exit();

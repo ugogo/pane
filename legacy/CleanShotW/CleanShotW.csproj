@@ -42,6 +42,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CleanShot.Core\CleanShot.Core.csproj" />
+    <ProjectReference Include="..\..\src\Home.Windows\Home.Windows.csproj" />
   </ItemGroup>
 
   <ItemGroup>

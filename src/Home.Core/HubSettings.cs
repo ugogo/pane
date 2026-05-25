@@ -6,6 +6,8 @@ public sealed class HubSettings
 {
     public bool RunAtStartup { get; set; }
 
+    public bool LegacyImportCompleted { get; set; }
+
     public string LastOpenedPage { get; set; } = "home";
 
     public Dictionary<string, bool> EnabledModules { get; set; } = new(StringComparer.OrdinalIgnoreCase)

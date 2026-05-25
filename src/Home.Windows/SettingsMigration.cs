@@ -23,12 +23,6 @@ public static class SettingsMigration
         }
     }
 
-    public static string HubSettingsPath =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Home",
-            "hub-settings.json");
-
     public static string LegacyDxLightSettingsPath =>
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),

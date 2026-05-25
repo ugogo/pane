@@ -20,5 +20,8 @@ dotnet build legacy/DXLight.Cli/DXLight.Cli.csproj -c $Configuration
 dotnet build legacy/LightControls.Desktop/LightControls.Desktop.csproj -c $Configuration
 dotnet build legacy/CleanShotW/CleanShotW.csproj -c $Configuration -p:Platform=x64
 dotnet build src/Home.Hub/Home.Hub.csproj -c $Configuration -p:Platform=x64
+dotnet build src/Home.Standalone.DxLight/Home.Standalone.DxLight.csproj -c $Configuration
+dotnet build src/Home.Standalone.LightControls/Home.Standalone.LightControls.csproj -c $Configuration
+dotnet build src/Home.Standalone.CleanShot/Home.Standalone.CleanShot.csproj -c $Configuration
 
 Write-Host "Build complete."

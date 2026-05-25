@@ -45,8 +45,14 @@ public sealed partial class MainWindow : WindowEx
 
         BuildModuleNavigation();
 
+        if (App.StandaloneModuleId is not null)
+        {
+            ApplyStandaloneNavigation(App.StandaloneModuleId);
+            Title = GetStandaloneTitle(App.StandaloneModuleId);
+        }
+
         var settings = HubSettingsStore.Load();
-        SelectNavigationTag(settings.LastOpenedPage);
+        SelectNavigationTag(App.StandaloneModuleId ?? settings.LastOpenedPage);
 
         NavView.SelectionChanged += OnNavigationSelectionChanged;
         AppWindow.Closing += OnAppWindowClosing;
@@ -75,6 +81,26 @@ public sealed partial class MainWindow : WindowEx
             }
         }
     }
+
+    private void ApplyStandaloneNavigation(string moduleId)
+    {
+        for (var i = NavView.MenuItems.Count - 1; i >= 0; i--)
+        {
+            if (NavView.MenuItems[i] is NavigationViewItem item
+                && !string.Equals(item.Tag as string, moduleId, StringComparison.OrdinalIgnoreCase))
+            {
+                NavView.MenuItems.RemoveAt(i);
+            }
+        }
+    }
+
+    private static string GetStandaloneTitle(string moduleId) => moduleId switch
+    {
+        HomeServiceCollectionExtensions.CleanShotModuleId => "CleanShot",
+        HomeServiceCollectionExtensions.DxLightModuleId => "DX Light",
+        HomeServiceCollectionExtensions.LightControlsModuleId => "Light Controls",
+        _ => "Home",
+    };
 
     private void BuildModuleNavigation()
     {

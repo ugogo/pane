@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using Home.Windows;
 using LightControls.Desktop.Startup;
 
 namespace LightControls.Desktop;
@@ -9,6 +10,12 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (HubProcessGate.TryRedirectToHub())
+        {
+            Shutdown(0);
+            return;
+        }
+
         if (!SingleInstanceGate.TryAcquire(out var singleInstanceGate))
         {
             SingleInstanceGate.RequestActivation();

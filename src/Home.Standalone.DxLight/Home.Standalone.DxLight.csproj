@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Home.Standalone.DxLight</RootNamespace>
+    <AssemblyName>DX Light</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Home.Windows\Home.Windows.csproj" />
+    <ProjectReference Include="..\Home.Core\Home.Core.csproj" />
+  </ItemGroup>
+
+</Project>
