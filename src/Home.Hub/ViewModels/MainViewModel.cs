@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Home.Core;
 using Home.Core.Modules;
+using Home.Hub.Modules;
 using Home.Hub.Navigation;
 using Home.Windows;
 using Microsoft.UI.Xaml;
@@ -10,11 +11,18 @@ namespace Home.Hub.ViewModels;
 public sealed partial class MainViewModel : ObservableObject
 {
     private readonly ModuleRegistry _registry;
+    private readonly GlobalHotkeyCoordinator _hotkeyCoordinator;
+    private readonly CleanShotModule _cleanShotModule;
     private HubSettings _settings;
 
-    public MainViewModel(ModuleRegistry registry)
+    public MainViewModel(
+        ModuleRegistry registry,
+        GlobalHotkeyCoordinator hotkeyCoordinator,
+        CleanShotModule cleanShotModule)
     {
         _registry = registry;
+        _hotkeyCoordinator = hotkeyCoordinator;
+        _cleanShotModule = cleanShotModule;
         _settings = HubSettingsStore.Load();
         Modules = _registry.Modules
             .Select(module => new ModuleItemViewModel(module, ToggleModuleAsync))
@@ -22,6 +30,11 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     public IReadOnlyList<ModuleItemViewModel> Modules { get; }
+
+    public string? HotkeyConflictText { get; private set; }
+
+    public Visibility HotkeyConflictVisibility =>
+        string.IsNullOrWhiteSpace(HotkeyConflictText) ? Visibility.Collapsed : Visibility.Visible;
 
     public bool RunAtStartup
     {
@@ -52,6 +65,29 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    public void RefreshHotkeyConflicts()
+    {
+        _hotkeyCoordinator.ClearConflicts();
+
+        if (_cleanShotModule.IsEnabled)
+        {
+            _cleanShotModule.ReregisterHotkeys();
+        }
+
+        var conflicts = _hotkeyCoordinator.ActiveConflicts;
+        HotkeyConflictText = conflicts.Count == 0 ? null : string.Join(" ", conflicts.Distinct());
+        OnPropertyChanged(nameof(HotkeyConflictText));
+        OnPropertyChanged(nameof(HotkeyConflictVisibility));
+    }
+
+    public void SyncModuleStates()
+    {
+        foreach (var item in Modules)
+        {
+            item.SyncFromModule();
+        }
+    }
+
     private async Task ToggleModuleAsync(ModuleItemViewModel item, bool enabled)
     {
         _settings.EnabledModules[item.Id] = enabled;
@@ -67,6 +103,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         item.RefreshStatus();
+        RefreshHotkeyConflicts();
         TryRefreshTrayMenu();
     }
 
@@ -134,4 +171,15 @@ public sealed partial class ModuleItemViewModel : ObservableObject
     }
 
     public void RefreshStatus() => StatusText = Module.Status.Message;
+
+    public void SyncFromModule()
+    {
+        if (_isEnabled != Module.IsEnabled)
+        {
+            _isEnabled = Module.IsEnabled;
+            OnPropertyChanged(nameof(IsEnabled));
+        }
+
+        RefreshStatus();
+    }
 }

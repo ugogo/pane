@@ -57,10 +57,7 @@ public sealed partial class DxLightSettingsPage : Page
 
             BrightnessSlider.IsEnabled = connected && Controller.IsOn;
             var brightnessValue = Math.Clamp((int)Math.Round(Controller.Brightness * 100), 0, 100);
-            if (!_updatingUi && Math.Abs(BrightnessSlider.Value - brightnessValue) > 0.5)
-            {
-                BrightnessSlider.Value = brightnessValue;
-            }
+            BrightnessSlider.Value = brightnessValue;
 
             BrightnessLabel.Text = $"{brightnessValue}%";
             CustomColorButton.IsEnabled = connected && Controller.IsOn;

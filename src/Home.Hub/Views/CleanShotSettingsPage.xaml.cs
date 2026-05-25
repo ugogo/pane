@@ -104,6 +104,7 @@ public sealed partial class CleanShotSettingsPage : Page
         AppSettingsService.SaveSettings();
         LoadFields();
         SetStatus("Settings saved.");
+        App.MainViewModel.RefreshHotkeyConflicts();
         TryRefreshTrayMenu();
     }
 

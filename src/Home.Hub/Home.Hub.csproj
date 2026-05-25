@@ -42,6 +42,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Home.Core\Home.Core.csproj" />
+    <ProjectReference Include="..\Home.UI\Home.UI.csproj" />
     <ProjectReference Include="..\Home.Windows\Home.Windows.csproj" />
   </ItemGroup>
 

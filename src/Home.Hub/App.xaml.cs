@@ -70,6 +70,9 @@ public partial class App : Application
 
         var registry = _services.GetRequiredService<ModuleRegistry>();
         await registry.ApplyEnabledModulesAsync(settings);
+        var mainViewModel = _services.GetRequiredService<MainViewModel>();
+        mainViewModel.SyncModuleStates();
+        mainViewModel.RefreshHotkeyConflicts();
 
         singleInstanceGate.ListenForActivationRequests(() =>
         {

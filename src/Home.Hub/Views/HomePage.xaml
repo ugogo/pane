@@ -18,6 +18,13 @@
                 Foreground="{StaticResource InkMutedBrush}"
                 FontFamily="{StaticResource BodyFont}" />
 
+            <InfoBar
+                Title="Hotkey conflict"
+                Message="{Binding HotkeyConflictText, Mode=OneWay}"
+                Severity="Warning"
+                IsOpen="True"
+                IsClosable="False"
+                Visibility="{Binding HotkeyConflictVisibility, Mode=OneWay}" />
             <Border
                 Background="{StaticResource SurfaceRaisedBrush}"
                 BorderBrush="{StaticResource GlassEdgeBrush}"

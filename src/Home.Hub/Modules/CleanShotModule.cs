@@ -2,6 +2,7 @@ using CleanShot.Core.Services;
 using CleanShotW.Helpers;
 using CleanShotW.Services;
 using Home.Core;
+using Home.Windows;
 using Microsoft.UI.Dispatching;
 using WinRT.Interop;
 
@@ -10,13 +11,15 @@ namespace Home.Hub.Modules;
 public sealed class CleanShotModule : IHomeModule, IDisposable
 {
     private readonly DispatcherQueue _dispatcher;
+    private readonly GlobalHotkeyCoordinator _hotkeyCoordinator;
     private CaptureCoordinator? _coordinator;
     private HotkeyService? _hotkeyService;
     private IntPtr _messageWindowHandle;
 
-    public CleanShotModule(DispatcherQueue dispatcher)
+    public CleanShotModule(DispatcherQueue dispatcher, GlobalHotkeyCoordinator hotkeyCoordinator)
     {
         _dispatcher = dispatcher;
+        _hotkeyCoordinator = hotkeyCoordinator;
     }
 
     public string Id => HomeServiceCollectionExtensions.CleanShotModuleId;
@@ -41,7 +44,13 @@ public sealed class CleanShotModule : IHomeModule, IDisposable
             return false;
         }
 
-        return _coordinator.TryApplyHotkeys(fullScreenShortcut, regionShortcut, out error);
+        var applied = _coordinator.TryApplyHotkeys(fullScreenShortcut, regionShortcut, out error);
+        if (applied)
+        {
+            ReregisterHotkeys();
+        }
+
+        return applied;
     }
 
     public void AttachMessageWindow(IntPtr hwnd)
@@ -72,6 +81,7 @@ public sealed class CleanShotModule : IHomeModule, IDisposable
     public Task DisableAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _hotkeyCoordinator.UnregisterOwner(Id);
         _hotkeyService?.Dispose();
         _hotkeyService = null;
         _coordinator = null;
@@ -83,8 +93,17 @@ public sealed class CleanShotModule : IHomeModule, IDisposable
     public bool TryHandleHotkeyMessage(int message, IntPtr wParam) =>
         _hotkeyService?.TryHandleMessage(message, wParam) ?? false;
 
+    public void ReregisterHotkeys()
+    {
+        if (IsEnabled)
+        {
+            RegisterHotkeys();
+        }
+    }
+
     public void Dispose()
     {
+        _hotkeyCoordinator.UnregisterOwner(Id);
         _hotkeyService?.Dispose();
         _hotkeyService = null;
     }
@@ -94,6 +113,13 @@ public sealed class CleanShotModule : IHomeModule, IDisposable
         if (_messageWindowHandle == IntPtr.Zero || _coordinator is null)
         {
             return false;
+        }
+
+        _hotkeyCoordinator.UnregisterOwner(Id);
+
+        foreach (var binding in HotkeyService.BuildBindingsForTests())
+        {
+            _hotkeyCoordinator.TryRegister(Id, binding.Id, binding.Modifiers, binding.VirtualKey, out _);
         }
 
         _hotkeyService?.Dispose();

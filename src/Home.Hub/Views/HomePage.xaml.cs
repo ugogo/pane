@@ -10,6 +10,7 @@ public sealed partial class HomePage : Page
     {
         InitializeComponent();
         DataContext = App.MainViewModel;
+        Loaded += (_, _) => App.MainViewModel.RefreshHotkeyConflicts();
     }
 
     private void OnModuleSettingsClicked(object sender, RoutedEventArgs e)

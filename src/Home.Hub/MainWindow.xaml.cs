@@ -52,7 +52,8 @@ public sealed partial class MainWindow : WindowEx
         }
 
         var settings = HubSettingsStore.Load();
-        SelectNavigationTag(App.StandaloneModuleId ?? settings.LastOpenedPage);
+        var initialTag = App.StandaloneModuleId ?? settings.LastOpenedPage;
+        SelectNavigationTag(initialTag);
 
         NavView.SelectionChanged += OnNavigationSelectionChanged;
         AppWindow.Closing += OnAppWindowClosing;
@@ -125,11 +126,31 @@ public sealed partial class MainWindow : WindowEx
 
     private void SelectNavigationTag(string tag)
     {
-        var match = NavView.MenuItems
+        var resolvedTag = ResolveNavigationTag(tag);
+        NavView.SelectedItem = FindNavItem(resolvedTag) ?? NavView.MenuItems[0];
+        NavigateContent(resolvedTag);
+    }
+
+    private static string ResolveNavigationTag(string tag) =>
+        ModuleNavigation.GetSettingsPageType(tag) is not null || tag is "home" or "general"
+            ? tag
+            : "home";
+
+    private NavigationViewItem? FindNavItem(string tag) =>
+        NavView.MenuItems
             .OfType<NavigationViewItem>()
             .FirstOrDefault(item => item.Tag as string == tag);
 
-        NavView.SelectedItem = match ?? NavView.MenuItems[0];
+    private void NavigateContent(string tag)
+    {
+        var pageType = tag switch
+        {
+            "home" => typeof(HomePage),
+            "general" => typeof(GeneralPage),
+            _ => ModuleNavigation.GetSettingsPageType(tag) ?? typeof(HomePage),
+        };
+
+        ContentFrame.Navigate(pageType);
     }
 
     private void OnNavigationSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -139,14 +160,7 @@ public sealed partial class MainWindow : WindowEx
             return;
         }
 
-        var pageType = tag switch
-        {
-            "home" => typeof(HomePage),
-            "general" => typeof(GeneralPage),
-            _ => ModuleNavigation.GetSettingsPageType(tag) ?? typeof(HomePage),
-        };
-
-        ContentFrame.Navigate(pageType);
+        NavigateContent(tag);
         PersistLastOpenedPage(tag);
     }
 
