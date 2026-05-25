@@ -1,0 +1,44 @@
+<windowex:WindowEx
+    x:Class="Home.Hub.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:windowex="using:WinUIEx"
+    xmlns:notify="using:H.NotifyIcon">
+
+    <Grid Loaded="OnRootLoaded" Background="{StaticResource SurfaceBaseBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="AppTitleBar" Height="48" Background="Transparent">
+            <TextBlock
+                Margin="16,0,0,0"
+                VerticalAlignment="Center"
+                Text="Home"
+                FontFamily="{StaticResource DisplayFont}"
+                FontWeight="SemiBold"
+                Foreground="{StaticResource InkPrimaryBrush}" />
+        </Grid>
+
+        <NavigationView
+            x:Name="NavView"
+            Grid.Row="1"
+            IsBackButtonVisible="Collapsed"
+            PaneDisplayMode="Left"
+            Background="{StaticResource SurfaceBaseBrush}">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Home" Tag="home" Icon="Home" />
+                <NavigationViewItem Content="General" Tag="general" Icon="Setting" />
+            </NavigationView.MenuItems>
+
+            <Frame x:Name="ContentFrame" />
+        </NavigationView>
+
+        <notify:TaskbarIcon
+            x:Name="TrayIcon"
+            ToolTipText="Home"
+            MenuActivation="RightClick"
+            DoubleTapped="OnOpenHomeRequested" />
+    </Grid>
+</windowex:WindowEx>

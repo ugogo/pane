@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <RootNamespace>CleanShotW</RootNamespace>
+    <RootNamespace>Home.Hub</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x64</Platforms>
     <Platform Condition="'$(Platform)' == ''">x64</Platform>
@@ -15,40 +15,46 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
+    <!-- CleanShotW is referenced as a DLL to avoid WinUI PRI conflicts; both apps include WinApp SDK auto-init types. -->
+    <NoWarn>$(NoWarn);CS0436</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <Content Include="Assets\app-icon.ico" />
     <Content Include="Assets\app-icon.png" />
+    <Content Include="Assets\SplashScreen.scale-200.png" />
+    <Content Include="Assets\Square150x150Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.scale-200.png" />
+    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\tray-icon.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\tray-icon.png" />
-    <Content Include="Assets\SplashScreen.scale-200.png" />
-    <Content Include="Assets\LockScreenLogo.scale-200.png" />
-    <Content Include="Assets\Square150x150Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.scale-200.png" />
-    <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
-    <Content Include="Assets\capture-shutter.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="CleanShotW.Tests" />
-    <InternalsVisibleTo Include="Home.Hub" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\CleanShot.Core\CleanShot.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="H.NotifyIcon.WinUI" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
     <PackageReference Include="Microsoft.WindowsAppSDK" />
-    <PackageReference Include="System.Drawing.Common" />
     <PackageReference Include="WinUIEx" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Home.Core\Home.Core.csproj" />
+    <ProjectReference Include="..\Home.Windows\Home.Windows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="CleanShotW">
+      <HintPath>..\..\legacy\CleanShotW\bin\x64\Release\net10.0-windows10.0.19041.0\CleanShotW.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="BuildCleanShotW" BeforeTargets="Build">
+    <MSBuild
+      Projects="..\..\legacy\CleanShotW\CleanShotW.csproj"
+      Properties="Configuration=$(Configuration);Platform=x64"
+      Targets="Build" />
+  </Target>
 </Project>

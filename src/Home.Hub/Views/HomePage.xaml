@@ -1,0 +1,60 @@
+<Page
+    x:Class="Home.Hub.Views.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:viewmodels="using:Home.Hub.ViewModels">
+
+    <ScrollViewer>
+        <StackPanel Padding="28" Spacing="20" MaxWidth="920">
+            <TextBlock
+                Text="Home"
+                FontFamily="{StaticResource DisplayFont}"
+                FontSize="28"
+                FontWeight="SemiBold"
+                Foreground="{StaticResource InkPrimaryBrush}" />
+
+            <TextBlock
+                Text="Enable utilities to run in the background from a single app."
+                Foreground="{StaticResource InkMutedBrush}"
+                FontFamily="{StaticResource BodyFont}" />
+
+            <Border
+                Background="{StaticResource SurfaceRaisedBrush}"
+                BorderBrush="{StaticResource GlassEdgeBrush}"
+                BorderThickness="1"
+                CornerRadius="12"
+                Padding="4">
+                <ItemsControl ItemsSource="{Binding Modules}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="viewmodels:ModuleItemViewModel">
+                            <Grid Padding="16,12" ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Spacing="4">
+                                    <TextBlock
+                                        Text="{x:Bind DisplayName}"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource InkPrimaryBrush}" />
+                                    <TextBlock
+                                        Text="{x:Bind Description}"
+                                        Foreground="{StaticResource InkMutedBrush}"
+                                        TextWrapping="WrapWholeWords" />
+                                    <TextBlock
+                                        Text="{x:Bind StatusText}"
+                                        Foreground="{StaticResource AccentPrimaryBrush}"
+                                        FontSize="12" />
+                                </StackPanel>
+                                <ToggleSwitch
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    IsOn="{x:Bind IsEnabled, Mode=TwoWay}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

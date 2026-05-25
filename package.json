@@ -8,6 +8,7 @@
     "test": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/test.ps1",
     "start:dx-light": "dotnet run --project legacy/DXLight.Tray/DXLight.Tray.csproj -c Release",
     "start:light-controls": "dotnet run --project legacy/LightControls.Desktop/LightControls.Desktop.csproj -c Release",
-    "start:cleanshot": "dotnet build legacy/CleanShotW/CleanShotW.csproj -c Release -p:Platform=x64 && dotnet run --project legacy/CleanShotW/CleanShotW.csproj -c Release -p:Platform=x64"
+    "start:cleanshot": "dotnet build legacy/CleanShotW/CleanShotW.csproj -c Release -p:Platform=x64 && dotnet run --project legacy/CleanShotW/CleanShotW.csproj -c Release -p:Platform=x64",
+    "start": "dotnet build src/Home.Hub/Home.Hub.csproj -c Release -p:Platform=x64 && dotnet run --project src/Home.Hub/Home.Hub.csproj -c Release -p:Platform=x64"
   }
 }

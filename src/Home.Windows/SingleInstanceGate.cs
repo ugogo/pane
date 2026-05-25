@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace Home.Windows;
@@ -14,7 +15,7 @@ public sealed class SingleInstanceGate : IDisposable
         _activateEvent = new EventWaitHandle(false, EventResetMode.AutoReset, activateEventName);
     }
 
-    public static bool TryAcquire(string mutexName, string activateEventName, out SingleInstanceGate? gate)
+    public static bool TryAcquire(string mutexName, string activateEventName, [NotNullWhen(true)] out SingleInstanceGate? gate)
     {
         var mutex = new Mutex(initiallyOwned: true, mutexName, out var createdNew);
         if (!createdNew)

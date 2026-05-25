@@ -2,6 +2,8 @@
   <Folder Name="/src/">
     <Project Path="src/CleanShot.Core/CleanShot.Core.csproj" />
     <Project Path="src/DXLight.Core/DXLight.Core.csproj" />
+    <Project Path="src/Home.Core/Home.Core.csproj" />
+    <Project Path="src/Home.Hub/Home.Hub.csproj" />
     <Project Path="src/Home.Windows/Home.Windows.csproj" />
     <Project Path="src/LightControls.Core/LightControls.Core.csproj" />
   </Folder>
