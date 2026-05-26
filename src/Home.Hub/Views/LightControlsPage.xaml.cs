@@ -2,10 +2,10 @@ using Home.Core.Modules;
 using Home.Hub.ViewModels;
 using LightControls.Core;
 using LightControls.Core.Models;
+using LightControls.Core.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
@@ -107,9 +107,7 @@ public sealed partial class LightControlsPage : Page
                     global::Windows.UI.Color.FromArgb(255, color.Red, color.Green, color.Blue)),
                 BorderBrush = new SolidColorBrush(global::Windows.UI.Color.FromArgb(255, 255, 255, 255)),
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(6),
             };
-            AutomationProperties.SetName(button, $"Apply color {hex}");
             button.Click += OnSwatchClicked;
             panel.Children.Add(button);
         }
@@ -146,7 +144,7 @@ public sealed partial class LightControlsPage : Page
             return;
         }
 
-        var settings = await LoadEditableSettingsAsync();
+        var settings = Module.Settings;
         settings.Host = host;
         settings.Port = port;
         settings.OpenRgbExecutablePath = string.IsNullOrWhiteSpace(OpenRgbPathBox.Text)
@@ -168,11 +166,6 @@ public sealed partial class LightControlsPage : Page
 
         AdvancedSettingsStatusText.Text = "Settings saved.";
     }
-
-    private Task<LightControlsSettings> LoadEditableSettingsAsync() =>
-        Module.IsEnabled
-            ? Task.FromResult(Module.Settings)
-            : Module.SettingsStore.LoadAsync();
 
     private async void OnRefreshClicked(object sender, RoutedEventArgs e)
     {
