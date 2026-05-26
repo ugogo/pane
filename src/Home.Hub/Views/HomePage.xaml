@@ -2,20 +2,31 @@
     x:Class="Home.Hub.Views.HomePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Home.Hub.Controls"
     xmlns:viewmodels="using:Home.Hub.ViewModels"
     HorizontalAlignment="Stretch"
     VerticalAlignment="Stretch">
 
     <ScrollViewer Style="{StaticResource PageModuleScrollViewerStyle}">
-        <StackPanel Style="{StaticResource PageModuleContentStackStyle}">
-            <StackPanel Style="{StaticResource PageHeadingBlockStyle}">
-                <TextBlock
-                    Text="Home"
-                    Style="{StaticResource PageMainHeadingStyle}" />
-                <TextBlock
-                    Text="Enable utilities to run in the background from a single app."
-                    Style="{StaticResource PageSubtitleStyle}" />
-            </StackPanel>
+        <StackPanel Style="{StaticResource RedesignPageContentStackStyle}">
+            <Grid Margin="0,20,0,10" VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Style="{StaticResource PageHeadingBlockStyle}" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="Welcome back" Style="{StaticResource WelcomeHeadingStyle}" />
+                    <TextBlock
+                        Text="Everything looks good and your setup is ready to go."
+                        Style="{StaticResource PageHeroSubtitleStyle}" />
+                </StackPanel>
+                <Border Grid.Column="1" Style="{StaticResource StatusPillHostStyle}" VerticalAlignment="Center">
+                    <StackPanel Style="{StaticResource StatusPillContentStyle}">
+                        <Ellipse x:Name="StatusDot" Width="8" Height="8" VerticalAlignment="Center" Fill="{ThemeResource StatusActiveBrush}" />
+                        <TextBlock Text="{Binding SystemStatusText, Mode=OneWay}" Style="{StaticResource StatusPillTextStyle}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
 
             <InfoBar
                 Title="Hotkey conflict"
@@ -24,47 +35,270 @@
                 IsOpen="True"
                 IsClosable="False"
                 Visibility="{Binding HotkeyConflictVisibility, Mode=OneWay}" />
-            <Border Style="{StaticResource SettingsListCardStyle}">
-                <ItemsControl ItemsSource="{Binding Modules}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="viewmodels:ModuleItemViewModel">
-                            <Grid Style="{StaticResource SettingsListRowStyle}">
+
+            <Grid ColumnSpacing="20" Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource DashboardCardStyle}">
+                    <StackPanel Spacing="12">
+                        <Border Style="{StaticResource IconBadgeStyle}">
+                            <FontIcon Glyph="&#xEA80;" FontSize="22" Foreground="{ThemeResource AccentLimeBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Devices connected" Style="{StaticResource MetricCaptionStyle}" />
+                            <TextBlock Text="{Binding ConnectedDeviceCount, Mode=OneWay}" Style="{StaticResource MetricValueStyle}" />
+                            <TextBlock Text="{Binding ConnectedDeviceStatusText, Mode=OneWay}" Style="{StaticResource SettingsDescriptionStyle}" Foreground="{ThemeResource AccentLimeBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="1" Style="{StaticResource DashboardCardStyle}">
+                    <StackPanel Spacing="12">
+                        <Border Style="{StaticResource IconBadgeStyle}" Background="#18FFFFFF" BorderBrush="#24FFFFFF">
+                            <FontIcon Glyph="&#xE9D9;" FontSize="22" Foreground="{ThemeResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Zones active" Style="{StaticResource MetricCaptionStyle}" />
+                            <TextBlock Text="{Binding ActiveZoneCount, Mode=OneWay}" Style="{StaticResource MetricValueStyle}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource DashboardCardStyle}" BorderBrush="#55B8F53A">
+                    <StackPanel Spacing="12">
+                        <Border Style="{StaticResource IconBadgeStyle}">
+                            <FontIcon Glyph="&#xE7E7;" FontSize="22" Foreground="{ThemeResource AccentLimeBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Brightness" Style="{StaticResource MetricCaptionStyle}" />
+                            <TextBlock Text="{Binding GlobalBrightnessText, Mode=OneWay}" Style="{StaticResource MetricValueStyle}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="3" Style="{StaticResource DashboardCardStyle}">
+                    <StackPanel Spacing="12">
+                        <Border Style="{StaticResource IconBadgeStyle}" Background="#18FFFFFF" BorderBrush="#24FFFFFF">
+                            <FontIcon Glyph="&#xE916;" FontSize="22" Foreground="{ThemeResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Utilities enabled" Style="{StaticResource MetricCaptionStyle}" />
+                            <TextBlock Text="{Binding EnabledModuleCount, Mode=OneWay}" Style="{StaticResource MetricValueStyle}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Grid ColumnSpacing="20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.9*" />
+                    <ColumnDefinition Width="1.1*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource DashboardPanelStyle}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="Quick control" Style="{StaticResource SectionHeaderStyle}" />
+                        <TextBlock Text="Control your lights in one click." Style="{StaticResource SettingsDescriptionStyle}" Margin="0,-8,0,10" />
+                        <Border Style="{StaticResource DashboardRowStyle}">
+                        <Grid VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE706;" FontSize="16" Foreground="{ThemeResource TextPrimaryBrush}" />
+                                <TextBlock Text="Master switch" Style="{StaticResource SettingsLabelStyle}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <controls:KnobToggleSwitch
+                                x:Name="MasterSwitch"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Toggled="OnMasterSwitchToggled" />
+                        </Grid>
+                        </Border>
+                        <Border Style="{StaticResource DashboardRowStyle}">
+                        <StackPanel Spacing="8">
+                            <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Spacing="4">
-                                    <TextBlock
-                                        Text="{x:Bind DisplayName}"
-                                        Style="{StaticResource SettingsLabelStyle}" />
-                                    <TextBlock
-                                        Text="{x:Bind Description}"
-                                        Style="{StaticResource SettingsDescriptionStyle}" />
-                                    <TextBlock
-                                        Text="{x:Bind StatusText}"
-                                        Foreground="{ThemeResource AccentPrimaryBrush}"
-                                        FontSize="{StaticResource FontSizeCaption}" />
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon Glyph="&#xE706;" FontSize="16" Foreground="{ThemeResource TextPrimaryBrush}" />
+                                    <TextBlock Text="Brightness" Style="{StaticResource SettingsLabelStyle}" />
                                 </StackPanel>
-                                <Button
+                                <TextBlock
                                     Grid.Column="1"
-                                    VerticalAlignment="Center"
-                                    Style="{StaticResource DebugTileMutedStyle}"
-                                    Content="Settings"
-                                    Tag="{x:Bind Id}"
-                                    Click="OnModuleSettingsClicked"
-                                    Visibility="{x:Bind SettingsVisibility}" />
-                                <ToggleSwitch
-                                    Grid.Column="2"
-                                    VerticalAlignment="Center"
-                                    Style="{StaticResource HubToggleSwitchStyle}"
-                                    AutomationProperties.Name="{x:Bind DisplayName}"
-                                    IsOn="{x:Bind IsEnabled, Mode=TwoWay}" />
+                                    Width="44"
+                                    TextAlignment="Right"
+                                    Foreground="{ThemeResource TextPrimaryBrush}"
+                                    FontWeight="SemiBold"
+                                    Text="{Binding GlobalBrightnessText, Mode=OneWay}" />
                             </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </Border>
+                            <Grid ColumnSpacing="12" MinHeight="36" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Slider
+                                    x:Name="BrightnessSlider"
+                                    Style="{StaticResource HomeLimeSliderStyle}"
+                                    VerticalAlignment="Center"
+                                    IsEnabled="{Binding IsMasterSwitchEnabled, Mode=OneWay}"
+                                    ValueChanged="OnBrightnessChanged" />
+                            </Grid>
+                        </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <Border x:Name="SceneCardHost" Grid.Column="1" Style="{StaticResource SceneCardStyle}" MinHeight="360">
+                    <StackPanel Spacing="18">
+                        <Grid VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Current scene" Style="{StaticResource SectionHeaderStyle}" FontSize="18" />
+                            <Border Grid.Column="1" Style="{StaticResource LiveBadgeStyle}" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <TextBlock Text="Live" Style="{StaticResource LiveBadgeTextStyle}" VerticalAlignment="Center" />
+                            </Border>
+                        </Grid>
+
+                        <Border Width="78" Height="78" CornerRadius="16" Background="#2AFFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" HorizontalAlignment="Left">
+                            <FontIcon
+                                Glyph="{Binding ActiveSceneGlyph, Mode=OneWay}"
+                                FontSize="42"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Center"
+                                Foreground="{ThemeResource AccentLimeBrush}" />
+                        </Border>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="{Binding ActiveSceneName, Mode=OneWay}" Style="{StaticResource PageMainHeadingStyle}" FontSize="28" />
+                            <TextBlock
+                                Text="{Binding ActiveSceneDescription, Mode=OneWay}"
+                                Style="{StaticResource PageSubtitleStyle}" />
+                        </StackPanel>
+
+                        <Button
+                            Style="{StaticResource DebugTileMutedStyle}"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Click="OnEditSceneClicked">
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE70F;" FontSize="12" VerticalAlignment="Center" />
+                                <TextBlock Text="Edit scene" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <Border Height="1" Background="{ThemeResource GlassCardBorderBrush}" />
+
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Devices" Style="{StaticResource SettingsLabelStyle}" VerticalAlignment="Center" />
+                            <TextBlock
+                                Text="{Binding DeviceActivitySummary, Mode=OneWay}"
+                                Style="{StaticResource SettingsDescriptionStyle}"
+                                Foreground="{ThemeResource AccentLimeBrush}" />
+                        </StackPanel>
+                        <Border Style="{StaticResource CountPillStyle}" VerticalAlignment="Center" Visibility="Collapsed">
+                                <TextBlock
+                                    Text="{Binding DeviceActivitySummary, Mode=OneWay}"
+                                    Style="{StaticResource StatusPillTextStyle}"
+                                    VerticalAlignment="Center"
+                                    Foreground="{ThemeResource TextSecondaryBrush}" />
+                        </Border>
+
+                        <ItemsControl ItemsSource="{Binding ConnectedDevices, Mode=OneWay}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <ItemsWrapGrid Orientation="Horizontal" ItemWidth="104" ItemHeight="76" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="viewmodels:ConnectedDeviceItemViewModel">
+                                    <Border Style="{StaticResource DeviceChipStyle}" Margin="0,0,8,8" Padding="10,8" HorizontalAlignment="Stretch">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                            <Grid>
+                                                <Border Width="30" Height="30" CornerRadius="9" Background="#18FFFFFF" BorderBrush="#24FFFFFF" BorderThickness="1" HorizontalAlignment="Left">
+                                                    <FontIcon Glyph="&#xE772;" FontSize="12" Foreground="{ThemeResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <Ellipse
+                                                    Width="9"
+                                                    Height="9"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Top"
+                                                    Fill="{ThemeResource StatusActiveBrush}"
+                                                    Visibility="{x:Bind ActiveVisibility}" />
+                                            </Grid>
+                                            <TextBlock
+                                                Grid.Row="1"
+                                                Text="{x:Bind ShortName}"
+                                                Style="{StaticResource SettingsLabelStyle}"
+                                                FontSize="11"
+                                                VerticalAlignment="Bottom"
+                                                TextWrapping="Wrap" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock
+                            x:Name="NoDevicesText"
+                            Text="No devices connected yet."
+                            Style="{StaticResource StatusTextStyle}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Expander Header="Background utilities" HorizontalAlignment="Stretch" IsExpanded="False" Visibility="Collapsed">
+                <Border Style="{StaticResource GlassCardStyle}" Padding="0" Margin="0,8,0,0">
+                    <ItemsControl ItemsSource="{Binding Modules, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="viewmodels:ModuleItemViewModel">
+                                <Grid Style="{StaticResource SettingsListRowStyle}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind DisplayName}" Style="{StaticResource SettingsLabelStyle}" />
+                                        <TextBlock Text="{x:Bind Description}" Style="{StaticResource SettingsDescriptionStyle}" />
+                                        <TextBlock
+                                            Text="{x:Bind StatusText}"
+                                            Foreground="{ThemeResource AccentPrimaryBrush}"
+                                            FontSize="{StaticResource FontSizeCaption}" />
+                                    </StackPanel>
+                                    <Button
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        Style="{StaticResource DebugTileMutedStyle}"
+                                        Content="Open"
+                                        Tag="{x:Bind Id}"
+                                        Click="OnModuleOpenClicked"
+                                        Visibility="{x:Bind SettingsVisibility}" />
+                                    <ToggleSwitch
+                                        Grid.Column="2"
+                                        VerticalAlignment="Center"
+                                        Style="{StaticResource HubToggleSwitchStyle}"
+                                        AutomationProperties.Name="{x:Bind DisplayName}"
+                                        IsOn="{x:Bind IsEnabled, Mode=TwoWay}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </Expander>
         </StackPanel>
     </ScrollViewer>
 </Page>

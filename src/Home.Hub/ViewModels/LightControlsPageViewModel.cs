@@ -14,7 +14,10 @@ public sealed class LightControlsPageViewModel
 
     public LightControlsModule Module => _module;
 
-    public IReadOnlyList<string> BuiltInSwatches => ColorSwatches.BuiltIn;
+    public IReadOnlyList<string> FavoriteSwatches =>
+        _module.Settings.FavoriteColors.Count > 0
+            ? _module.Settings.FavoriteColors
+            : ColorSwatches.BuiltIn;
 
     public IReadOnlyList<string> RecentCustomSwatches => _module.Settings.RecentCustomColors;
 }

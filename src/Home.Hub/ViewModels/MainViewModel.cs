@@ -203,12 +203,7 @@ public sealed partial class ModuleItemViewModel : ObservableObject
 
     public string Description { get; }
 
-    public string IconGlyph => ModuleNavigation.GetIcon(Id) switch
-    {
-        Symbol.Camera => "\uE722",
-        Symbol.Switch => "\uE8E7",
-        _ => "\uE713",
-    };
+    public string IconGlyph => ModuleNavigation.GetIconGlyph(Id);
 
     public bool HasSettingsPage => ModuleNavigation.HasSettingsPage(Id);
 

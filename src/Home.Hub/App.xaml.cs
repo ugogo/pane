@@ -68,6 +68,7 @@ public partial class App : Application
             new ModuleRegistry(provider.GetServices<IHomeModule>()));
         serviceCollection.AddSingleton<MainViewModel>();
         serviceCollection.AddSingleton<LightControlsPageViewModel>();
+        serviceCollection.AddSingleton<HomePageViewModel>();
         serviceCollection.AddSingleton<GlobalHotkeyCoordinator>();
 
         _services = serviceCollection.BuildServiceProvider();

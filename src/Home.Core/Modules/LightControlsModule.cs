@@ -45,6 +45,17 @@ public sealed class LightControlsModule : IHomeModule, IDisposable
 
     public OpenRgbSetupManager? SetupManager => _setupManager;
 
+    public event Action? DevicesChanged;
+
+    public IReadOnlyList<LightingScene> Scenes => SceneCatalog.BuiltIn;
+
+    public LightingScene ActiveScene =>
+        SceneCatalog.FindById(_settings.ActiveSceneId) ?? SceneCatalog.GetDefault();
+
+    public bool LightsOn => _settings.LightsOn;
+
+    public int GlobalBrightness => _settings.LastBrightness;
+
     public async Task EnableAsync(CancellationToken cancellationToken = default)
     {
         _settings = await _settingsStore.LoadAsync(cancellationToken);
@@ -193,6 +204,108 @@ public sealed class LightControlsModule : IHomeModule, IDisposable
 
         await ResumeSavedLightingAsync(cancellationToken);
         Status = BuildDeviceStatus(Status.Message);
+        RaiseDevicesChanged();
+    }
+
+    public async Task<string> SetMasterSwitchAsync(bool on, CancellationToken cancellationToken = default)
+    {
+        if (_backend is null)
+        {
+            return "Backend is not available.";
+        }
+
+        if (!on)
+        {
+            _settings.SavedBrightnessBeforeOff = _settings.LastBrightness;
+            _settings.LightsOn = false;
+            await ApplyOffToAllAsync(cancellationToken);
+            await _settingsStore.SaveAsync(_settings, cancellationToken);
+            RaiseDevicesChanged();
+            return "Lights turned off.";
+        }
+
+        _settings.LightsOn = true;
+        _settings.LastBrightness = Math.Clamp(
+            _settings.SavedBrightnessBeforeOff > 0 ? _settings.SavedBrightnessBeforeOff : 100,
+            1,
+            100);
+        foreach (var device in _devices.Where(d => d.IsSupported))
+        {
+            device.BrightnessPercent = _settings.LastBrightness;
+        }
+
+        await _settingsStore.SaveAsync(_settings, cancellationToken);
+        return await ApplyAllSupportedAsync(cancellationToken);
+    }
+
+    public async Task<string> SetGlobalBrightnessAsync(int percent, CancellationToken cancellationToken = default)
+    {
+        var clamped = Math.Clamp(percent, 1, 100);
+        _settings.LastBrightness = clamped;
+        foreach (var device in _devices.Where(d => d.IsSupported))
+        {
+            device.BrightnessPercent = clamped;
+        }
+
+        await _settingsStore.SaveAsync(_settings, cancellationToken);
+        if (!_settings.LightsOn)
+        {
+            RaiseDevicesChanged();
+            return "Brightness saved. Turn lights on to apply.";
+        }
+
+        return await ApplyAllSupportedAsync(cancellationToken);
+    }
+
+    public async Task<string> ApplySceneAsync(string sceneId, CancellationToken cancellationToken = default)
+    {
+        var scene = SceneCatalog.FindById(sceneId);
+        if (scene is null)
+        {
+            return "Scene not found.";
+        }
+
+        _settings.ActiveSceneId = scene.Id;
+        _settings.LastColor = scene.ColorHex;
+        _settings.LastBrightness = scene.Brightness;
+        foreach (var device in _devices.Where(d => d.IsSupported))
+        {
+            device.ColorHex = scene.ColorHex;
+            device.BrightnessPercent = scene.Brightness;
+        }
+
+        await _settingsStore.SaveAsync(_settings, cancellationToken);
+        if (!_settings.LightsOn)
+        {
+            RaiseDevicesChanged();
+            return $"{scene.Name} selected. Turn lights on to apply.";
+        }
+
+        return await ApplyAllSupportedAsync(cancellationToken);
+    }
+
+    public async Task<string> UpdateActiveSceneAsync(
+        string colorHex,
+        int brightness,
+        CancellationToken cancellationToken = default)
+    {
+        var scene = ActiveScene;
+        _settings.LastColor = RgbColor.FromHex(colorHex).ToHex();
+        _settings.LastBrightness = Math.Clamp(brightness, 1, 100);
+        foreach (var device in _devices.Where(d => d.IsSupported))
+        {
+            device.ColorHex = _settings.LastColor;
+            device.BrightnessPercent = _settings.LastBrightness;
+        }
+
+        await _settingsStore.SaveAsync(_settings, cancellationToken);
+        if (!_settings.LightsOn)
+        {
+            RaiseDevicesChanged();
+            return $"{scene.Name} updated. Turn lights on to apply.";
+        }
+
+        return await ApplyAllSupportedAsync(cancellationToken);
     }
 
     public async Task<string> ApplyDeviceAsync(string deviceId, CancellationToken cancellationToken = default)
@@ -239,6 +352,11 @@ public sealed class LightControlsModule : IHomeModule, IDisposable
     public void RecordRecentCustomColor(string hex)
     {
         var normalized = RgbColor.FromHex(hex).ToHex();
+        if (_settings.FavoriteColors.Any(color => IsSameColor(color, normalized)))
+        {
+            return;
+        }
+
         _settings.RecentCustomColors.RemoveAll(color =>
             string.Equals(color, normalized, StringComparison.OrdinalIgnoreCase));
         _settings.RecentCustomColors.Insert(0, normalized);
@@ -248,6 +366,30 @@ public sealed class LightControlsModule : IHomeModule, IDisposable
             _settings.RecentCustomColors.RemoveRange(
                 ColorSwatches.MaxRecentCustomColors,
                 _settings.RecentCustomColors.Count - ColorSwatches.MaxRecentCustomColors);
+        }
+    }
+
+    public void AddFavoriteColor(string hex)
+    {
+        var normalized = RgbColor.FromHex(hex).ToHex();
+        if (!_settings.FavoriteColors.Any(color => IsSameColor(color, normalized)))
+        {
+            _settings.FavoriteColors.Add(normalized);
+        }
+
+        _settings.RecentCustomColors.RemoveAll(color =>
+            string.Equals(color, normalized, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsSameColor(string candidate, string normalized)
+    {
+        try
+        {
+            return string.Equals(RgbColor.FromHex(candidate).ToHex(), normalized, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (ArgumentException)
+        {
+            return false;
         }
     }
 
@@ -287,6 +429,12 @@ public sealed class LightControlsModule : IHomeModule, IDisposable
             return;
         }
 
+        if (!_settings.LightsOn)
+        {
+            await ApplyOffToAllAsync(cancellationToken);
+            return;
+        }
+
         var applies = _devices
             .Where(device => device.IsSupported)
             .Select(device => device.ToApplyRequest())
@@ -304,6 +452,33 @@ public sealed class LightControlsModule : IHomeModule, IDisposable
         {
         }
     }
+
+    private async Task ApplyOffToAllAsync(CancellationToken cancellationToken)
+    {
+        if (_backend is null)
+        {
+            return;
+        }
+
+        var applies = _devices
+            .Where(device => device.IsSupported)
+            .Select(device => new DeviceColorApply(device.Id, RgbColor.FromHex("#000000"), 0))
+            .ToList();
+        if (applies.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await _backend.ApplyColorAsync(applies, cancellationToken);
+        }
+        catch
+        {
+        }
+    }
+
+    private void RaiseDevicesChanged() => DevicesChanged?.Invoke();
 
     private ModuleStatus BuildDeviceStatus(string message)
     {

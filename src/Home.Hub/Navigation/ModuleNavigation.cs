@@ -16,8 +16,15 @@ internal static class ModuleNavigation
     public static Symbol GetIcon(string moduleId) => moduleId switch
     {
         HomeServiceCollectionExtensions.CleanShotModuleId => Symbol.Camera,
-        HomeServiceCollectionExtensions.LightControlsModuleId => Symbol.Switch,
+        HomeServiceCollectionExtensions.LightControlsModuleId => Symbol.Home,
         _ => Symbol.Setting,
+    };
+
+    public static string GetIconGlyph(string moduleId) => moduleId switch
+    {
+        HomeServiceCollectionExtensions.CleanShotModuleId => "\uE722",
+        HomeServiceCollectionExtensions.LightControlsModuleId => "\uE8BE",
+        _ => "\uE713",
     };
 
     public static bool HasSettingsPage(string moduleId) => GetSettingsPageType(moduleId) is not null;

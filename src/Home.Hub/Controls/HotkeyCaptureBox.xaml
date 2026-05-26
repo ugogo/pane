@@ -1,28 +1,42 @@
-<UserControl
+﻿<UserControl
     x:Class="Home.Hub.Controls.HotkeyCaptureBox"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    HorizontalAlignment="Stretch"
+    HorizontalContentAlignment="Stretch"
+    Height="44"
+    IsTabStop="False">
 
-    <Border
-        x:Name="RootBorder"
-        CornerRadius="{StaticResource RadiusMedium}"
-        BorderBrush="{ThemeResource ControlStrokeStrongBrush}"
-        BorderThickness="1"
-        Background="{ThemeResource ControlFillBrush}">
-        <TextBox
-            x:Name="InputBox"
-            IsReadOnly="True"
-            BorderThickness="0"
-            Background="Transparent"
-            FontFamily="Consolas"
-            FontSize="{StaticResource FontSizeCaption}"
-            Foreground="{ThemeResource TextPrimaryBrush}"
-            ContextFlyout="{x:Null}"
-            IsTextPredictionEnabled="False"
-            IsSpellCheckEnabled="False"
-            GotFocus="OnGotFocus"
-            LostFocus="OnLostFocus"
-            PreviewKeyDown="OnPreviewKeyDown"
-            CharacterReceived="OnCharacterReceived" />
-    </Border>
+    <Button
+        x:Name="CaptureButton"
+        Style="{StaticResource DebugTileMutedStyle}"
+        MinHeight="44"
+        Padding="12,0"
+        HorizontalContentAlignment="Stretch"
+        GotFocus="OnGotFocus"
+        LostFocus="OnLostFocus"
+        PreviewKeyDown="OnPreviewKeyDown"
+        CharacterReceived="OnCharacterReceived"
+        Click="OnCaptureClicked">
+        <Grid VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <FontIcon
+                Grid.Column="0"
+                Glyph="&#xE765;"
+                Style="{StaticResource HubFieldIconStyle}" />
+            <TextBlock
+                x:Name="DisplayText"
+                Grid.Column="1"
+                Margin="10,0,0,0"
+                FontFamily="Consolas"
+                FontSize="{StaticResource FontSizeCaption}"
+                FontWeight="SemiBold"
+                Foreground="{ThemeResource TextPrimaryBrush}"
+                TextTrimming="CharacterEllipsis"
+                VerticalAlignment="Center" />
+        </Grid>
+    </Button>
 </UserControl>

@@ -9,12 +9,16 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 
 namespace Home.Hub.Views;
 
 public sealed partial class LightControlsPage : Page
 {
+    private const int SwatchColumns = 6;
+    private const int MaxDisplayedRecentColors = 6;
+
     private readonly LightControlsPageViewModel _viewModel;
     private readonly DispatcherQueue _dispatcher;
     private readonly DispatcherQueueTimer _brightnessTimer;
@@ -22,6 +26,9 @@ public sealed partial class LightControlsPage : Page
     private LightControlsDevice? _selectedDevice;
     private bool _connectionBusy;
     private bool _suppressDeviceSync;
+    private bool _suppressInlineColorSync;
+    private bool _isInlineColorInteractionActive;
+    private string? _pendingRecentColorHex;
 
     public LightControlsPage()
     {
@@ -31,6 +38,10 @@ public sealed partial class LightControlsPage : Page
         _brightnessTimer = _dispatcher.CreateTimer();
         _brightnessTimer.Interval = TimeSpan.FromMilliseconds(250);
         _brightnessTimer.Tick += OnBrightnessTimerTick;
+        InlineColorPicker.AddHandler(PointerPressedEvent, new PointerEventHandler(OnInlineColorPointerPressed), true);
+        InlineColorPicker.AddHandler(PointerReleasedEvent, new PointerEventHandler(OnInlineColorPointerReleased), true);
+        InlineColorPicker.AddHandler(PointerCanceledEvent, new PointerEventHandler(OnInlineColorPointerEnded), true);
+        InlineColorPicker.AddHandler(PointerCaptureLostEvent, new PointerEventHandler(OnInlineColorPointerEnded), true);
         Loaded += OnLoaded;
     }
 
@@ -38,7 +49,7 @@ public sealed partial class LightControlsPage : Page
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        BuildBuiltInSwatches();
+        RefreshRecentSwatches();
         await LoadAdvancedSettingsAsync();
         UpdateConnectionStatus();
         if (Module.IsMainUiReady)
@@ -79,40 +90,79 @@ public sealed partial class LightControlsPage : Page
         });
     }
 
-    private void BuildBuiltInSwatches()
-    {
-        PopulateSwatches(BuiltInSwatchesPanel, _viewModel.BuiltInSwatches);
-        RefreshRecentSwatches();
-    }
-
     private void RefreshRecentSwatches()
     {
-        PopulateSwatches(RecentSwatchesPanel, _viewModel.RecentCustomSwatches);
-        RecentEmptyText.Visibility = _viewModel.RecentCustomSwatches.Count == 0
+        var favoriteSwatches = _viewModel.FavoriteSwatches
+            .Select(NormalizeColorOrNull)
+            .OfType<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var recentSwatches = _viewModel.RecentCustomSwatches
+            .Select(NormalizeColorOrNull)
+            .OfType<string>()
+            .Where(color => !favoriteSwatches.Contains(color, StringComparer.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(MaxDisplayedRecentColors)
+            .ToList();
+
+        PopulateSwatches(FavoriteColorsGrid, favoriteSwatches);
+        PopulateSwatches(RecentColorsGrid, recentSwatches);
+        FavoriteEmptyText.Visibility = favoriteSwatches.Count == 0
             ? Visibility.Visible
             : Visibility.Collapsed;
+        RecentEmptyText.Visibility = recentSwatches.Count == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        RefreshFavoriteButtonState();
     }
 
-    private void PopulateSwatches(Panel panel, IEnumerable<string> swatches)
+    private void PopulateSwatches(Grid grid, IReadOnlyList<string> swatches)
     {
-        panel.Children.Clear();
-        foreach (var hex in swatches)
+        grid.Children.Clear();
+        grid.RowDefinitions.Clear();
+        grid.ColumnDefinitions.Clear();
+        for (var column = 0; column < SwatchColumns; column++)
         {
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
+        }
+
+        var rowCount = Math.Max(1, (int)Math.Ceiling(swatches.Count / (double)SwatchColumns));
+        for (var row = 0; row < rowCount; row++)
+        {
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
+        }
+
+        var selectedHex = _selectedDevice?.ColorHex;
+        for (var index = 0; index < swatches.Count; index++)
+        {
+            var hex = swatches[index];
             var color = RgbColor.FromHex(hex);
             var button = new Button
             {
-                Width = 36,
-                Height = 32,
                 Tag = hex,
                 Background = new SolidColorBrush(
                     global::Windows.UI.Color.FromArgb(255, color.Red, color.Green, color.Blue)),
-                BorderBrush = new SolidColorBrush(global::Windows.UI.Color.FromArgb(255, 255, 255, 255)),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(6),
+                Style = IsSameColor(hex, selectedHex)
+                    ? (Style)Application.Current.Resources["ColorSwatchButtonSelectedStyle"]
+                    : (Style)Application.Current.Resources["ColorSwatchButtonStyle"],
             };
+            Grid.SetRow(button, index / SwatchColumns);
+            Grid.SetColumn(button, index % SwatchColumns);
             AutomationProperties.SetName(button, $"Apply color {hex}");
             button.Click += OnSwatchClicked;
-            panel.Children.Add(button);
+            grid.Children.Add(button);
+        }
+    }
+
+    private static string? NormalizeColorOrNull(string hex)
+    {
+        try
+        {
+            return RgbColor.FromHex(hex).ToHex();
+        }
+        catch (ArgumentException)
+        {
+            return null;
         }
     }
 
@@ -197,9 +247,9 @@ public sealed partial class LightControlsPage : Page
         }
     }
 
-    private void OnDeviceSelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void OnDeviceClicked(object sender, RoutedEventArgs e)
     {
-        if (DevicesList.SelectedItem is LightControlsDevice device)
+        if (sender is Button { Tag: LightControlsDevice device })
         {
             SelectDevice(device);
         }
@@ -211,14 +261,30 @@ public sealed partial class LightControlsPage : Page
         _suppressDeviceSync = true;
         SelectedDeviceText.Text = device.Name;
         SetColorPreview(device.ColorHex);
+        SyncInlineColorPicker(device.ColorHex);
         BrightnessSlider.Value = device.BrightnessPercent;
         BrightnessText.Text = $"{device.BrightnessPercent}%";
         ColorPickerButton.IsEnabled = device.IsSupported;
+        AddFavoriteButton.IsEnabled = device.IsSupported;
         BrightnessSlider.IsEnabled = device.IsSupported;
         DeviceControlsContent.Visibility = device.IsSupported
             ? Visibility.Visible
             : Visibility.Collapsed;
         _suppressDeviceSync = false;
+        RefreshDeviceSelectionVisuals();
+        RefreshRecentSwatches();
+    }
+
+    private async void OnAddFavoriteClicked(object sender, RoutedEventArgs e)
+    {
+        if (_selectedDevice is null)
+        {
+            return;
+        }
+
+        Module.AddFavoriteColor(_selectedDevice.ColorHex);
+        await Module.SettingsStore.SaveAsync(Module.Settings);
+        RefreshRecentSwatches();
     }
 
     private async void OnChooseColorClicked(object sender, RoutedEventArgs e)
@@ -236,10 +302,19 @@ public sealed partial class LightControlsPage : Page
             IsColorPreviewVisible = true,
             IsColorSliderVisible = true,
         };
+        string? pendingHex = null;
         picker.ColorChanged += async (_, args) =>
         {
             var hex = new RgbColor(args.NewColor.R, args.NewColor.G, args.NewColor.B).ToHex();
-            await ApplyColorToSelectedAsync(hex, recordRecent: true);
+            pendingHex = hex;
+            await ApplyColorToSelectedAsync(hex, recordRecent: false);
+        };
+        flyout.Closed += async (_, _) =>
+        {
+            if (pendingHex is not null)
+            {
+                await ApplyColorToSelectedAsync(pendingHex, recordRecent: true);
+            }
         };
         flyout.Content = picker;
         flyout.ShowAt(ColorPickerButton);
@@ -249,8 +324,50 @@ public sealed partial class LightControlsPage : Page
     {
         if (sender is Button { Tag: string hex })
         {
-            await ApplyColorToSelectedAsync(hex, recordRecent: false);
+            await ApplyColorToSelectedAsync(hex, recordRecent: true);
         }
+    }
+
+    private async void OnInlineColorChanged(ColorPicker sender, ColorChangedEventArgs args)
+    {
+        if (_suppressInlineColorSync || _selectedDevice is null)
+        {
+            return;
+        }
+
+        var hex = new RgbColor(args.NewColor.R, args.NewColor.G, args.NewColor.B).ToHex();
+        _pendingRecentColorHex = hex;
+        await ApplyColorToSelectedAsync(hex, recordRecent: !_isInlineColorInteractionActive);
+    }
+
+    private void OnInlineColorPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        _isInlineColorInteractionActive = true;
+        _pendingRecentColorHex = null;
+    }
+
+    private async void OnInlineColorPointerReleased(object sender, PointerRoutedEventArgs e) =>
+        await CommitPendingInlineColorAsync();
+
+    private async void OnInlineColorPointerEnded(object sender, PointerRoutedEventArgs e) =>
+        await CommitPendingInlineColorAsync();
+
+    private async Task CommitPendingInlineColorAsync()
+    {
+        if (!_isInlineColorInteractionActive)
+        {
+            return;
+        }
+
+        _isInlineColorInteractionActive = false;
+        if (_pendingRecentColorHex is null)
+        {
+            return;
+        }
+
+        var hex = _pendingRecentColorHex;
+        _pendingRecentColorHex = null;
+        await ApplyColorToSelectedAsync(hex, recordRecent: true);
     }
 
     private async Task ApplyColorToSelectedAsync(string hex, bool recordRecent)
@@ -262,14 +379,32 @@ public sealed partial class LightControlsPage : Page
 
         _selectedDevice.ColorHex = hex;
         SetColorPreview(hex);
+        SyncInlineColorPicker(hex);
         if (recordRecent)
         {
             Module.RecordRecentCustomColor(hex);
             await Module.SettingsStore.SaveAsync(Module.Settings);
-            RefreshRecentSwatches();
         }
 
         ApplySelectedDeviceInstant();
+        RefreshRecentSwatches();
+    }
+
+    private void RefreshFavoriteButtonState()
+    {
+        if (_selectedDevice is null)
+        {
+            AddFavoriteButton.IsEnabled = false;
+            AddFavoriteText.Text = "Add to favorite";
+            return;
+        }
+
+        var isFavorite = _viewModel.FavoriteSwatches
+            .Select(NormalizeColorOrNull)
+            .OfType<string>()
+            .Any(color => IsSameColor(color, _selectedDevice.ColorHex));
+        AddFavoriteButton.IsEnabled = _selectedDevice.IsSupported && !isFavorite;
+        AddFavoriteText.Text = isFavorite ? "Favorite" : "Add to favorite";
     }
 
     private void OnBrightnessChanged(object sender, RangeBaseValueChangedEventArgs e)
@@ -348,13 +483,11 @@ public sealed partial class LightControlsPage : Page
 
         if (target is not null)
         {
-            DevicesList.SelectedItem = target;
             SelectDevice(target);
             return;
         }
 
         _selectedDevice = null;
-        DevicesList.SelectedItem = null;
         SelectedDeviceText.Text = "No devices detected";
     }
 
@@ -427,9 +560,75 @@ public sealed partial class LightControlsPage : Page
         ColorText.Text = color.ToHex();
     }
 
+    private void RefreshDeviceSelectionVisuals()
+    {
+        var selectedId = _selectedDevice?.Id;
+        foreach (var item in DevicesList.Items)
+        {
+            if (DevicesList.ContainerFromItem(item) is not ContentPresenter presenter)
+            {
+                continue;
+            }
+
+            var rowButton = FindDescendant<Button>(presenter);
+            if (rowButton is null)
+            {
+                continue;
+            }
+
+            var isSelected = item is LightControlsDevice device
+                && string.Equals(device.Id, selectedId, StringComparison.OrdinalIgnoreCase);
+            rowButton.Style = (Style)Application.Current.Resources[
+                isSelected ? "DeviceRowButtonSelectedStyle" : "DeviceRowButtonStyle"];
+        }
+    }
+
+    private void SyncInlineColorPicker(string hex)
+    {
+        var color = ToWindowsColor(hex);
+        if (InlineColorPicker.Color == color)
+        {
+            return;
+        }
+
+        _suppressInlineColorSync = true;
+        InlineColorPicker.Color = color;
+        _suppressInlineColorSync = false;
+    }
+
     private static global::Windows.UI.Color ToWindowsColor(string hex)
     {
         var color = RgbColor.FromHex(hex);
         return global::Windows.UI.Color.FromArgb(255, color.Red, color.Green, color.Blue);
+    }
+
+    private static bool IsSameColor(string? left, string? right) =>
+        !string.IsNullOrWhiteSpace(left)
+        && !string.IsNullOrWhiteSpace(right)
+        && string.Equals(
+            RgbColor.FromHex(left).ToHex(),
+            RgbColor.FromHex(right).ToHex(),
+            StringComparison.OrdinalIgnoreCase);
+
+    private static T? FindDescendant<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        var childCount = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < childCount; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            var descendant = FindDescendant<T>(child);
+            if (descendant is not null)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
     }
 }

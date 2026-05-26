@@ -1,0 +1,19 @@
+<UserControl
+    x:Class="Home.Hub.Controls.HubNumberField"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    HorizontalAlignment="Stretch">
+
+    <StackPanel Spacing="6">
+        <TextBlock
+            x:Name="LabelBlock"
+            Style="{StaticResource SettingsLabelStyle}"
+            Visibility="Collapsed" />
+        <Border Style="{StaticResource HubFieldChromeStyle}">
+            <NumberBox
+                x:Name="InputBox"
+                Style="{StaticResource HubFieldNumberStyle}"
+                HorizontalAlignment="Stretch" />
+        </Border>
+    </StackPanel>
+</UserControl>

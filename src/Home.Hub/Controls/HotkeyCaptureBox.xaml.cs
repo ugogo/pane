@@ -11,10 +11,10 @@ namespace Home.Hub.Controls;
 
 public sealed partial class HotkeyCaptureBox : UserControl
 {
-    private static readonly SolidColorBrush FallbackIdleBorderBrush = new(ColorHelper.FromArgb(0x40, 0xFF, 0xFF, 0xFF));
+    private static readonly SolidColorBrush FallbackIdleBorderBrush = new(ColorHelper.FromArgb(0x18, 0xFF, 0xFF, 0xFF));
     private static readonly SolidColorBrush FallbackRecordingBorderBrush = new(ColorHelper.FromArgb(0xFF, 0x60, 0xCD, 0xFF));
     private static readonly SolidColorBrush FallbackRecordingBackgroundBrush = new(ColorHelper.FromArgb(0xFF, 0x24, 0x24, 0x24));
-    private static readonly SolidColorBrush FallbackIdleBackgroundBrush = new(ColorHelper.FromArgb(0xFF, 0x32, 0x32, 0x32));
+    private static readonly SolidColorBrush FallbackIdleBackgroundBrush = new(ColorHelper.FromArgb(0x0F, 0xFF, 0xFF, 0xFF));
 
     private string _savedDisplay = string.Empty;
     private uint _savedModifiers;
@@ -37,7 +37,7 @@ public sealed partial class HotkeyCaptureBox : UserControl
         _modifiers = modifiers;
         _virtualKey = virtualKey;
         _hasValue = true;
-        InputBox.Text = HotkeyParser.Format(modifiers, virtualKey);
+        DisplayText.Text = HotkeyParser.Format(modifiers, virtualKey);
     }
 
     public bool TryGetHotkey(out uint modifiers, out uint virtualKey, out string error)
@@ -64,28 +64,28 @@ public sealed partial class HotkeyCaptureBox : UserControl
     private void OnGotFocus(object sender, RoutedEventArgs e)
     {
         _isRecording = true;
-        _savedDisplay = InputBox.Text;
+        _savedDisplay = DisplayText.Text;
         _savedModifiers = _modifiers;
         _savedVirtualKey = _virtualKey;
         _savedHasValue = _hasValue;
-        InputBox.Text = "Press shortcut…";
-        RootBorder.BorderBrush = GetThemeBrush("FocusStrokeBrush", FallbackRecordingBorderBrush);
-        RootBorder.Background = GetThemeBrush("ControlFillPressedBrush", FallbackRecordingBackgroundBrush);
+        DisplayText.Text = "Press shortcut...";
+        CaptureButton.BorderBrush = GetThemeBrush("FocusStrokeBrush", FallbackRecordingBorderBrush);
+        CaptureButton.Background = GetThemeBrush("ControlFillPressedBrush", FallbackRecordingBackgroundBrush);
     }
 
     private void OnLostFocus(object sender, RoutedEventArgs e)
     {
         _isRecording = false;
-        RootBorder.BorderBrush = GetThemeBrush("ControlStrokeStrongBrush", FallbackIdleBorderBrush);
-        RootBorder.Background = GetThemeBrush("ControlFillBrush", FallbackIdleBackgroundBrush);
+        CaptureButton.BorderBrush = FallbackIdleBorderBrush;
+        CaptureButton.Background = FallbackIdleBackgroundBrush;
 
         if (!_hasValue)
         {
-            InputBox.Text = _savedDisplay;
+            DisplayText.Text = _savedDisplay;
             return;
         }
 
-        InputBox.Text = HotkeyParser.Format(_modifiers, _virtualKey);
+        DisplayText.Text = HotkeyParser.Format(_modifiers, _virtualKey);
     }
 
     private void OnPreviewKeyDown(object sender, KeyRoutedEventArgs e)
@@ -104,7 +104,7 @@ public sealed partial class HotkeyCaptureBox : UserControl
         if (e.Key == VirtualKey.Escape)
         {
             RestoreSavedHotkey();
-            InputBox.Text = _savedDisplay;
+            DisplayText.Text = _savedDisplay;
             e.Handled = true;
             return;
         }
@@ -121,22 +121,27 @@ public sealed partial class HotkeyCaptureBox : UserControl
         if (HotkeyCaptureHelper.IsModifierKey(e.Key))
         {
             var activeModifiers = HotkeyCaptureHelper.ReadActiveModifiers();
-            InputBox.Text = activeModifiers == 0
-                ? "Press shortcut…"
-                : $"{HotkeyParser.FormatModifiers(activeModifiers)}+…";
+            DisplayText.Text = activeModifiers == 0
+                ? "Press shortcut..."
+                : $"{HotkeyParser.FormatModifiers(activeModifiers)}+...";
             return;
         }
 
         if (!HotkeyCaptureHelper.TryCapture(e.Key, out var modifiers, out var virtualKey, out var error))
         {
-            InputBox.Text = error;
+            DisplayText.Text = error;
             return;
         }
 
         _modifiers = modifiers;
         _virtualKey = virtualKey;
         _hasValue = true;
-        InputBox.Text = HotkeyParser.Format(modifiers, virtualKey);
+        DisplayText.Text = HotkeyParser.Format(modifiers, virtualKey);
+    }
+
+    private void OnCaptureClicked(object sender, RoutedEventArgs e)
+    {
+        CaptureButton.Focus(FocusState.Pointer);
     }
 
     private void OnCharacterReceived(UIElement sender, CharacterReceivedRoutedEventArgs args)

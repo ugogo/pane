@@ -25,7 +25,32 @@ public sealed class LightControlsDevice
         ? $"{FormatLedCount(_device.LedCount)} · {string.Join(", ", _device.Zones.Select(zone => $"{zone.Name} ({zone.LedCount})"))} · {_device.Status}"
         : $"{FormatLedCount(_device.LedCount)} - {_device.Status}";
 
+    public int ZoneCount => _device.Zones.Count;
+
     public bool IsSupported => _device.IsSupported;
+
+    public string IconGlyph
+    {
+        get
+        {
+            var normalized = $"{_device.Vendor} {_device.Name}".ToLowerInvariant();
+            if (normalized.Contains("logitech", StringComparison.Ordinal)
+                || normalized.Contains("mouse", StringComparison.Ordinal)
+                || normalized.Contains("lightspeed", StringComparison.Ordinal))
+            {
+                return "\uE962";
+            }
+
+            if (normalized.Contains("robobloq", StringComparison.Ordinal)
+                || normalized.Contains("dx light", StringComparison.Ordinal)
+                || normalized.Contains("light bar", StringComparison.Ordinal))
+            {
+                return "\uEA80";
+            }
+
+            return "\uE950";
+        }
+    }
 
     public string ColorHex
     {

@@ -57,7 +57,7 @@
                 x:Name="HelpLabelHost"
                 Visibility="Collapsed"
                 Padding="14,8"
-                CornerRadius="{StaticResource RadiusPill}"
+                CornerRadius="{StaticResource RadiusMedium}"
                 Background="{StaticResource GlassMidBrush}"
                 BorderBrush="{StaticResource GlassEdgeBrush}"
                 BorderThickness="1"

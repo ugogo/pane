@@ -20,7 +20,7 @@ public sealed partial class CleanShotSettingsPage : Page
 
     private void LoadFields()
     {
-        SaveFolderBox.Text = SaveService.GetSaveFolder();
+        SaveFolderText.Text = SaveService.GetSaveFolder();
         FullScreenShortcutBox.SetHotkey(
             HotkeyConfiguration.FullScreenModifiers,
             HotkeyConfiguration.FullScreenKey);
@@ -40,7 +40,7 @@ public sealed partial class CleanShotSettingsPage : Page
         var folder = await picker.PickSingleFolderAsync();
         if (folder is not null)
         {
-            SaveFolderBox.Text = folder.Path;
+            SaveFolderText.Text = folder.Path;
         }
     }
 
@@ -50,7 +50,7 @@ public sealed partial class CleanShotSettingsPage : Page
 
     private void SaveSettings()
     {
-        var saveFolder = SaveFolderBox.Text.Trim();
+        var saveFolder = SaveFolderText.Text.Trim();
         if (string.IsNullOrWhiteSpace(saveFolder))
         {
             SetStatus("Choose a save folder.");

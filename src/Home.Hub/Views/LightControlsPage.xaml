@@ -1,261 +1,170 @@
-<Page
+﻿<Page
     x:Class="Home.Hub.Views.LightControlsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Home.Hub.Controls"
     HorizontalAlignment="Stretch"
     VerticalAlignment="Stretch">
 
     <ScrollViewer Style="{StaticResource PageModuleScrollViewerStyle}">
-        <StackPanel Style="{StaticResource PageModuleContentStackStyle}">
-            <StackPanel Style="{StaticResource PageHeadingBlockStyle}">
-                <TextBlock
-                    Text="Light Controls"
-                    Style="{StaticResource PageMainHeadingStyle}" />
-                <TextBlock
-                    Text="Control RGB devices connected through OpenRGB and direct backends."
-                    Style="{StaticResource PageSubtitleStyle}" />
-            </StackPanel>
-
-            <Border Style="{StaticResource SettingsCardStyle}">
-                <Grid ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock
-                        x:Name="ConnectionStatusText"
-                        VerticalAlignment="Center"
-                        Style="{StaticResource StatusTextStyle}" />
-                    <StackPanel Grid.Column="1" Style="{StaticResource CommandRowStyle}">
-                        <ProgressRing
-                            x:Name="ConnectionProgress"
-                            Width="16"
-                            Height="16"
-                            IsActive="False"
-                            Visibility="Collapsed" />
-                        <Button
-                            x:Name="ConnectButton"
-                            Style="{StaticResource DebugTileButtonStyle}"
-                            Click="OnConnectClicked">
-                            <TextBlock x:Name="ConnectButtonText" Text="Connect" FontWeight="SemiBold" />
-                        </Button>
+        <StackPanel Style="{StaticResource RedesignPageContentStackStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Style="{StaticResource PageHeadingBlockStyle}">
+                    <TextBlock Text="Light Controls" Style="{StaticResource PageMainHeadingStyle}" />
+                    <TextBlock Text="Manage your RGB devices and lighting settings." Style="{StaticResource PageSubtitleStyle}" />
+                </StackPanel>
+                <Border Grid.Column="1" Style="{StaticResource CountPillStyle}" Margin="0,0,12,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Ellipse Width="6" Height="6" Fill="{ThemeResource StatusActiveBrush}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="ConnectionStatusText" Style="{StaticResource StatusPillTextStyle}" FontSize="11" />
                     </StackPanel>
-                </Grid>
-            </Border>
+                </Border>
+                <Button x:Name="ConnectButton" Grid.Column="2" Style="{StaticResource PrimaryActionButtonStyle}" MinHeight="34" Padding="16,0" VerticalAlignment="Center" Click="OnConnectClicked">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ProgressRing x:Name="ConnectionProgress" Width="14" Height="14" IsActive="False" Visibility="Collapsed" />
+                        <TextBlock x:Name="ConnectButtonText" Text="Sync all" FontWeight="SemiBold" />
+                    </StackPanel>
+                </Button>
+            </Grid>
 
-            <Border
-                x:Name="SetupPanelHost"
-                Style="{StaticResource SettingsCardStyle}">
+            <Border x:Name="SetupPanelHost" Style="{StaticResource DashboardPanelStyle}">
                 <StackPanel x:Name="SetupPanel" Spacing="12">
-                    <TextBlock
-                        Text="Setup required"
-                        Style="{StaticResource SectionHeaderStyle}" />
-                    <TextBlock
-                        x:Name="SetupText"
-                        Style="{StaticResource SettingsDescriptionStyle}" />
+                    <TextBlock Text="Setup required" Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock x:Name="SetupText" Style="{StaticResource SettingsDescriptionStyle}" />
                     <StackPanel Style="{StaticResource CommandRowStyle}">
-                        <Button
-                            x:Name="SetupButton"
-                            Style="{StaticResource DebugTilePrimaryStyle}"
-                            Click="OnSetupClicked">
+                        <Button x:Name="SetupButton" Style="{StaticResource DebugTilePrimaryStyle}" Click="OnSetupClicked">
                             <TextBlock Text="Download and set up" FontWeight="SemiBold" />
                         </Button>
-                        <Button
-                            Style="{StaticResource DebugTileMutedStyle}"
-                            Click="OnOpenReleasesClicked">
+                        <Button Style="{StaticResource DebugTileMutedStyle}" Click="OnOpenReleasesClicked">
                             <TextBlock Text="Open releases" FontWeight="SemiBold" />
                         </Button>
                     </StackPanel>
                 </StackPanel>
             </Border>
 
-            <StackPanel x:Name="MainPanel" Spacing="16" Visibility="Collapsed">
-                <Border Style="{StaticResource SettingsCardStyle}">
+            <StackPanel x:Name="MainPanel" Spacing="18" Visibility="Collapsed">
+                <Border Style="{StaticResource DashboardPanelStyle}">
                     <StackPanel Spacing="14">
-                        <Grid ColumnSpacing="12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock
-                                x:Name="SelectedDeviceText"
-                                VerticalAlignment="Center"
-                                Style="{StaticResource SettingsLabelStyle}" />
-                            <Button
-                                Grid.Column="1"
-                                Style="{StaticResource DebugTileButtonStyle}"
-                                Click="OnRefreshClicked">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <SymbolIcon Symbol="Refresh" />
-                                    <TextBlock Text="Refresh" FontWeight="SemiBold" />
-                                </StackPanel>
-                            </Button>
-                            <Button
-                                Grid.Column="2"
-                                Style="{StaticResource DebugTilePrimaryStyle}"
-                                Click="OnApplyAllClicked">
-                                <TextBlock Text="Apply again" FontWeight="SemiBold" />
-                            </Button>
+                        <TextBlock Text="Connected devices" Style="{StaticResource SectionHeaderStyle}" />
+                        <Grid Visibility="Collapsed">
+                            <TextBlock x:Name="SelectedDeviceText" />
+                            <Button Click="OnRefreshClicked" />
+                            <Button Click="OnApplyAllClicked" />
                         </Grid>
-
-                        <ListView
-                            x:Name="DevicesList"
-                            Style="{StaticResource HubListViewStyle}"
-                            ItemContainerStyle="{StaticResource HubListViewItemStyle}"
-                            SelectionChanged="OnDeviceSelectionChanged"
-                            IsItemClickEnabled="True">
-                            <ListView.ItemTemplate>
+                        <ItemsControl x:Name="DevicesList">
+                            <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Spacing="4" Padding="4">
-                                        <TextBlock
-                                            Text="{Binding Name}"
-                                            Style="{StaticResource SettingsLabelStyle}" />
-                                        <TextBlock
-                                            Text="{Binding Details}"
-                                            Style="{StaticResource SettingsDescriptionStyle}" />
-                                    </StackPanel>
+                                    <Button
+                                        Style="{StaticResource DeviceRowButtonStyle}"
+                                        Tag="{Binding}"
+                                        Click="OnDeviceClicked">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="36" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="32" Height="32" CornerRadius="8" Background="#18FFFFFF" BorderBrush="#24FFFFFF" BorderThickness="1">
+                                                <FontIcon Glyph="{Binding IconGlyph}" FontSize="14" Foreground="{ThemeResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" Style="{StaticResource SettingsLabelStyle}" FontSize="13" />
+                                                <TextBlock Text="{Binding Details}" Style="{StaticResource SettingsDescriptionStyle}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                                                <Ellipse Width="6" Height="6" Fill="{ThemeResource StatusActiveBrush}" />
+                                                <TextBlock Text="Active" Style="{StaticResource SettingsDescriptionStyle}" Foreground="{ThemeResource TextSecondaryBrush}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
                                 </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-
-                        <TextBlock
-                            x:Name="DevicesEmptyText"
-                            Text="No compatible devices were reported."
-                            Style="{StaticResource StatusTextStyle}"
-                            Visibility="Collapsed" />
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock x:Name="DevicesEmptyText" Text="No compatible devices were reported." Style="{StaticResource StatusTextStyle}" Visibility="Collapsed" />
                     </StackPanel>
                 </Border>
 
-                <Border
-                    x:Name="DeviceControlsPanel"
-                    Style="{StaticResource SettingsCardStyle}"
-                    Opacity="1">
-                    <StackPanel Spacing="16">
-                        <StackPanel x:Name="DeviceControlsContent" Spacing="16">
-                            <StackPanel Spacing="8">
-                                <TextBlock
-                                    Text="Color"
-                                    Style="{StaticResource SectionHeaderStyle}" />
-                                <Grid ColumnSpacing="12">
+                <Border x:Name="DeviceControlsPanel" Style="{StaticResource DashboardPanelStyle}">
+                    <StackPanel x:Name="DeviceControlsContent" Spacing="16">
+                        <Grid ColumnSpacing="28">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.05*" />
+                                <ColumnDefinition Width="0.95*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Color" Style="{StaticResource SectionHeaderStyle}" />
+                                <Grid ColumnSpacing="10" MinHeight="34">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <Border
-                                        x:Name="ColorPreview"
-                                        Width="44"
-                                        Height="44"
-                                        CornerRadius="8"
-                                        BorderBrush="{ThemeResource ControlStrokeStrongBrush}"
-                                        BorderThickness="1" />
-                                    <StackPanel Grid.Column="1" Spacing="8">
-                                        <TextBlock
-                                            x:Name="ColorText"
-                                            Style="{StaticResource StatusTextStyle}" />
-                                        <Button
-                                            x:Name="ColorPickerButton"
-                                            Style="{StaticResource DebugTileButtonStyle}"
-                                            Click="OnChooseColorClicked">
-                                            <TextBlock Text="Choose color" FontWeight="SemiBold" />
+                                    <Border x:Name="ColorPreview" Width="32" Height="32" CornerRadius="7" BorderBrush="{ThemeResource ControlStrokeStrongBrush}" BorderThickness="1" />
+                                    <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
+                                        <Button x:Name="ColorPickerButton" Style="{StaticResource DebugTileMutedStyle}" MinHeight="32" Padding="12,6" Click="OnChooseColorClicked">
+                                            <TextBlock x:Name="ColorText" FontWeight="SemiBold" Foreground="{ThemeResource TextSecondaryBrush}" />
                                         </Button>
                                     </StackPanel>
                                 </Grid>
+                                <Button x:Name="AddFavoriteButton" Style="{StaticResource DebugTileMutedStyle}" HorizontalAlignment="Left" MinHeight="30" Padding="12,6" Click="OnAddFavoriteClicked">
+                                    <TextBlock x:Name="AddFavoriteText" Text="Add to favorite" FontWeight="SemiBold" />
+                                </Button>
+                                <ColorPicker
+                                    x:Name="InlineColorPicker"
+                                    MinHeight="130"
+                                    IsAlphaEnabled="False"
+                                    IsAlphaSliderVisible="False"
+                                    IsColorChannelTextInputVisible="False"
+                                    IsColorPreviewVisible="False"
+                                    IsHexInputVisible="False"
+                                    ColorChanged="OnInlineColorChanged" />
                             </StackPanel>
 
-                            <StackPanel Spacing="8">
-                                <TextBlock
-                                    Text="Brightness"
-                                    Style="{StaticResource SectionHeaderStyle}" />
-                                <Grid ColumnSpacing="12">
+                            <StackPanel Grid.Column="1" Spacing="14">
+                                <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Slider
-                                        x:Name="BrightnessSlider"
-                                        Grid.Column="0"
-                                        Minimum="1"
-                                        Maximum="100"
-                                        ValueChanged="OnBrightnessChanged" />
-                                    <TextBlock
-                                        x:Name="BrightnessText"
-                                        Grid.Column="1"
-                                        VerticalAlignment="Center"
-                                        Foreground="{ThemeResource TextPrimaryBrush}" />
+                                    <TextBlock Text="Brightness" Style="{StaticResource SectionHeaderStyle}" />
+                                    <TextBlock x:Name="BrightnessText" Grid.Column="1" Width="44" TextAlignment="Right" Foreground="{ThemeResource AccentLimeBrush}" FontWeight="SemiBold" />
                                 </Grid>
+                                <Slider x:Name="BrightnessSlider" Style="{StaticResource HomeLimeSliderStyle}" Minimum="1" Maximum="100" ValueChanged="OnBrightnessChanged" />
+                                <StackPanel Spacing="8" Margin="0,10,0,0">
+                                    <TextBlock Text="Favorites" Style="{StaticResource SettingsDescriptionStyle}" />
+                                    <TextBlock x:Name="FavoriteEmptyText" Text="Add colors here to keep them pinned." Style="{StaticResource StatusTextStyle}" Visibility="Collapsed" />
+                                    <Grid x:Name="FavoriteColorsGrid" RowSpacing="6" ColumnSpacing="6" />
+                                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                                        <TextBlock Text="Recent colors" Style="{StaticResource SettingsDescriptionStyle}" />
+                                        <TextBlock x:Name="RecentEmptyText" Text="Pick a custom color to save it here." Style="{StaticResource StatusTextStyle}" Visibility="Collapsed" />
+                                        <Grid x:Name="RecentColorsGrid" RowSpacing="6" ColumnSpacing="6" />
+                                    </StackPanel>
+                                </StackPanel>
                             </StackPanel>
-
-                            <StackPanel Spacing="8">
-                                <TextBlock
-                                    Text="Swatches"
-                                    Style="{StaticResource SectionHeaderStyle}" />
-                                <StackPanel x:Name="BuiltInSwatchesPanel" Orientation="Horizontal" Spacing="8" />
-                            </StackPanel>
-
-                            <StackPanel Spacing="8">
-                                <TextBlock
-                                    Text="Recent"
-                                    Style="{StaticResource SectionHeaderStyle}" />
-                                <TextBlock
-                                    x:Name="RecentEmptyText"
-                                    Text="Pick a custom color to save it here."
-                                    Style="{StaticResource StatusTextStyle}"
-                                    Visibility="Collapsed" />
-                                <StackPanel x:Name="RecentSwatchesPanel" Orientation="Horizontal" Spacing="8" />
-                            </StackPanel>
-                        </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </Border>
             </StackPanel>
 
-            <Border Style="{StaticResource SettingsCardStyle}">
-                <StackPanel Spacing="14">
-                    <TextBlock
-                        Text="Advanced connection settings"
-                        Style="{StaticResource SectionHeaderStyle}" />
-
-                    <TextBox
-                        x:Name="HostBox"
-                        Header="Host"
-                        Style="{StaticResource HubInputTextBoxStyle}" />
-
-                    <NumberBox
-                        x:Name="PortBox"
-                        Header="Port"
-                        Minimum="1"
-                        Maximum="65535"
-                        SpinButtonPlacementMode="Inline" />
-
-                    <TextBox
-                        x:Name="OpenRgbPathBox"
-                        Header="OpenRGB executable (optional)"
-                        Style="{StaticResource HubInputTextBoxStyle}"
-                        PlaceholderText="Auto-detect if empty" />
-
-                    <ToggleSwitch
-                        x:Name="LogitechToggle"
-                        Header="Logitech direct control"
-                        Style="{StaticResource HubToggleSwitchStyle}" />
-
-                    <ToggleSwitch
-                        x:Name="DxLightToggle"
-                        Header="DX Light direct USB control"
-                        Style="{StaticResource HubToggleSwitchStyle}" />
-
-                    <Button
-                        Style="{StaticResource DebugTilePrimaryStyle}"
-                        HorizontalAlignment="Left"
-                        MinWidth="180"
-                        Click="OnSaveAdvancedSettingsClicked">
-                        <TextBlock Text="Save and reconnect" FontWeight="SemiBold" />
-                    </Button>
-
-                    <TextBlock
-                        x:Name="AdvancedSettingsStatusText"
-                        Style="{StaticResource StatusTextStyle}" />
-                </StackPanel>
-            </Border>
+            <Expander Header="Advanced connection settings" IsExpanded="False" Visibility="Collapsed">
+                <Border Style="{StaticResource DashboardPanelStyle}" Margin="0,8,0,0">
+                    <StackPanel Spacing="14">
+                        <controls:HubTextField x:Name="HostBox" Label="Host" />
+                        <controls:HubNumberField x:Name="PortBox" Label="Port" Minimum="1" Maximum="65535" SpinButtonPlacementMode="Inline" />
+                        <controls:HubTextField x:Name="OpenRgbPathBox" Label="OpenRGB executable (optional)" PlaceholderText="Auto-detect if empty" />
+                        <ToggleSwitch x:Name="LogitechToggle" Header="Logitech direct control" Style="{StaticResource HubToggleSwitchStyle}" />
+                        <ToggleSwitch x:Name="DxLightToggle" Header="DX Light direct USB control" Style="{StaticResource HubToggleSwitchStyle}" />
+                        <Button Style="{StaticResource DebugTilePrimaryStyle}" HorizontalAlignment="Left" MinWidth="180" Click="OnSaveAdvancedSettingsClicked">
+                            <TextBlock Text="Save and reconnect" FontWeight="SemiBold" />
+                        </Button>
+                        <TextBlock x:Name="AdvancedSettingsStatusText" Style="{StaticResource StatusTextStyle}" />
+                    </StackPanel>
+                </Border>
+            </Expander>
         </StackPanel>
     </ScrollViewer>
 </Page>

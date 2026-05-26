@@ -25,10 +25,22 @@ public sealed class LightControlsSettings
     /// <summary>Brightness level applied to devices, 0–100.</summary>
     public int LastBrightness { get; set; } = 100;
 
+    /// <summary>When false, all devices are driven off until re-enabled.</summary>
+    public bool LightsOn { get; set; } = true;
+
+    /// <summary>Brightness restored when master switch turns back on.</summary>
+    public int SavedBrightnessBeforeOff { get; set; } = 100;
+
+    /// <summary>Built-in scene id from <see cref="SceneCatalog"/>.</summary>
+    public string ActiveSceneId { get; set; } = SceneCatalog.DefaultSceneId;
+
     public List<string> SelectedDeviceIds { get; set; } = [];
 
     /// <summary>Recently picked custom colors, most recent first.</summary>
     public List<string> RecentCustomColors { get; set; } = [];
+
+    /// <summary>Favorite colors that are always shown before recent colors.</summary>
+    public List<string> FavoriteColors { get; set; } = [.. ColorSwatches.BuiltIn];
 
     /// <summary>When true, register Light Controls to launch when Windows starts.</summary>
     public bool RunAtStartup { get; set; }

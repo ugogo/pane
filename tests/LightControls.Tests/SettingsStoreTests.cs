@@ -15,6 +15,7 @@ public sealed class SettingsStoreTests
         Assert.Equal("127.0.0.1", settings.Host);
         Assert.Equal(6742, settings.Port);
         Assert.Empty(settings.RecentCustomColors);
+        Assert.NotEmpty(settings.FavoriteColors);
     }
 
     [Fact]
@@ -30,6 +31,7 @@ public sealed class SettingsStoreTests
             LastColor = "#ABCDEF",
             LastBrightness = 80,
             SelectedDeviceIds = ["device-1"],
+            FavoriteColors = ["#010203", "#AABBCC"],
             DeviceSettings =
             {
                 ["mouse"] = new DeviceLightingSettings { Color = "#112233", Brightness = 55 }
@@ -44,6 +46,7 @@ public sealed class SettingsStoreTests
         Assert.Equal("#ABCDEF", loaded.LastColor);
         Assert.Equal(80, loaded.LastBrightness);
         Assert.Equal(["device-1"], loaded.SelectedDeviceIds);
+        Assert.Equal(["#010203", "#AABBCC"], loaded.FavoriteColors);
         Assert.Equal("#112233", loaded.DeviceSettings["mouse"].Color);
         Assert.Equal(55, loaded.DeviceSettings["mouse"].Brightness);
     }
