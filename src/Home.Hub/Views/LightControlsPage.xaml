@@ -1,10 +1,12 @@
 <Page
     x:Class="Home.Hub.Views.LightControlsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    HorizontalAlignment="Stretch"
+    VerticalAlignment="Stretch">
 
-    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
-        <StackPanel Style="{StaticResource PageContentStackStyle}">
+    <ScrollViewer Style="{StaticResource PageModuleScrollViewerStyle}">
+        <StackPanel Style="{StaticResource PageModuleContentStackStyle}">
             <StackPanel Style="{StaticResource PageHeadingBlockStyle}">
                 <TextBlock
                     Text="Light Controls"

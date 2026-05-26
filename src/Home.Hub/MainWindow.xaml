@@ -80,7 +80,13 @@
                 <NavigationViewItem Content="General" Tag="general" Icon="Setting" />
             </NavigationView.FooterMenuItems>
 
-            <Frame x:Name="ContentFrame" Background="Transparent" />
+            <Frame
+                x:Name="ContentFrame"
+                Background="Transparent"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                VerticalContentAlignment="Stretch" />
         </NavigationView>
 
         <notify:TaskbarIcon

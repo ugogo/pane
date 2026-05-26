@@ -48,7 +48,7 @@ public sealed partial class MainWindow : WindowEx
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop();
-        AppWindow.Resize(new SizeInt32(960, 1000));
+        AppWindow.Resize(new SizeInt32(1460, 1300));
         IsResizable = false;
 
         BuildModuleNavigation();
