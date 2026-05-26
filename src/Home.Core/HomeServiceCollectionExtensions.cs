@@ -5,7 +5,6 @@ namespace Home.Core;
 
 public static class HomeServiceCollectionExtensions
 {
-    public const string DxLightModuleId = "dx-light";
     public const string LightControlsModuleId = "light-controls";
     public const string CleanShotModuleId = "cleanshot";
 
@@ -17,9 +16,4 @@ public static class HomeServiceCollectionExtensions
             new ModuleRegistry(provider.GetServices<IHomeModule>()));
         return services;
     }
-
-    public static string? NormalizeModuleId(string? moduleId) =>
-        string.Equals(moduleId, DxLightModuleId, StringComparison.OrdinalIgnoreCase)
-            ? LightControlsModuleId
-            : moduleId;
 }

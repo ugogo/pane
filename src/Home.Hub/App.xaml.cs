@@ -46,8 +46,7 @@ public partial class App : Application
 
         _singleInstanceGate = singleInstanceGate;
 
-        var requestedStandaloneModuleId = HomeServiceCollectionExtensions.NormalizeModuleId(
-            ParseStandaloneModule(Environment.GetCommandLineArgs()));
+        var requestedStandaloneModuleId = ParseStandaloneModule(Environment.GetCommandLineArgs());
         StandaloneModuleId = IsStandaloneModuleSupported(requestedStandaloneModuleId)
             ? requestedStandaloneModuleId
             : null;

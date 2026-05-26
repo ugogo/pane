@@ -8,10 +8,6 @@
     "test": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/test.ps1",
     "start": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start.ps1",
     "start:light-controls": "dotnet run --project src/Home.Standalone.LightControls/Home.Standalone.LightControls.csproj -c Release",
-    "start:dx-light": "npm run start:light-controls",
-    "start:cleanshot": "dotnet run --project src/Home.Standalone.CleanShot/Home.Standalone.CleanShot.csproj -c Release",
-    "start:legacy:dx-light": "dotnet run --project legacy/DXLight.Tray/DXLight.Tray.csproj -c Release",
-    "start:legacy:light-controls": "dotnet run --project legacy/LightControls.Desktop/LightControls.Desktop.csproj -c Release",
-    "start:legacy:cleanshot": "dotnet build legacy/CleanShotW/CleanShotW.csproj -c Release -p:Platform=x64 && dotnet run --project legacy/CleanShotW/CleanShotW.csproj -c Release -p:Platform=x64"
+    "start:cleanshot": "dotnet run --project src/Home.Standalone.CleanShot/Home.Standalone.CleanShot.csproj -c Release"
   }
 }

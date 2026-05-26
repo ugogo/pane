@@ -1,6 +1,6 @@
 # Home
 
-Windows utility suite monorepo — **DX Light**, **Light Controls**, and **CleanShot** in one PowerToys-style hub.
+Windows utility suite monorepo — **Light Controls** and **CleanShot** in one PowerToys-style hub.
 
 ## Stack
 
@@ -14,21 +14,22 @@ Windows utility suite monorepo — **DX Light**, **Light Controls**, and **Clean
 npm run build
 npm test
 npm start                      # launch Home.Hub (recommended)
-npm run start:dx-light         # legacy standalone apps
-npm run start:light-controls
-npm run start:cleanshot
+npm run start:light-controls   # standalone Light Controls module
+npm run start:cleanshot        # standalone CleanShot module
 ```
 
 ## Home.Hub
 
 Single tray app with sidebar navigation:
 
-- **Home** — enable/disable DX Light, Light Controls, CleanShot
-- **General** — run at startup
+- **Home** — enable/disable Light Controls and CleanShot
+- **General** — run at startup (login + wake-from-sleep)
 
-Settings: `%LocalAppData%\Home\hub-settings.json`
+Settings:
+
+- Hub: `%LocalAppData%\Home\hub-settings.json`
+- CleanShot: `%LocalAppData%\Home\cleanshot-settings.json`
 
 ## Status
 
-- Phase 1–2: monorepo + shared cores
-- Phase 3–4: module system + Home.Hub shell (MVP)
+- Phase 1–4: monorepo, shared cores, module system, and Home.Hub shell

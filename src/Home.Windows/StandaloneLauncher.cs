@@ -6,11 +6,6 @@ public static class StandaloneLauncher
 {
     public static int Run(string moduleId)
     {
-        if (string.Equals(moduleId, "dx-light", StringComparison.OrdinalIgnoreCase))
-        {
-            moduleId = "light-controls";
-        }
-
         if (HubProcessGate.TryRedirectToHub())
         {
             return 0;

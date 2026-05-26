@@ -11,18 +11,9 @@
     <Project Path="src/Home.Windows/Home.Windows.csproj" />
     <Project Path="src/LightControls.Core/LightControls.Core.csproj" />
   </Folder>
-  <Folder Name="/legacy/">
-    <Project Path="legacy/CleanShotW/CleanShotW.csproj" />
-    <Project Path="legacy/DXLight.Cli/DXLight.Cli.csproj" />
-    <Project Path="legacy/DXLight.Tray/DXLight.Tray.csproj" />
-    <Project Path="legacy/LightControls.Desktop/LightControls.Desktop.csproj" />
-  </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/CleanShotW.Tests/CleanShotW.Tests.csproj" />
+    <Project Path="tests/CleanShot.Tests/CleanShot.Tests.csproj" />
     <Project Path="tests/DXLight.Core.Tests/DXLight.Core.Tests.csproj" />
     <Project Path="tests/LightControls.Tests/LightControls.Tests.csproj" />
-  </Folder>
-  <Folder Name="/tools/">
-    <Project Path="tools/LogitechProbeRunner/LogitechProbeRunner.csproj" />
   </Folder>
 </Solution>

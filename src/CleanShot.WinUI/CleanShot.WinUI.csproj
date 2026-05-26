@@ -30,7 +30,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="CleanShotW.Tests" />
-    <InternalsVisibleTo Include="CleanShotW" />
+    <InternalsVisibleTo Include="CleanShot.Tests" />
   </ItemGroup>
 </Project>

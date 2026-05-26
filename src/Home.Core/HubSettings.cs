@@ -56,19 +56,18 @@ public static class HubSettingsStore
         File.WriteAllText(SettingsPath, json);
     }
 
+    private const string LegacyDxLightModuleId = "dx-light";
+
     private static HubSettings NormalizeMergedModules(HubSettings settings)
     {
-        if (settings.EnabledModules.Remove(HomeServiceCollectionExtensions.DxLightModuleId, out var dxEnabled) && dxEnabled)
+        if (settings.EnabledModules.Remove(LegacyDxLightModuleId, out var dxEnabled) && dxEnabled)
         {
             settings.EnabledModules[HomeServiceCollectionExtensions.LightControlsModuleId] = true;
         }
 
-        settings.EnabledModules.Remove(HomeServiceCollectionExtensions.DxLightModuleId, out _);
+        settings.EnabledModules.Remove(LegacyDxLightModuleId, out _);
 
-        if (string.Equals(
-                settings.LastOpenedPage,
-                HomeServiceCollectionExtensions.DxLightModuleId,
-                StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(settings.LastOpenedPage, LegacyDxLightModuleId, StringComparison.OrdinalIgnoreCase))
         {
             settings.LastOpenedPage = HomeServiceCollectionExtensions.LightControlsModuleId;
         }

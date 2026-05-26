@@ -12,8 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="CleanShotW" />
-    <InternalsVisibleTo Include="CleanShotW.Tests" />
+    <InternalsVisibleTo Include="CleanShot.Tests" />
     <InternalsVisibleTo Include="CleanShot.WinUI" />
     <InternalsVisibleTo Include="Home.Hub" />
   </ItemGroup>

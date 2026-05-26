@@ -23,12 +23,6 @@ public static class SettingsMigration
         }
     }
 
-    public static string LegacyDxLightSettingsPath =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "DXLight",
-            "settings.json");
-
     public static string LegacyLightControlsSettingsPath =>
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

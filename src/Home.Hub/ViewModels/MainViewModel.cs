@@ -72,19 +72,7 @@ public sealed partial class MainViewModel : ObservableObject
             _settings.RunAtStartup = value;
             OnPropertyChanged();
             PersistSettings();
-
-            if (value)
-            {
-                var exePath = Environment.ProcessPath;
-                if (!string.IsNullOrWhiteSpace(exePath))
-                {
-                    WindowsStartupRegistry.Enable("Home", exePath);
-                }
-            }
-            else
-            {
-                WindowsStartupRegistry.Disable("Home");
-            }
+            HubStartupService.Apply(value);
         }
     }
 

@@ -25,14 +25,11 @@ public static class HubSettingsMigration
         HubSettingsStore.Save(settings);
 
         DisableLegacyStartupEntries();
+        HubStartupService.RemoveLegacyWakeTasks();
 
         if (settings.RunAtStartup)
         {
-            var exePath = Environment.ProcessPath;
-            if (!string.IsNullOrWhiteSpace(exePath))
-            {
-                WindowsStartupRegistry.Enable("Home", exePath);
-            }
+            HubStartupService.Apply(enabled: true);
         }
 
         return settings;

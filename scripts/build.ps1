@@ -1,7 +1,6 @@
 param(
     [ValidateSet("Debug", "Release")]
-    [string]$Configuration = "Release",
-    [switch]$IncludeLegacy
+    [string]$Configuration = "Release"
 )
 
 $ErrorActionPreference = "Stop"
@@ -101,13 +100,5 @@ Write-Host "Building hub and standalone launchers..."
 dotnet build src/Home.Hub/Home.Hub.csproj -c $Configuration -p:Platform=x64
 dotnet build src/Home.Standalone.LightControls/Home.Standalone.LightControls.csproj -c $Configuration
 dotnet build src/Home.Standalone.CleanShot/Home.Standalone.CleanShot.csproj -c $Configuration
-
-if ($IncludeLegacy) {
-    Write-Host "Building legacy apps..."
-    dotnet build legacy/DXLight.Tray/DXLight.Tray.csproj -c $Configuration
-    dotnet build legacy/DXLight.Cli/DXLight.Cli.csproj -c $Configuration
-    dotnet build legacy/LightControls.Desktop/LightControls.Desktop.csproj -c $Configuration
-    dotnet build legacy/CleanShotW/CleanShotW.csproj -c $Configuration -p:Platform=x64
-}
 
 Write-Host "Build complete."
