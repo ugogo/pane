@@ -78,6 +78,7 @@
                                 x:Name="FullScreenShortcutBox"
                                 Grid.Row="0"
                                 Grid.Column="1"
+                                AutomationProperties.Name="Full screen shortcut"
                                 EnterPressed="OnShortcutEnterPressed" />
 
                             <TextBlock
@@ -90,6 +91,7 @@
                                 x:Name="RegionShortcutBox"
                                 Grid.Row="1"
                                 Grid.Column="1"
+                                AutomationProperties.Name="Region shortcut"
                                 EnterPressed="OnShortcutEnterPressed" />
                         </Grid>
                     </StackPanel>

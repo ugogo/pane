@@ -146,7 +146,7 @@ public sealed partial class LightControlsPage : Page
             return;
         }
 
-        var settings = Module.Settings;
+        var settings = await LoadEditableSettingsAsync();
         settings.Host = host;
         settings.Port = port;
         settings.OpenRgbExecutablePath = string.IsNullOrWhiteSpace(OpenRgbPathBox.Text)
@@ -168,6 +168,11 @@ public sealed partial class LightControlsPage : Page
 
         AdvancedSettingsStatusText.Text = "Settings saved.";
     }
+
+    private Task<LightControlsSettings> LoadEditableSettingsAsync() =>
+        Module.IsEnabled
+            ? Task.FromResult(Module.Settings)
+            : Module.SettingsStore.LoadAsync();
 
     private async void OnRefreshClicked(object sender, RoutedEventArgs e)
     {

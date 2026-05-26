@@ -1,4 +1,3 @@
-using Home.Core;
 using Home.Hub.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -29,6 +28,4 @@ public sealed partial class HomePage : Page
         }
     }
 
-    private void OnHotkeyConflictActionClicked(object sender, RoutedEventArgs e) =>
-        App.MainWindow.NavigateToTag(HomeServiceCollectionExtensions.CleanShotModuleId);
 }

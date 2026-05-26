@@ -17,6 +17,9 @@ public sealed partial class HotkeyCaptureBox : UserControl
     private static readonly SolidColorBrush FallbackIdleBackgroundBrush = new(ColorHelper.FromArgb(0xFF, 0x32, 0x32, 0x32));
 
     private string _savedDisplay = string.Empty;
+    private uint _savedModifiers;
+    private uint _savedVirtualKey;
+    private bool _savedHasValue;
     private uint _modifiers;
     private uint _virtualKey;
     private bool _hasValue;
@@ -62,6 +65,9 @@ public sealed partial class HotkeyCaptureBox : UserControl
     {
         _isRecording = true;
         _savedDisplay = InputBox.Text;
+        _savedModifiers = _modifiers;
+        _savedVirtualKey = _virtualKey;
+        _savedHasValue = _hasValue;
         InputBox.Text = "Press shortcut…";
         RootBorder.BorderBrush = GetThemeBrush("FocusStrokeBrush", FallbackRecordingBorderBrush);
         RootBorder.Background = GetThemeBrush("ControlFillPressedBrush", FallbackRecordingBackgroundBrush);
@@ -97,6 +103,7 @@ public sealed partial class HotkeyCaptureBox : UserControl
 
         if (e.Key == VirtualKey.Escape)
         {
+            RestoreSavedHotkey();
             InputBox.Text = _savedDisplay;
             e.Handled = true;
             return;
@@ -135,6 +142,13 @@ public sealed partial class HotkeyCaptureBox : UserControl
     private void OnCharacterReceived(UIElement sender, CharacterReceivedRoutedEventArgs args)
     {
         args.Handled = true;
+    }
+
+    private void RestoreSavedHotkey()
+    {
+        _modifiers = _savedModifiers;
+        _virtualKey = _savedVirtualKey;
+        _hasValue = _savedHasValue;
     }
 
     private SolidColorBrush GetThemeBrush(string key, SolidColorBrush fallback)

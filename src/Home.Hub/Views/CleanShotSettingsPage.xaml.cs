@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using CleanShot.Core.Services;
 using Home.Hub.Modules;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,28 +27,6 @@ public sealed partial class CleanShotSettingsPage : Page
         RegionShortcutBox.SetHotkey(
             HotkeyConfiguration.RegionModifiers,
             HotkeyConfiguration.RegionKey);
-    }
-
-    private void OnOpenFolderClicked(object sender, RoutedEventArgs e)
-    {
-        var saveFolder = SaveFolderBox.Text.Trim();
-        if (string.IsNullOrWhiteSpace(saveFolder))
-        {
-            SetStatus("Choose a save folder first.");
-            return;
-        }
-
-        if (!Directory.Exists(saveFolder))
-        {
-            SetStatus("Save folder does not exist yet.");
-            return;
-        }
-
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = saveFolder,
-            UseShellExecute = true,
-        });
     }
 
     private async void OnBrowseFolderClicked(object sender, RoutedEventArgs e)
