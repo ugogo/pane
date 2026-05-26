@@ -30,6 +30,8 @@
             <SolidColorBrush x:Key="ShadeOverlayBrush" Color="#33000000" />
             <SolidColorBrush x:Key="SelectionStrokeBrush" Color="#FF005FB8" />
             <SolidColorBrush x:Key="SelectionFillBrush" Color="#330078D4" />
+            <SolidColorBrush x:Key="AreaSizeBadgeSurfaceBrush" Color="#E60B0C12" />
+            <SolidColorBrush x:Key="AreaSizeBadgeEdgeBrush" Color="#3DFFFFFF" />
             <SolidColorBrush x:Key="GlassDeepBrush" Color="#FFFFFFFF" />
             <SolidColorBrush x:Key="GlassMidBrush" Color="#FFF9F9F9" />
             <SolidColorBrush x:Key="GlassEdgeBrush" Color="#1F000000" />
@@ -64,6 +66,8 @@
             <SolidColorBrush x:Key="ShadeOverlayBrush" Color="#66000000" />
             <SolidColorBrush x:Key="SelectionStrokeBrush" Color="#FF60CDFF" />
             <SolidColorBrush x:Key="SelectionFillBrush" Color="#3360CDFF" />
+            <SolidColorBrush x:Key="AreaSizeBadgeSurfaceBrush" Color="#E60B0C12" />
+            <SolidColorBrush x:Key="AreaSizeBadgeEdgeBrush" Color="#3DFFFFFF" />
             <SolidColorBrush x:Key="GlassDeepBrush" Color="#FF202020" />
             <SolidColorBrush x:Key="GlassMidBrush" Color="#FF2B2B2B" />
             <SolidColorBrush x:Key="GlassEdgeBrush" Color="#2EFFFFFF" />
@@ -98,6 +102,8 @@
             <SolidColorBrush x:Key="ShadeOverlayBrush" Color="#66000000" />
             <SolidColorBrush x:Key="SelectionStrokeBrush" Color="#FF60CDFF" />
             <SolidColorBrush x:Key="SelectionFillBrush" Color="#3360CDFF" />
+            <SolidColorBrush x:Key="AreaSizeBadgeSurfaceBrush" Color="#E60B0C12" />
+            <SolidColorBrush x:Key="AreaSizeBadgeEdgeBrush" Color="#3DFFFFFF" />
             <SolidColorBrush x:Key="GlassDeepBrush" Color="#FF202020" />
             <SolidColorBrush x:Key="GlassMidBrush" Color="#FF2B2B2B" />
             <SolidColorBrush x:Key="GlassEdgeBrush" Color="#2EFFFFFF" />
@@ -133,6 +139,8 @@
     <SolidColorBrush x:Key="ShadeOverlayBrush" Color="#66000000" />
     <SolidColorBrush x:Key="SelectionStrokeBrush" Color="#FF60CDFF" />
     <SolidColorBrush x:Key="SelectionFillBrush" Color="#3360CDFF" />
+    <SolidColorBrush x:Key="AreaSizeBadgeSurfaceBrush" Color="#E60B0C12" />
+    <SolidColorBrush x:Key="AreaSizeBadgeEdgeBrush" Color="#3DFFFFFF" />
     <SolidColorBrush x:Key="GlassDeepBrush" Color="#FF202020" />
     <SolidColorBrush x:Key="GlassMidBrush" Color="#FF2B2B2B" />
     <SolidColorBrush x:Key="GlassEdgeBrush" Color="#40FFFFFF" />
@@ -155,6 +163,21 @@
     <CornerRadius x:Key="RadiusMedium">8</CornerRadius>
     <CornerRadius x:Key="RadiusLarge">12</CornerRadius>
     <CornerRadius x:Key="RadiusPill">999</CornerRadius>
+
+    <Style x:Key="AreaSizeBadgeHostStyle" TargetType="Border">
+        <Setter Property="Padding" Value="7,3" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+        <Setter Property="Background" Value="{ThemeResource AreaSizeBadgeSurfaceBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+
+    <Style x:Key="AreaSizeBadgeTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource InkPrimaryBrush}" />
+    </Style>
 
     <Style x:Key="HubSearchBoxStyle" TargetType="AutoSuggestBox">
         <Setter Property="MinWidth" Value="260" />

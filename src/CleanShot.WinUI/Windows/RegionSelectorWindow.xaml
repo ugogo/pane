@@ -47,18 +47,10 @@
             <Border
                 x:Name="SizeLabelHost"
                 Visibility="Collapsed"
-                Padding="10,5"
-                CornerRadius="{StaticResource RadiusPill}"
-                Background="{StaticResource GlassMidBrush}"
-                BorderBrush="{StaticResource GlassEdgeBrush}"
-                BorderThickness="1"
-                IsHitTestVisible="False">
+                Style="{StaticResource AreaSizeBadgeHostStyle}">
                 <TextBlock
                     x:Name="SizeLabel"
-                    FontFamily="{StaticResource BodyFont}"
-                    FontSize="12"
-                    FontWeight="SemiBold"
-                    Foreground="{StaticResource InkPrimaryBrush}" />
+                    Style="{StaticResource AreaSizeBadgeTextStyle}" />
             </Border>
 
             <Border

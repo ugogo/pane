@@ -652,7 +652,7 @@ public sealed partial class RegionSelectorWindow : WindowEx
 
         SizeLabel.Text = $"{ToScreenSize(selection.Width, horizontal: true)} × {ToScreenSize(selection.Height, horizontal: false)}";
         Canvas.SetLeft(SizeLabelHost, selection.X);
-        Canvas.SetTop(SizeLabelHost, Math.Max(0, selection.Y - 34));
+        Canvas.SetTop(SizeLabelHost, Math.Max(0, selection.Y - 28));
 
         UpdateShades(selection);
     }
