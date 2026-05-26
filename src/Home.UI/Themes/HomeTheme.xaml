@@ -14,23 +14,23 @@
             <SolidColorBrush x:Key="ControlFillPressedBrush" Color="#FFEDEDED" />
             <SolidColorBrush x:Key="ControlStrokeBrush" Color="#1F000000" />
             <SolidColorBrush x:Key="ControlStrokeStrongBrush" Color="#33000000" />
-            <SolidColorBrush x:Key="FocusStrokeBrush" Color="#FF005FB8" />
+            <SolidColorBrush x:Key="FocusStrokeBrush" Color="#FF6E8EFF" />
             <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FF1A1A1A" />
             <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B3000000" />
             <SolidColorBrush x:Key="TextTertiaryBrush" Color="#82000000" />
             <SolidColorBrush x:Key="TextOnAccentBrush" Color="#FFFFFFFF" />
-            <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#FF005FB8" />
-            <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#FF0078D4" />
-            <SolidColorBrush x:Key="AccentSoftBrush" Color="#1A0078D4" />
-            <SolidColorBrush x:Key="AccentGlowBrush" Color="#330078D4" />
-            <SolidColorBrush x:Key="DangerSoftBrush" Color="#1AC42B1C" />
-            <SolidColorBrush x:Key="DangerInkBrush" Color="#FFC42B1C" />
-            <SolidColorBrush x:Key="PillSurfaceBrush" Color="#FFFFFFFF" />
-            <SolidColorBrush x:Key="PillHoverBrush" Color="#FFF7F7F7" />
-            <SolidColorBrush x:Key="ShadeOverlayBrush" Color="#33000000" />
-            <SolidColorBrush x:Key="SelectionStrokeBrush" Color="#FF005FB8" />
-            <SolidColorBrush x:Key="SelectionFillBrush" Color="#330078D4" />
-            <SolidColorBrush x:Key="AreaSizeBadgeSurfaceBrush" Color="#E60B0C12" />
+            <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#FF6E8EFF" />
+            <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#FF8B7CFF" />
+            <SolidColorBrush x:Key="AccentSoftBrush" Color="#336E8EFF" />
+            <SolidColorBrush x:Key="AccentGlowBrush" Color="#336E8EFF" />
+            <SolidColorBrush x:Key="DangerSoftBrush" Color="#33FF5A5A" />
+            <SolidColorBrush x:Key="DangerInkBrush" Color="#FFFF8A8A" />
+            <SolidColorBrush x:Key="PillSurfaceBrush" Color="#F2FFFFFF" />
+            <SolidColorBrush x:Key="PillHoverBrush" Color="#FFFFFFFF" />
+            <SolidColorBrush x:Key="ShadeOverlayBrush" Color="#66080810" />
+            <SolidColorBrush x:Key="SelectionStrokeBrush" Color="#FF7B93FF" />
+            <SolidColorBrush x:Key="SelectionFillBrush" Color="#337B93FF" />
+            <SolidColorBrush x:Key="AreaSizeBadgeSurfaceBrush" Color="#CC0B0C12" />
             <SolidColorBrush x:Key="AreaSizeBadgeEdgeBrush" Color="#3DFFFFFF" />
             <SolidColorBrush x:Key="GlassDeepBrush" Color="#FFFFFFFF" />
             <SolidColorBrush x:Key="GlassMidBrush" Color="#FFF9F9F9" />
@@ -40,112 +40,112 @@
         </ResourceDictionary>
 
         <ResourceDictionary x:Key="Dark">
-            <SolidColorBrush x:Key="HubBackdropBrush" Color="#FF202020" />
-            <SolidColorBrush x:Key="SurfaceBaseBrush" Color="#FF202020" />
-            <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#FF2B2B2B" />
-            <SolidColorBrush x:Key="SurfaceCardBrush" Color="#FF2B2B2B" />
-            <SolidColorBrush x:Key="SurfaceCardHoverBrush" Color="#FF303030" />
-            <SolidColorBrush x:Key="ControlFillBrush" Color="#FF323232" />
-            <SolidColorBrush x:Key="ControlFillHoverBrush" Color="#FF3A3A3A" />
-            <SolidColorBrush x:Key="ControlFillPressedBrush" Color="#FF242424" />
-            <SolidColorBrush x:Key="ControlStrokeBrush" Color="#2EFFFFFF" />
-            <SolidColorBrush x:Key="ControlStrokeStrongBrush" Color="#40FFFFFF" />
-            <SolidColorBrush x:Key="FocusStrokeBrush" Color="#FF60CDFF" />
-            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFF3F3F3" />
-            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#C8FFFFFF" />
-            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#8CFFFFFF" />
-            <SolidColorBrush x:Key="TextOnAccentBrush" Color="#FF000000" />
-            <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#FF60CDFF" />
-            <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#FF8AD8FF" />
-            <SolidColorBrush x:Key="AccentSoftBrush" Color="#2460CDFF" />
-            <SolidColorBrush x:Key="AccentGlowBrush" Color="#3360CDFF" />
-            <SolidColorBrush x:Key="DangerSoftBrush" Color="#33FF99A4" />
-            <SolidColorBrush x:Key="DangerInkBrush" Color="#FFFFB3BB" />
+            <SolidColorBrush x:Key="HubBackdropBrush" Color="#FF0C0C12" />
+            <SolidColorBrush x:Key="SurfaceBaseBrush" Color="#FF0C0C12" />
+            <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#FF14141C" />
+            <SolidColorBrush x:Key="SurfaceCardBrush" Color="#FF14141C" />
+            <SolidColorBrush x:Key="SurfaceCardHoverBrush" Color="#FF181820" />
+            <SolidColorBrush x:Key="ControlFillBrush" Color="#FF1A1A24" />
+            <SolidColorBrush x:Key="ControlFillHoverBrush" Color="#FF222230" />
+            <SolidColorBrush x:Key="ControlFillPressedBrush" Color="#FF14141C" />
+            <SolidColorBrush x:Key="ControlStrokeBrush" Color="#22FFFFFF" />
+            <SolidColorBrush x:Key="ControlStrokeStrongBrush" Color="#55FFFFFF" />
+            <SolidColorBrush x:Key="FocusStrokeBrush" Color="#FF6E8EFF" />
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFF5F6FA" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B3C4C8D4" />
+            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#82C4C8D4" />
+            <SolidColorBrush x:Key="TextOnAccentBrush" Color="#FF0C0C12" />
+            <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#FF6E8EFF" />
+            <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#FF8B7CFF" />
+            <SolidColorBrush x:Key="AccentSoftBrush" Color="#336E8EFF" />
+            <SolidColorBrush x:Key="AccentGlowBrush" Color="#336E8EFF" />
+            <SolidColorBrush x:Key="DangerSoftBrush" Color="#33FF5A5A" />
+            <SolidColorBrush x:Key="DangerInkBrush" Color="#FFFF8A8A" />
             <SolidColorBrush x:Key="PillSurfaceBrush" Color="#F2FFFFFF" />
             <SolidColorBrush x:Key="PillHoverBrush" Color="#FFFFFFFF" />
-            <SolidColorBrush x:Key="ShadeOverlayBrush" Color="#66000000" />
-            <SolidColorBrush x:Key="SelectionStrokeBrush" Color="#FF60CDFF" />
-            <SolidColorBrush x:Key="SelectionFillBrush" Color="#3360CDFF" />
-            <SolidColorBrush x:Key="AreaSizeBadgeSurfaceBrush" Color="#E60B0C12" />
+            <SolidColorBrush x:Key="ShadeOverlayBrush" Color="#66080810" />
+            <SolidColorBrush x:Key="SelectionStrokeBrush" Color="#FF7B93FF" />
+            <SolidColorBrush x:Key="SelectionFillBrush" Color="#337B93FF" />
+            <SolidColorBrush x:Key="AreaSizeBadgeSurfaceBrush" Color="#CC0B0C12" />
             <SolidColorBrush x:Key="AreaSizeBadgeEdgeBrush" Color="#3DFFFFFF" />
-            <SolidColorBrush x:Key="GlassDeepBrush" Color="#FF202020" />
-            <SolidColorBrush x:Key="GlassMidBrush" Color="#FF2B2B2B" />
-            <SolidColorBrush x:Key="GlassEdgeBrush" Color="#2EFFFFFF" />
-            <SolidColorBrush x:Key="InkPrimaryBrush" Color="#FFF3F3F3" />
-            <SolidColorBrush x:Key="InkMutedBrush" Color="#A6FFFFFF" />
+            <SolidColorBrush x:Key="GlassDeepBrush" Color="#E6181820" />
+            <SolidColorBrush x:Key="GlassMidBrush" Color="#CC222230" />
+            <SolidColorBrush x:Key="GlassEdgeBrush" Color="#55FFFFFF" />
+            <SolidColorBrush x:Key="InkPrimaryBrush" Color="#FFF5F6FA" />
+            <SolidColorBrush x:Key="InkMutedBrush" Color="#B3C4C8D4" />
         </ResourceDictionary>
 
         <ResourceDictionary x:Key="Default">
-            <SolidColorBrush x:Key="HubBackdropBrush" Color="#FF202020" />
-            <SolidColorBrush x:Key="SurfaceBaseBrush" Color="#FF202020" />
-            <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#FF2B2B2B" />
-            <SolidColorBrush x:Key="SurfaceCardBrush" Color="#FF2B2B2B" />
-            <SolidColorBrush x:Key="SurfaceCardHoverBrush" Color="#FF303030" />
-            <SolidColorBrush x:Key="ControlFillBrush" Color="#FF323232" />
-            <SolidColorBrush x:Key="ControlFillHoverBrush" Color="#FF3A3A3A" />
-            <SolidColorBrush x:Key="ControlFillPressedBrush" Color="#FF242424" />
-            <SolidColorBrush x:Key="ControlStrokeBrush" Color="#2EFFFFFF" />
-            <SolidColorBrush x:Key="ControlStrokeStrongBrush" Color="#40FFFFFF" />
-            <SolidColorBrush x:Key="FocusStrokeBrush" Color="#FF60CDFF" />
-            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFF3F3F3" />
-            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#C8FFFFFF" />
-            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#8CFFFFFF" />
-            <SolidColorBrush x:Key="TextOnAccentBrush" Color="#FF000000" />
-            <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#FF60CDFF" />
-            <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#FF8AD8FF" />
-            <SolidColorBrush x:Key="AccentSoftBrush" Color="#2460CDFF" />
-            <SolidColorBrush x:Key="AccentGlowBrush" Color="#3360CDFF" />
-            <SolidColorBrush x:Key="DangerSoftBrush" Color="#33FF99A4" />
-            <SolidColorBrush x:Key="DangerInkBrush" Color="#FFFFB3BB" />
+            <SolidColorBrush x:Key="HubBackdropBrush" Color="#FF0C0C12" />
+            <SolidColorBrush x:Key="SurfaceBaseBrush" Color="#FF0C0C12" />
+            <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#FF14141C" />
+            <SolidColorBrush x:Key="SurfaceCardBrush" Color="#FF14141C" />
+            <SolidColorBrush x:Key="SurfaceCardHoverBrush" Color="#FF181820" />
+            <SolidColorBrush x:Key="ControlFillBrush" Color="#FF1A1A24" />
+            <SolidColorBrush x:Key="ControlFillHoverBrush" Color="#FF222230" />
+            <SolidColorBrush x:Key="ControlFillPressedBrush" Color="#FF14141C" />
+            <SolidColorBrush x:Key="ControlStrokeBrush" Color="#22FFFFFF" />
+            <SolidColorBrush x:Key="ControlStrokeStrongBrush" Color="#55FFFFFF" />
+            <SolidColorBrush x:Key="FocusStrokeBrush" Color="#FF6E8EFF" />
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFF5F6FA" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B3C4C8D4" />
+            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#82C4C8D4" />
+            <SolidColorBrush x:Key="TextOnAccentBrush" Color="#FF0C0C12" />
+            <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#FF6E8EFF" />
+            <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#FF8B7CFF" />
+            <SolidColorBrush x:Key="AccentSoftBrush" Color="#336E8EFF" />
+            <SolidColorBrush x:Key="AccentGlowBrush" Color="#336E8EFF" />
+            <SolidColorBrush x:Key="DangerSoftBrush" Color="#33FF5A5A" />
+            <SolidColorBrush x:Key="DangerInkBrush" Color="#FFFF8A8A" />
             <SolidColorBrush x:Key="PillSurfaceBrush" Color="#F2FFFFFF" />
             <SolidColorBrush x:Key="PillHoverBrush" Color="#FFFFFFFF" />
-            <SolidColorBrush x:Key="ShadeOverlayBrush" Color="#66000000" />
-            <SolidColorBrush x:Key="SelectionStrokeBrush" Color="#FF60CDFF" />
-            <SolidColorBrush x:Key="SelectionFillBrush" Color="#3360CDFF" />
-            <SolidColorBrush x:Key="AreaSizeBadgeSurfaceBrush" Color="#E60B0C12" />
+            <SolidColorBrush x:Key="ShadeOverlayBrush" Color="#66080810" />
+            <SolidColorBrush x:Key="SelectionStrokeBrush" Color="#FF7B93FF" />
+            <SolidColorBrush x:Key="SelectionFillBrush" Color="#337B93FF" />
+            <SolidColorBrush x:Key="AreaSizeBadgeSurfaceBrush" Color="#CC0B0C12" />
             <SolidColorBrush x:Key="AreaSizeBadgeEdgeBrush" Color="#3DFFFFFF" />
-            <SolidColorBrush x:Key="GlassDeepBrush" Color="#FF202020" />
-            <SolidColorBrush x:Key="GlassMidBrush" Color="#FF2B2B2B" />
-            <SolidColorBrush x:Key="GlassEdgeBrush" Color="#2EFFFFFF" />
-            <SolidColorBrush x:Key="InkPrimaryBrush" Color="#FFF3F3F3" />
-            <SolidColorBrush x:Key="InkMutedBrush" Color="#A6FFFFFF" />
+            <SolidColorBrush x:Key="GlassDeepBrush" Color="#E6181820" />
+            <SolidColorBrush x:Key="GlassMidBrush" Color="#CC222230" />
+            <SolidColorBrush x:Key="GlassEdgeBrush" Color="#55FFFFFF" />
+            <SolidColorBrush x:Key="InkPrimaryBrush" Color="#FFF5F6FA" />
+            <SolidColorBrush x:Key="InkMutedBrush" Color="#B3C4C8D4" />
         </ResourceDictionary>
     </ResourceDictionary.ThemeDictionaries>
 
     <!-- Static fallbacks keep overlay windows and code-behind lookups resolving outside theme-aware bindings. -->
-    <SolidColorBrush x:Key="HubBackdropBrush" Color="#FF202020" />
-    <SolidColorBrush x:Key="SurfaceBaseBrush" Color="#FF202020" />
-    <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#FF2B2B2B" />
-    <SolidColorBrush x:Key="SurfaceCardBrush" Color="#FF2B2B2B" />
-    <SolidColorBrush x:Key="SurfaceCardHoverBrush" Color="#FF303030" />
-    <SolidColorBrush x:Key="ControlFillBrush" Color="#FF323232" />
-    <SolidColorBrush x:Key="ControlFillHoverBrush" Color="#FF3A3A3A" />
-    <SolidColorBrush x:Key="ControlFillPressedBrush" Color="#FF242424" />
-    <SolidColorBrush x:Key="ControlStrokeBrush" Color="#2EFFFFFF" />
-    <SolidColorBrush x:Key="ControlStrokeStrongBrush" Color="#40FFFFFF" />
-    <SolidColorBrush x:Key="FocusStrokeBrush" Color="#FF60CDFF" />
-    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFF3F3F3" />
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#C8FFFFFF" />
-    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#8CFFFFFF" />
-    <SolidColorBrush x:Key="TextOnAccentBrush" Color="#FF000000" />
-    <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#FF60CDFF" />
-    <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#FF8AD8FF" />
-    <SolidColorBrush x:Key="AccentSoftBrush" Color="#3360CDFF" />
-    <SolidColorBrush x:Key="AccentGlowBrush" Color="#3360CDFF" />
-    <SolidColorBrush x:Key="DangerSoftBrush" Color="#33FF99A4" />
-    <SolidColorBrush x:Key="DangerInkBrush" Color="#FFFFB3BB" />
+    <SolidColorBrush x:Key="HubBackdropBrush" Color="#FF0C0C12" />
+    <SolidColorBrush x:Key="SurfaceBaseBrush" Color="#FF0C0C12" />
+    <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#FF14141C" />
+    <SolidColorBrush x:Key="SurfaceCardBrush" Color="#FF14141C" />
+    <SolidColorBrush x:Key="SurfaceCardHoverBrush" Color="#FF181820" />
+    <SolidColorBrush x:Key="ControlFillBrush" Color="#FF1A1A24" />
+    <SolidColorBrush x:Key="ControlFillHoverBrush" Color="#FF222230" />
+    <SolidColorBrush x:Key="ControlFillPressedBrush" Color="#FF14141C" />
+    <SolidColorBrush x:Key="ControlStrokeBrush" Color="#22FFFFFF" />
+    <SolidColorBrush x:Key="ControlStrokeStrongBrush" Color="#55FFFFFF" />
+    <SolidColorBrush x:Key="FocusStrokeBrush" Color="#FF6E8EFF" />
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFF5F6FA" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B3C4C8D4" />
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#82C4C8D4" />
+    <SolidColorBrush x:Key="TextOnAccentBrush" Color="#FF0C0C12" />
+    <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#FF6E8EFF" />
+    <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#FF8B7CFF" />
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#336E8EFF" />
+    <SolidColorBrush x:Key="AccentGlowBrush" Color="#336E8EFF" />
+    <SolidColorBrush x:Key="DangerSoftBrush" Color="#33FF5A5A" />
+    <SolidColorBrush x:Key="DangerInkBrush" Color="#FFFF8A8A" />
     <SolidColorBrush x:Key="PillSurfaceBrush" Color="#F2FFFFFF" />
     <SolidColorBrush x:Key="PillHoverBrush" Color="#FFFFFFFF" />
-    <SolidColorBrush x:Key="ShadeOverlayBrush" Color="#66000000" />
-    <SolidColorBrush x:Key="SelectionStrokeBrush" Color="#FF60CDFF" />
-    <SolidColorBrush x:Key="SelectionFillBrush" Color="#3360CDFF" />
-    <SolidColorBrush x:Key="AreaSizeBadgeSurfaceBrush" Color="#E60B0C12" />
+    <SolidColorBrush x:Key="ShadeOverlayBrush" Color="#66080810" />
+    <SolidColorBrush x:Key="SelectionStrokeBrush" Color="#FF7B93FF" />
+    <SolidColorBrush x:Key="SelectionFillBrush" Color="#337B93FF" />
+    <SolidColorBrush x:Key="AreaSizeBadgeSurfaceBrush" Color="#CC0B0C12" />
     <SolidColorBrush x:Key="AreaSizeBadgeEdgeBrush" Color="#3DFFFFFF" />
-    <SolidColorBrush x:Key="GlassDeepBrush" Color="#FF202020" />
-    <SolidColorBrush x:Key="GlassMidBrush" Color="#FF2B2B2B" />
-    <SolidColorBrush x:Key="GlassEdgeBrush" Color="#40FFFFFF" />
-    <SolidColorBrush x:Key="InkPrimaryBrush" Color="#FFF3F3F3" />
-    <SolidColorBrush x:Key="InkMutedBrush" Color="#A6FFFFFF" />
+    <SolidColorBrush x:Key="GlassDeepBrush" Color="#E6181820" />
+    <SolidColorBrush x:Key="GlassMidBrush" Color="#CC222230" />
+    <SolidColorBrush x:Key="GlassEdgeBrush" Color="#55FFFFFF" />
+    <SolidColorBrush x:Key="InkPrimaryBrush" Color="#FFF5F6FA" />
+    <SolidColorBrush x:Key="InkMutedBrush" Color="#B3C4C8D4" />
 
     <FontFamily x:Key="DisplayFont">Segoe UI Variable Display</FontFamily>
     <FontFamily x:Key="BodyFont">Segoe UI Variable Text</FontFamily>
@@ -160,14 +160,14 @@
     <x:Double x:Key="PageContentMaxWidth">760</x:Double>
     <x:Double x:Key="PageWideContentMaxWidth">920</x:Double>
     <CornerRadius x:Key="RadiusSmall">4</CornerRadius>
-    <CornerRadius x:Key="RadiusMedium">8</CornerRadius>
-    <CornerRadius x:Key="RadiusLarge">12</CornerRadius>
+    <CornerRadius x:Key="RadiusMedium">12</CornerRadius>
+    <CornerRadius x:Key="RadiusLarge">18</CornerRadius>
     <CornerRadius x:Key="RadiusPill">999</CornerRadius>
 
     <Style x:Key="AreaSizeBadgeHostStyle" TargetType="Border">
         <Setter Property="Padding" Value="7,3" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
-        <Setter Property="Background" Value="{ThemeResource AreaSizeBadgeSurfaceBrush}" />
+        <Setter Property="Background" Value="{StaticResource AreaSizeBadgeSurfaceBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="IsHitTestVisible" Value="False" />
     </Style>
@@ -325,77 +325,201 @@
     </Style>
 
     <Style x:Key="DebugTileButtonStyle" TargetType="Button">
-        <Setter Property="Background" Value="{ThemeResource ControlFillBrush}" />
-        <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}" />
-        <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+        <Setter Property="Background" Value="#1AFFFFFF" />
+        <Setter Property="Foreground" Value="{StaticResource InkPrimaryBrush}" />
         <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
-        <Setter Property="FontSize" Value="{StaticResource FontSizeBodySmall}" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Padding" Value="12,7" />
-        <Setter Property="MinHeight" Value="32" />
-        <Setter Property="HorizontalAlignment" Value="Left" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="UseSystemFocusVisuals" Value="True" />
+        <Setter Property="Padding" Value="14,12" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="#22FFFFFF" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="UseSystemFocusVisuals" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid>
+                        <Border
+                            x:Name="Glow"
+                            CornerRadius="{StaticResource RadiusMedium}"
+                            Background="{StaticResource AccentSoftBrush}"
+                            Opacity="0" />
+                        <Border
+                            x:Name="Surface"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{StaticResource RadiusMedium}">
+                            <ContentPresenter
+                                Padding="{TemplateBinding Padding}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="Center"
+                                Content="{TemplateBinding Content}" />
+                        </Border>
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Normal" />
+                                <VisualState x:Name="PointerOver">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="Glow"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="1"
+                                            Duration="0:0:0.15" />
+                                        <ColorAnimation
+                                            Storyboard.TargetName="Surface"
+                                            Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                            To="#28FFFFFF"
+                                            Duration="0:0:0.15" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="Pressed">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="Surface"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="0.82"
+                                            Duration="0:0:0.08" />
+                                    </Storyboard>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="DebugTilePrimaryStyle" TargetType="Button" BasedOn="{StaticResource DebugTileButtonStyle}">
-        <Setter Property="Background" Value="{ThemeResource AccentPrimaryBrush}" />
-        <Setter Property="Foreground" Value="{ThemeResource TextOnAccentBrush}" />
-        <Setter Property="BorderBrush" Value="{ThemeResource AccentPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="#556E8EFF" />
+        <Setter Property="Background" Value="#1F6E8EFF" />
     </Style>
 
     <Style x:Key="DebugTileMutedStyle" TargetType="Button" BasedOn="{StaticResource DebugTileButtonStyle}">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{ThemeResource TextSecondaryBrush}" />
-        <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeBrush}" />
+        <Setter Property="BorderBrush" Value="#18FFFFFF" />
+        <Setter Property="Background" Value="#0FFFFFFF" />
+        <Setter Property="Foreground" Value="{StaticResource InkMutedBrush}" />
     </Style>
 
     <Style x:Key="HubPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource DebugTilePrimaryStyle}" />
     <Style x:Key="HubSecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource DebugTileButtonStyle}" />
     <Style x:Key="HubGhostButtonStyle" TargetType="Button" BasedOn="{StaticResource DebugTileMutedStyle}" />
 
-    <Style x:Key="IconCircleButtonStyle" TargetType="Button" BasedOn="{StaticResource DebugTileButtonStyle}">
-        <Setter Property="Width" Value="32" />
-        <Setter Property="Height" Value="32" />
+    <Style x:Key="IconCircleButtonStyle" TargetType="Button">
+        <Setter Property="Width" Value="34" />
+        <Setter Property="Height" Value="34" />
         <Setter Property="Padding" Value="0" />
-        <Setter Property="CornerRadius" Value="16" />
-        <Setter Property="FontSize" Value="13" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="Background" Value="#CCFFFFFF" />
+        <Setter Property="Foreground" Value="#FF1A1A24" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="17" />
+        <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="UseSystemFocusVisuals" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border
+                        x:Name="Surface"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="17"
+                        BorderBrush="#44FFFFFF"
+                        BorderThickness="1">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="DismissIconButtonStyle" TargetType="Button" BasedOn="{StaticResource IconCircleButtonStyle}">
-        <Setter Property="Background" Value="{ThemeResource PillSurfaceBrush}" />
-        <Setter Property="Foreground" Value="#FF1A1A1A" />
-        <Setter Property="BorderBrush" Value="#33000000" />
+        <Setter Property="Background" Value="#D9FFFFFF" />
+        <Setter Property="Foreground" Value="#FF2A2A34" />
     </Style>
 
-    <Style x:Key="PremiumPillButtonStyle" TargetType="Button" BasedOn="{StaticResource DebugTilePrimaryStyle}">
+    <Style x:Key="PremiumPillButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource PillSurfaceBrush}" />
+        <Setter Property="Foreground" Value="#FF1A1A24" />
+        <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="Padding" Value="18,8" />
         <Setter Property="MinWidth" Value="88" />
-        <Setter Property="MaxWidth" Value="140" />
+        <Setter Property="MaxWidth" Value="120" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}" />
         <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="UseSystemFocusVisuals" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid>
+                        <Border
+                            x:Name="Shadow"
+                            Background="#22000000"
+                            CornerRadius="{StaticResource RadiusPill}"
+                            Margin="0,3,0,0"
+                            Opacity="0.45" />
+                        <Border
+                            x:Name="Surface"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="{StaticResource RadiusPill}"
+                            BorderBrush="#33FFFFFF"
+                            BorderThickness="1">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Content="{TemplateBinding Content}" />
+                        </Border>
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Normal" />
+                                <VisualState x:Name="PointerOver">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="Surface"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="1"
+                                            Duration="0:0:0.12" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="Pressed">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="Surface"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="0.88"
+                                            Duration="0:0:0.08" />
+                                    </Storyboard>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="OverlayTileButtonStyle" TargetType="Button" BasedOn="{StaticResource DebugTileButtonStyle}">
         <Setter Property="FontSize" Value="11" />
         <Setter Property="Padding" Value="10,7" />
-        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="MinHeight" Value="34" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
     </Style>
 
     <Style x:Key="OverlayTilePrimaryStyle" TargetType="Button" BasedOn="{StaticResource OverlayTileButtonStyle}">
-        <Setter Property="Background" Value="{ThemeResource AccentPrimaryBrush}" />
-        <Setter Property="Foreground" Value="{ThemeResource TextOnAccentBrush}" />
-        <Setter Property="BorderBrush" Value="{ThemeResource AccentPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="#556E8EFF" />
+        <Setter Property="Background" Value="#1F6E8EFF" />
     </Style>
 
     <Style x:Key="OverlayDismissButtonStyle" TargetType="Button" BasedOn="{StaticResource DismissIconButtonStyle}">
         <Setter Property="Width" Value="28" />
         <Setter Property="Height" Value="28" />
         <Setter Property="FontSize" Value="10" />
-        <Setter Property="CornerRadius" Value="14" />
     </Style>
 </ResourceDictionary>
