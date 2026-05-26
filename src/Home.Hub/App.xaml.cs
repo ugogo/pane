@@ -52,7 +52,7 @@ public partial class App : Application
             : null;
 
         var dispatcher = DispatcherQueue.GetForCurrentThread();
-        var settings = HubSettingsMigration.ApplyFirstRunImport(HubSettingsStore.Load());
+        var settings = HubSettingsStore.Load();
         if (StandaloneModuleId is not null)
         {
             ApplyStandaloneModuleSettings(settings, StandaloneModuleId);
@@ -80,7 +80,14 @@ public partial class App : Application
 
         singleInstanceGate.ListenForActivationRequests(() =>
         {
-            dispatcher.TryEnqueue(() => _mainWindow?.ShowFromTray());
+            dispatcher.TryEnqueue(async () =>
+            {
+                _mainWindow?.ShowFromTray();
+                if (_mainWindow is not null)
+                {
+                    await _mainWindow.RestoreEnabledModulesAsync();
+                }
+            });
         });
 
         _mainWindow = new MainWindow();

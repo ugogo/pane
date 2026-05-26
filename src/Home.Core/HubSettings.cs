@@ -8,8 +8,6 @@ public sealed class HubSettings
 
     public bool StartMinimizedToTray { get; set; }
 
-    public bool LegacyImportCompleted { get; set; }
-
     public string LastOpenedPage { get; set; } = "home";
 
     public Dictionary<string, bool> EnabledModules { get; set; } = new(StringComparer.OrdinalIgnoreCase)
@@ -35,43 +33,23 @@ public static class HubSettingsStore
         {
             if (!File.Exists(SettingsPath))
             {
-                return NormalizeMergedModules(new HubSettings());
+                return new HubSettings();
             }
 
             var json = File.ReadAllText(SettingsPath);
-            return NormalizeMergedModules(JsonSerializer.Deserialize<HubSettings>(json) ?? new HubSettings());
+            return JsonSerializer.Deserialize<HubSettings>(json) ?? new HubSettings();
         }
         catch
         {
-            return NormalizeMergedModules(new HubSettings());
+            return new HubSettings();
         }
     }
 
     public static void Save(HubSettings settings)
     {
-        NormalizeMergedModules(settings);
         var directory = Path.GetDirectoryName(SettingsPath)!;
         Directory.CreateDirectory(directory);
         var json = JsonSerializer.Serialize(settings, JsonOptions);
         File.WriteAllText(SettingsPath, json);
-    }
-
-    private const string LegacyDxLightModuleId = "dx-light";
-
-    private static HubSettings NormalizeMergedModules(HubSettings settings)
-    {
-        if (settings.EnabledModules.Remove(LegacyDxLightModuleId, out var dxEnabled) && dxEnabled)
-        {
-            settings.EnabledModules[HomeServiceCollectionExtensions.LightControlsModuleId] = true;
-        }
-
-        settings.EnabledModules.Remove(LegacyDxLightModuleId, out _);
-
-        if (string.Equals(settings.LastOpenedPage, LegacyDxLightModuleId, StringComparison.OrdinalIgnoreCase))
-        {
-            settings.LastOpenedPage = HomeServiceCollectionExtensions.LightControlsModuleId;
-        }
-
-        return settings;
     }
 }

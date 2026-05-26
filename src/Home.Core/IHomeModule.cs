@@ -17,4 +17,6 @@ public interface IHomeModule
     Task EnableAsync(CancellationToken cancellationToken = default);
 
     Task DisableAsync(CancellationToken cancellationToken = default);
+
+    Task RestoreAsync(CancellationToken cancellationToken = default);
 }

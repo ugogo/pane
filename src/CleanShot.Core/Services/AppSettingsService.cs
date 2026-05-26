@@ -10,14 +10,7 @@ internal static class AppSettingsService
 
     private static readonly string SettingsPath = Path.Combine(SettingsFolder, "cleanshot-settings.json");
 
-    private static readonly string LegacySettingsPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "CleanShot W",
-        "settings.json");
-
     internal static string? TestSettingsPathOverride { get; set; }
-
-    internal static string? TestLegacySettingsPathOverride { get; set; }
 
     public static string DefaultSaveFolder { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
@@ -46,17 +39,14 @@ internal static class AppSettingsService
         _saveFolder = DefaultSaveFolder;
         _launchAtStartup = true;
 
-        var settingsPath = ResolveReadPath();
-        if (!File.Exists(settingsPath))
+        if (!File.Exists(ResolveSettingsPath()))
         {
             return;
         }
 
-        var migratedFromLegacy = IsLegacyMigrationRead(settingsPath);
-
         try
         {
-            var json = File.ReadAllText(settingsPath);
+            var json = File.ReadAllText(ResolveSettingsPath());
             var settings = JsonSerializer.Deserialize<SettingsDocument>(json);
             if (settings is null)
             {
@@ -95,11 +85,6 @@ internal static class AppSettingsService
 
             AppLog.Info(
                 $"Loaded settings: saveFolder={_saveFolder}, launchAtStartup={_launchAtStartup}, screen={HotkeyConfiguration.FullScreenDisplay}, region={HotkeyConfiguration.RegionDisplay}");
-
-            if (migratedFromLegacy)
-            {
-                SaveSettings();
-            }
         }
         catch (Exception ex)
         {
@@ -151,47 +136,10 @@ internal static class AppSettingsService
     internal static void ResetForTests()
     {
         TestSettingsPathOverride = null;
-        TestLegacySettingsPathOverride = null;
         _saveFolder = DefaultSaveFolder;
         _launchAtStartup = true;
         HotkeyConfiguration.ResetToDefaults();
     }
-
-    private static string ResolveReadPath()
-    {
-        if (TestSettingsPathOverride is not null)
-        {
-            if (File.Exists(TestSettingsPathOverride))
-            {
-                return TestSettingsPathOverride;
-            }
-
-            if (TestLegacySettingsPathOverride is not null && File.Exists(TestLegacySettingsPathOverride))
-            {
-                return TestLegacySettingsPathOverride;
-            }
-
-            return TestSettingsPathOverride;
-        }
-
-        if (File.Exists(SettingsPath))
-        {
-            return SettingsPath;
-        }
-
-        if (File.Exists(LegacySettingsPath))
-        {
-            return LegacySettingsPath;
-        }
-
-        return SettingsPath;
-    }
-
-    private static bool IsLegacyMigrationRead(string settingsPath) =>
-        TestSettingsPathOverride is not null
-            ? TestLegacySettingsPathOverride is not null
-                && string.Equals(settingsPath, TestLegacySettingsPathOverride, StringComparison.OrdinalIgnoreCase)
-            : string.Equals(settingsPath, LegacySettingsPath, StringComparison.OrdinalIgnoreCase);
 
     private static string ResolveSettingsPath() => TestSettingsPathOverride ?? SettingsPath;
 

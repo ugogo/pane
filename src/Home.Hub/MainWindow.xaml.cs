@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using H.NotifyIcon;
 using Home.Core;
 using Home.Hub.Modules;
+using Home.Windows;
 using Home.Hub.Navigation;
 using Home.Hub.Tray;
 using Home.Hub.Views;
@@ -23,6 +24,7 @@ public sealed partial class MainWindow : WindowEx
 
     private bool _trayInitialized;
     private bool _forceClose;
+    private bool _isRestoringModules;
     private IntPtr _originalWndProc;
     private WndProcDelegate? _wndProcDelegate;
     private TrayMenuController? _trayMenu;
@@ -104,6 +106,29 @@ public sealed partial class MainWindow : WindowEx
     public void HideToTray() => AppWindow.Hide();
 
     public void RefreshTrayMenu() => _trayMenu?.Refresh();
+
+    public async Task RestoreEnabledModulesAsync()
+    {
+        if (_isRestoringModules)
+        {
+            return;
+        }
+
+        _isRestoringModules = true;
+        try
+        {
+            var settings = HubSettingsStore.Load();
+            var registry = App.Services.GetRequiredService<ModuleRegistry>();
+            await registry.RestoreEnabledModulesAsync(settings);
+            App.MainViewModel.SyncModuleStates();
+            App.MainViewModel.RefreshHotkeyConflicts();
+            RefreshTrayMenu();
+        }
+        finally
+        {
+            _isRestoringModules = false;
+        }
+    }
 
     public void NavigateToTag(string tag)
     {
@@ -359,13 +384,7 @@ public sealed partial class MainWindow : WindowEx
         var cleanShotModule = App.Services.GetRequiredService<CleanShotModule>();
         cleanShotModule.AttachMessageWindow(hwnd);
 
-        if (cleanShotModule.IsEnabled)
-        {
-            await cleanShotModule.DisableAsync();
-            await cleanShotModule.EnableAsync();
-        }
-
-        RefreshTrayMenu();
+        await RestoreEnabledModulesAsync();
     }
 
     private void InstallHotkeyWindowHook(IntPtr hwnd)
@@ -376,6 +395,11 @@ public sealed partial class MainWindow : WindowEx
 
     private IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
+        if (msg == PowerBroadcast.WmPowerBroadcast && PowerBroadcast.IsResumeFromSleep(wParam))
+        {
+            _ = RestoreEnabledModulesAsync();
+        }
+
         var cleanShotModule = App.Services.GetRequiredService<CleanShotModule>();
         if (cleanShotModule.TryHandleHotkeyMessage((int)msg, wParam))
         {

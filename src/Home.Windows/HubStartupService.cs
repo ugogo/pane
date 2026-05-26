@@ -4,7 +4,6 @@ public static class HubStartupService
 {
     public const string RegistryValueName = "Home";
     public const string WakeTaskName = "Home Wake";
-    public const string LegacyCleanShotWakeTaskName = "CleanShot W Wake";
 
     internal static string? TestExecutablePathOverride { get; set; }
 
@@ -43,11 +42,6 @@ public static class HubStartupService
         TestApplyRunKeyOverride = null;
         TestApplyWakeTaskOverride = null;
         WakeFromSleepStartupTask.ResetForTests();
-    }
-
-    public static void RemoveLegacyWakeTasks()
-    {
-        WakeFromSleepStartupTask.Apply(LegacyCleanShotWakeTaskName, executablePath: string.Empty, enabled: false);
     }
 
     private static string ResolveExecutablePath()

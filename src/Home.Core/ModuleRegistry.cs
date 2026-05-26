@@ -29,4 +29,22 @@ public sealed class ModuleRegistry
             }
         }
     }
+
+    public async Task RestoreEnabledModulesAsync(HubSettings settings, CancellationToken cancellationToken = default)
+    {
+        foreach (var module in _modules)
+        {
+            if (!settings.EnabledModules.GetValueOrDefault(module.Id, false))
+            {
+                continue;
+            }
+
+            if (!module.IsEnabled)
+            {
+                await module.EnableAsync(cancellationToken);
+            }
+
+            await module.RestoreAsync(cancellationToken);
+        }
+    }
 }

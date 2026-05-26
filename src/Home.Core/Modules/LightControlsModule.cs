@@ -64,6 +64,25 @@ public sealed class LightControlsModule : IHomeModule, IDisposable
         return Task.CompletedTask;
     }
 
+    public async Task RestoreAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsEnabled)
+        {
+            return;
+        }
+
+        await ReloadAsync(cancellationToken);
+
+        try
+        {
+            await InitializeUiAsync(cancellationToken: cancellationToken);
+        }
+        catch
+        {
+            // Device reconnection after wake/login is best-effort.
+        }
+    }
+
     public async Task ReloadAsync(CancellationToken cancellationToken = default)
     {
         if (!IsEnabled)

@@ -73,28 +73,6 @@ public sealed class AppSettingsServiceTests : TestBase
     }
 
     [Fact]
-    public void LoadSettings_migrates_legacy_settings_file()
-    {
-        var tempDir = CreateTempDirectory();
-        var saveFolder = Path.Combine(tempDir, "legacy-captures");
-        var legacyPath = Path.Combine(tempDir, "legacy", "settings.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
-        File.WriteAllText(legacyPath, JsonSerializer.Serialize(new { SaveFolder = saveFolder }));
-
-        var migratedPath = Path.Combine(tempDir, "Home", "cleanshot-settings.json");
-        AppSettingsService.TestLegacySettingsPathOverride = legacyPath;
-        AppSettingsService.TestSettingsPathOverride = migratedPath;
-
-        AppSettingsService.LoadSettings();
-
-        AppSettingsService.SaveFolder.Should().Be(saveFolder);
-        File.Exists(migratedPath).Should().BeTrue();
-
-        using var migrated = JsonDocument.Parse(File.ReadAllText(migratedPath));
-        migrated.RootElement.GetProperty("SaveFolder").GetString().Should().Be(saveFolder);
-    }
-
-    [Fact]
     public void SaveSettings_round_trips_values()
     {
         var tempDir = CreateTempDirectory();

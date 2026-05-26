@@ -88,6 +88,17 @@ public sealed class CleanShotModule : IHomeModule, IDisposable
         return Task.CompletedTask;
     }
 
+    public async Task RestoreAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsEnabled)
+        {
+            return;
+        }
+
+        await DisableAsync(cancellationToken);
+        await EnableAsync(cancellationToken);
+    }
+
     public bool TryHandleHotkeyMessage(int message, IntPtr wParam) =>
         _hotkeyService?.TryHandleMessage(message, wParam) ?? false;
 
