@@ -3,32 +3,18 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-        <StackPanel
-            Padding="28"
-            Spacing="20"
-            MaxWidth="{StaticResource PageContentMaxWidth}"
-            HorizontalAlignment="Center">
-            <StackPanel Spacing="6">
+    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+        <StackPanel Style="{StaticResource PageContentStackStyle}">
+            <StackPanel Style="{StaticResource PageHeadingBlockStyle}">
                 <TextBlock
                     Text="Light Controls"
-                    FontFamily="{StaticResource DisplayFont}"
-                    FontSize="28"
-                    FontWeight="SemiBold"
-                    Foreground="{StaticResource InkPrimaryBrush}" />
+                    Style="{StaticResource PageMainHeadingStyle}" />
                 <TextBlock
                     Text="Control RGB devices connected through OpenRGB and direct backends."
-                    FontFamily="{StaticResource BodyFont}"
-                    Foreground="{StaticResource InkMutedBrush}"
-                    TextWrapping="WrapWholeWords" />
+                    Style="{StaticResource PageSubtitleStyle}" />
             </StackPanel>
 
-            <Border
-                Background="{StaticResource SurfaceRaisedBrush}"
-                BorderBrush="{StaticResource GlassEdgeBrush}"
-                BorderThickness="1"
-                CornerRadius="12"
-                Padding="16">
+            <Border Style="{StaticResource SettingsCardStyle}">
                 <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -37,11 +23,8 @@
                     <TextBlock
                         x:Name="ConnectionStatusText"
                         VerticalAlignment="Center"
-                        FontFamily="{StaticResource BodyFont}"
-                        FontSize="13"
-                        Foreground="{StaticResource InkMutedBrush}"
-                        TextWrapping="WrapWholeWords" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        Style="{StaticResource StatusTextStyle}" />
+                    <StackPanel Grid.Column="1" Style="{StaticResource CommandRowStyle}">
                         <ProgressRing
                             x:Name="ConnectionProgress"
                             Width="16"
@@ -60,25 +43,15 @@
 
             <Border
                 x:Name="SetupPanelHost"
-                Background="{StaticResource SurfaceRaisedBrush}"
-                BorderBrush="{StaticResource GlassEdgeBrush}"
-                BorderThickness="1"
-                CornerRadius="12"
-                Padding="16">
+                Style="{StaticResource SettingsCardStyle}">
                 <StackPanel x:Name="SetupPanel" Spacing="12">
                     <TextBlock
                         Text="Setup required"
-                        FontFamily="{StaticResource BodyFont}"
-                        FontSize="11"
-                        FontWeight="SemiBold"
-                        Foreground="{StaticResource InkMutedBrush}" />
+                        Style="{StaticResource SectionHeaderStyle}" />
                     <TextBlock
                         x:Name="SetupText"
-                        FontFamily="{StaticResource BodyFont}"
-                        FontSize="12"
-                        Foreground="{StaticResource InkMutedBrush}"
-                        TextWrapping="WrapWholeWords" />
-                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        Style="{StaticResource SettingsDescriptionStyle}" />
+                    <StackPanel Style="{StaticResource CommandRowStyle}">
                         <Button
                             x:Name="SetupButton"
                             Style="{StaticResource DebugTilePrimaryStyle}"
@@ -95,12 +68,7 @@
             </Border>
 
             <StackPanel x:Name="MainPanel" Spacing="16" Visibility="Collapsed">
-                <Border
-                    Background="{StaticResource SurfaceRaisedBrush}"
-                    BorderBrush="{StaticResource GlassEdgeBrush}"
-                    BorderThickness="1"
-                    CornerRadius="12"
-                    Padding="16">
+                <Border Style="{StaticResource SettingsCardStyle}">
                     <StackPanel Spacing="14">
                         <Grid ColumnSpacing="12">
                             <Grid.ColumnDefinitions>
@@ -111,14 +79,15 @@
                             <TextBlock
                                 x:Name="SelectedDeviceText"
                                 VerticalAlignment="Center"
-                                FontFamily="{StaticResource BodyFont}"
-                                FontWeight="SemiBold"
-                                Foreground="{StaticResource InkPrimaryBrush}" />
+                                Style="{StaticResource SettingsLabelStyle}" />
                             <Button
                                 Grid.Column="1"
                                 Style="{StaticResource DebugTileButtonStyle}"
                                 Click="OnRefreshClicked">
-                                <TextBlock Text="Refresh" FontWeight="SemiBold" />
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <SymbolIcon Symbol="Refresh" />
+                                    <TextBlock Text="Refresh" FontWeight="SemiBold" />
+                                </StackPanel>
                             </Button>
                             <Button
                                 Grid.Column="2"
@@ -130,6 +99,8 @@
 
                         <ListView
                             x:Name="DevicesList"
+                            Style="{StaticResource HubListViewStyle}"
+                            ItemContainerStyle="{StaticResource HubListViewItemStyle}"
                             SelectionChanged="OnDeviceSelectionChanged"
                             IsItemClickEnabled="True">
                             <ListView.ItemTemplate>
@@ -137,13 +108,10 @@
                                     <StackPanel Spacing="4" Padding="4">
                                         <TextBlock
                                             Text="{Binding Name}"
-                                            FontWeight="SemiBold"
-                                            Foreground="{StaticResource InkPrimaryBrush}" />
+                                            Style="{StaticResource SettingsLabelStyle}" />
                                         <TextBlock
                                             Text="{Binding Details}"
-                                            Foreground="{StaticResource InkMutedBrush}"
-                                            FontSize="12"
-                                            TextWrapping="WrapWholeWords" />
+                                            Style="{StaticResource SettingsDescriptionStyle}" />
                                     </StackPanel>
                                 </DataTemplate>
                             </ListView.ItemTemplate>
@@ -152,30 +120,21 @@
                         <TextBlock
                             x:Name="DevicesEmptyText"
                             Text="No compatible devices were reported."
-                            FontFamily="{StaticResource BodyFont}"
-                            FontSize="12"
-                            Foreground="{StaticResource InkMutedBrush}"
+                            Style="{StaticResource StatusTextStyle}"
                             Visibility="Collapsed" />
                     </StackPanel>
                 </Border>
 
                 <Border
                     x:Name="DeviceControlsPanel"
-                    Background="{StaticResource SurfaceRaisedBrush}"
-                    BorderBrush="{StaticResource GlassEdgeBrush}"
-                    BorderThickness="1"
-                    CornerRadius="12"
-                    Padding="16"
+                    Style="{StaticResource SettingsCardStyle}"
                     Opacity="1">
                     <StackPanel Spacing="16">
                         <StackPanel x:Name="DeviceControlsContent" Spacing="16">
                             <StackPanel Spacing="8">
                                 <TextBlock
                                     Text="Color"
-                                    FontFamily="{StaticResource BodyFont}"
-                                    FontSize="11"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource InkMutedBrush}" />
+                                    Style="{StaticResource SectionHeaderStyle}" />
                                 <Grid ColumnSpacing="12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
@@ -186,13 +145,12 @@
                                         Width="44"
                                         Height="44"
                                         CornerRadius="8"
-                                        BorderBrush="{StaticResource GlassEdgeBrush}"
+                                        BorderBrush="{ThemeResource ControlStrokeStrongBrush}"
                                         BorderThickness="1" />
                                     <StackPanel Grid.Column="1" Spacing="8">
                                         <TextBlock
                                             x:Name="ColorText"
-                                            FontFamily="{StaticResource BodyFont}"
-                                            Foreground="{StaticResource InkPrimaryBrush}" />
+                                            Style="{StaticResource StatusTextStyle}" />
                                         <Button
                                             x:Name="ColorPickerButton"
                                             Style="{StaticResource DebugTileButtonStyle}"
@@ -206,10 +164,7 @@
                             <StackPanel Spacing="8">
                                 <TextBlock
                                     Text="Brightness"
-                                    FontFamily="{StaticResource BodyFont}"
-                                    FontSize="11"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource InkMutedBrush}" />
+                                    Style="{StaticResource SectionHeaderStyle}" />
                                 <Grid ColumnSpacing="12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -225,33 +180,25 @@
                                         x:Name="BrightnessText"
                                         Grid.Column="1"
                                         VerticalAlignment="Center"
-                                        Foreground="{StaticResource InkPrimaryBrush}" />
+                                        Foreground="{ThemeResource TextPrimaryBrush}" />
                                 </Grid>
                             </StackPanel>
 
                             <StackPanel Spacing="8">
                                 <TextBlock
                                     Text="Swatches"
-                                    FontFamily="{StaticResource BodyFont}"
-                                    FontSize="11"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource InkMutedBrush}" />
+                                    Style="{StaticResource SectionHeaderStyle}" />
                                 <StackPanel x:Name="BuiltInSwatchesPanel" Orientation="Horizontal" Spacing="8" />
                             </StackPanel>
 
                             <StackPanel Spacing="8">
                                 <TextBlock
                                     Text="Recent"
-                                    FontFamily="{StaticResource BodyFont}"
-                                    FontSize="11"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource InkMutedBrush}" />
+                                    Style="{StaticResource SectionHeaderStyle}" />
                                 <TextBlock
                                     x:Name="RecentEmptyText"
                                     Text="Pick a custom color to save it here."
-                                    FontFamily="{StaticResource BodyFont}"
-                                    FontSize="12"
-                                    Foreground="{StaticResource InkMutedBrush}"
+                                    Style="{StaticResource StatusTextStyle}"
                                     Visibility="Collapsed" />
                                 <StackPanel x:Name="RecentSwatchesPanel" Orientation="Horizontal" Spacing="8" />
                             </StackPanel>
@@ -260,24 +207,16 @@
                 </Border>
             </StackPanel>
 
-            <Border
-                Background="{StaticResource SurfaceRaisedBrush}"
-                BorderBrush="{StaticResource GlassEdgeBrush}"
-                BorderThickness="1"
-                CornerRadius="12"
-                Padding="16">
+            <Border Style="{StaticResource SettingsCardStyle}">
                 <StackPanel Spacing="14">
                     <TextBlock
                         Text="Advanced connection settings"
-                        FontFamily="{StaticResource BodyFont}"
-                        FontSize="11"
-                        FontWeight="SemiBold"
-                        Foreground="{StaticResource InkMutedBrush}" />
+                        Style="{StaticResource SectionHeaderStyle}" />
 
                     <TextBox
                         x:Name="HostBox"
                         Header="Host"
-                        FontFamily="{StaticResource BodyFont}" />
+                        Style="{StaticResource HubInputTextBoxStyle}" />
 
                     <NumberBox
                         x:Name="PortBox"
@@ -289,20 +228,18 @@
                     <TextBox
                         x:Name="OpenRgbPathBox"
                         Header="OpenRGB executable (optional)"
-                        FontFamily="{StaticResource BodyFont}"
+                        Style="{StaticResource HubInputTextBoxStyle}"
                         PlaceholderText="Auto-detect if empty" />
 
                     <ToggleSwitch
                         x:Name="LogitechToggle"
                         Header="Logitech direct control"
-                        OnContent="On"
-                        OffContent="Off" />
+                        Style="{StaticResource HubToggleSwitchStyle}" />
 
                     <ToggleSwitch
                         x:Name="DxLightToggle"
                         Header="DX Light direct USB control"
-                        OnContent="On"
-                        OffContent="Off" />
+                        Style="{StaticResource HubToggleSwitchStyle}" />
 
                     <Button
                         Style="{StaticResource DebugTilePrimaryStyle}"
@@ -314,10 +251,7 @@
 
                     <TextBlock
                         x:Name="AdvancedSettingsStatusText"
-                        FontFamily="{StaticResource BodyFont}"
-                        FontSize="11"
-                        Foreground="{StaticResource InkMutedBrush}"
-                        TextWrapping="WrapWholeWords" />
+                        Style="{StaticResource StatusTextStyle}" />
                 </StackPanel>
             </Border>
         </StackPanel>

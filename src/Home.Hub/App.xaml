@@ -7,7 +7,6 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <ResourceDictionary Source="ms-appx:///Home.UI/Themes/HomeTheme.xaml" />
-                <ResourceDictionary Source="ms-appx:///CleanShot.WinUI/Themes/PremiumTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

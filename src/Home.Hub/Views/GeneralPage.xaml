@@ -3,24 +3,39 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-        <StackPanel
-            Padding="28"
-            Spacing="20"
-            MaxWidth="640"
-            HorizontalAlignment="Center">
-            <TextBlock
-                Text="General"
-                FontFamily="{StaticResource DisplayFont}"
-                FontSize="28"
-                FontWeight="SemiBold"
-                Foreground="{StaticResource InkPrimaryBrush}" />
+    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+        <StackPanel Style="{StaticResource PageContentStackStyle}">
+            <StackPanel Style="{StaticResource PageHeadingBlockStyle}">
+                <TextBlock
+                    Text="General"
+                    Style="{StaticResource PageMainHeadingStyle}" />
+                <TextBlock
+                    Text="Startup and tray behavior for Home."
+                    Style="{StaticResource PageSubtitleStyle}" />
+            </StackPanel>
 
-            <ToggleSwitch
-                Header="Run at startup"
-                OnContent="On"
-                OffContent="Off"
-                IsOn="{Binding RunAtStartup, Mode=TwoWay}" />
+            <Border Style="{StaticResource SettingsCardStyle}">
+                <Grid Style="{StaticResource SettingsFormRowStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Spacing="4" VerticalAlignment="Center">
+                        <TextBlock
+                            Text="Run at startup"
+                            Style="{StaticResource SettingsLabelStyle}" />
+                        <TextBlock
+                            Text="Start Home automatically when you sign in to Windows."
+                            Style="{StaticResource SettingsDescriptionStyle}" />
+                    </StackPanel>
+                    <ToggleSwitch
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource HubToggleSwitchStyle}"
+                        AutomationProperties.Name="Run Home at startup"
+                        IsOn="{Binding RunAtStartup, Mode=TwoWay}" />
+                </Grid>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </Page>

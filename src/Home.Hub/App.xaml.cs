@@ -46,8 +46,11 @@ public partial class App : Application
 
         _singleInstanceGate = singleInstanceGate;
 
-        StandaloneModuleId = HomeServiceCollectionExtensions.NormalizeModuleId(
+        var requestedStandaloneModuleId = HomeServiceCollectionExtensions.NormalizeModuleId(
             ParseStandaloneModule(Environment.GetCommandLineArgs()));
+        StandaloneModuleId = IsStandaloneModuleSupported(requestedStandaloneModuleId)
+            ? requestedStandaloneModuleId
+            : null;
 
         var dispatcher = DispatcherQueue.GetForCurrentThread();
         var settings = HubSettingsMigration.ApplyFirstRunImport(HubSettingsStore.Load());
@@ -111,6 +114,10 @@ public partial class App : Application
 
         return null;
     }
+
+    private static bool IsStandaloneModuleSupported(string? moduleId) =>
+        string.Equals(moduleId, HomeServiceCollectionExtensions.CleanShotModuleId, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(moduleId, HomeServiceCollectionExtensions.LightControlsModuleId, StringComparison.OrdinalIgnoreCase);
 
     private static void ApplyStandaloneModuleSettings(HubSettings settings, string moduleId)
     {

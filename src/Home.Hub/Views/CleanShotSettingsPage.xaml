@@ -4,40 +4,26 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Home.Hub.Controls">
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-        <StackPanel
-            Padding="28"
-            Spacing="20"
-            MaxWidth="640"
-            HorizontalAlignment="Center">
-            <StackPanel Spacing="6">
+    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+        <StackPanel Style="{StaticResource PageContentStackStyle}">
+            <StackPanel Style="{StaticResource PageHeadingBlockStyle}">
                 <TextBlock
                     Text="CleanShot"
-                    FontFamily="{StaticResource DisplayFont}"
-                    FontSize="28"
-                    FontWeight="SemiBold"
-                    Foreground="{StaticResource InkPrimaryBrush}" />
+                    Style="{StaticResource PageMainHeadingStyle}" />
                 <TextBlock
                     Text="Customize shortcuts and where screenshots are saved."
-                    Foreground="{StaticResource InkMutedBrush}"
-                    FontFamily="{StaticResource BodyFont}" />
+                    Style="{StaticResource PageSubtitleStyle}" />
             </StackPanel>
 
-            <Border
-                Background="{StaticResource SurfaceRaisedBrush}"
-                BorderBrush="{StaticResource GlassEdgeBrush}"
-                BorderThickness="1"
-                CornerRadius="12"
-                Padding="20">
+            <Border Style="{StaticResource SettingsCardStyle}">
                 <StackPanel Spacing="16">
-                    <StackPanel Spacing="10">
+                    <StackPanel Style="{StaticResource SettingsSectionStyle}">
                         <TextBlock
-                            Text="SAVE FOLDER"
-                            FontFamily="{StaticResource BodyFont}"
-                            FontSize="10"
-                            FontWeight="Bold"
-                            Foreground="{StaticResource InkMutedBrush}"
-                            CharacterSpacing="100" />
+                            Text="Save folder"
+                            Style="{StaticResource SectionHeaderStyle}" />
+                        <TextBlock
+                            Text="Choose where new screenshots are written."
+                            Style="{StaticResource SettingsSectionDescriptionStyle}" />
 
                         <Grid ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
@@ -48,8 +34,7 @@
                             <TextBox
                                 x:Name="SaveFolderBox"
                                 Grid.Column="0"
-                                FontFamily="{StaticResource BodyFont}"
-                                FontSize="12"
+                                Style="{StaticResource HubInputTextBoxStyle}"
                                 PlaceholderText="Choose a folder…"
                                 TextWrapping="Wrap" />
 
@@ -62,20 +47,16 @@
                         </Grid>
                     </StackPanel>
 
-                    <StackPanel Spacing="10">
+                    <Border Style="{StaticResource SettingsRowDividerStyle}" />
+
+                    <StackPanel Style="{StaticResource SettingsSectionStyle}">
                         <TextBlock
-                            Text="SHORTCUTS"
-                            FontFamily="{StaticResource BodyFont}"
-                            FontSize="10"
-                            FontWeight="Bold"
-                            Foreground="{StaticResource InkMutedBrush}"
-                            CharacterSpacing="100" />
+                            Text="Shortcuts"
+                            Style="{StaticResource SectionHeaderStyle}" />
 
                         <TextBlock
                             Text="Focus a field and press your shortcut."
-                            FontFamily="{StaticResource BodyFont}"
-                            FontSize="10"
-                            Foreground="{StaticResource InkMutedBrush}" />
+                            Style="{StaticResource SettingsSectionDescriptionStyle}" />
 
                         <Grid ColumnSpacing="10" RowSpacing="8">
                             <Grid.ColumnDefinitions>
@@ -91,28 +72,26 @@
                                 Grid.Row="0"
                                 Grid.Column="0"
                                 Text="Full screen"
-                                FontFamily="{StaticResource BodyFont}"
-                                FontSize="11"
-                                Foreground="{StaticResource InkMutedBrush}"
+                                Style="{StaticResource SettingsDescriptionStyle}"
                                 VerticalAlignment="Center" />
                             <controls:HotkeyCaptureBox
                                 x:Name="FullScreenShortcutBox"
                                 Grid.Row="0"
                                 Grid.Column="1"
+                                AutomationProperties.Name="Full screen shortcut"
                                 EnterPressed="OnShortcutEnterPressed" />
 
                             <TextBlock
                                 Grid.Row="1"
                                 Grid.Column="0"
                                 Text="Region"
-                                FontFamily="{StaticResource BodyFont}"
-                                FontSize="11"
-                                Foreground="{StaticResource InkMutedBrush}"
+                                Style="{StaticResource SettingsDescriptionStyle}"
                                 VerticalAlignment="Center" />
                             <controls:HotkeyCaptureBox
                                 x:Name="RegionShortcutBox"
                                 Grid.Row="1"
                                 Grid.Column="1"
+                                AutomationProperties.Name="Region shortcut"
                                 EnterPressed="OnShortcutEnterPressed" />
                         </Grid>
                     </StackPanel>
@@ -126,10 +105,7 @@
 
                     <TextBlock
                         x:Name="StatusText"
-                        FontFamily="{StaticResource BodyFont}"
-                        FontSize="11"
-                        Foreground="{StaticResource InkMutedBrush}"
-                        TextWrapping="Wrap" />
+                        Style="{StaticResource StatusTextStyle}" />
                 </StackPanel>
             </Border>
         </StackPanel>

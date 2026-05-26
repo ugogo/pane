@@ -252,7 +252,14 @@ public sealed partial class MainWindow : WindowEx
     private void SelectNavigationTag(string tag)
     {
         var resolvedTag = ResolveNavigationTag(tag);
-        NavView.SelectedItem = FindNavItem(resolvedTag) ?? NavView.MenuItems[0];
+        var item = FindNavItem(resolvedTag) ?? NavView.MenuItems.OfType<NavigationViewItem>().FirstOrDefault();
+        if (item is null)
+        {
+            NavigateContent("home");
+            return;
+        }
+
+        NavView.SelectedItem = item;
         NavigateContent(resolvedTag);
     }
 
