@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tauri-spike-vite",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "src", "run", "dev"],
+      "port": 1420
+    }
+  ]
+}

@@ -2,12 +2,33 @@
   "name": "home",
   "version": "0.1.0",
   "private": true,
-  "description": "Windows utility suite — Light Controls and CleanShot",
+  "type": "module",
+  "description": "Home — Windows desktop utility suite (Tauri 2 + React + Rust)",
   "scripts": {
-    "build": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build.ps1",
-    "test": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/test.ps1",
-    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start.ps1",
-    "start:light-controls": "dotnet run --project src/Home.Standalone.LightControls/Home.Standalone.LightControls.csproj -c Release",
-    "start:cleanshot": "dotnet run --project src/Home.Standalone.CleanShot/Home.Standalone.CleanShot.csproj -c Release"
+    "dev": "cd src && vite",
+    "build": "cd src && powershell -NoProfile -ExecutionPolicy Bypass -Command \"npx tsc; npx vite build\"",
+    "preview": "cd src && vite preview",
+    "tauri": "cd src && tauri",
+    "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/stop.ps1",
+    "tauri:windows:build": "cd src && tauri-windows-bundle build --arch x64",
+    "tauri:dev:packaged": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-packaged.ps1"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "lucide-react": "^1.16.0",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "@choochmeque/tauri-windows-bundle": "^0.1.20",
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@vitejs/plugin-react": "^4",
+    "autoprefixer": "^10",
+    "postcss": "^8",
+    "tailwindcss": "^3",
+    "typescript": "^5",
+    "vite": "^5"
   }
 }

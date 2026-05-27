@@ -1,6 +1,8 @@
 # Generates Home app icon assets (2x2 squircle mark with lime accent).
 $ErrorActionPreference = "Stop"
-$assetsDir = Join-Path $PSScriptRoot "..\src\Home.Hub\Assets"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+$assetsDir = Join-Path $PSScriptRoot "..\src-legacy\Home.Hub\Assets"
 New-Item -ItemType Directory -Force -Path $assetsDir | Out-Null
 
 Add-Type -AssemblyName System.Drawing
