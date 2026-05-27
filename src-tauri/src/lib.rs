@@ -27,6 +27,21 @@ pub fn run() {
             if let Err(e) = power_notify::register() {
                 eprintln!("Failed to register power notification: {e}");
             }
+            // Push persisted color/brightness back to each device so the
+            // hardware matches what the UI displays. Cold-boot launches may
+            // race USB enumeration, so give devices a moment to settle —
+            // shorter than the wake-from-sleep delay since most launches
+            // aren't at boot time.
+            tauri::async_runtime::spawn(async {
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                let results = commands::light_state::restore_all().await;
+                for (key, res) in results {
+                    match res {
+                        Ok(()) => eprintln!("[startup] restored {key}"),
+                        Err(e) => eprintln!("[startup] failed to restore {key}: {e}"),
+                    }
+                }
+            });
             Ok(())
         })
         .on_window_event(|window, event| {
