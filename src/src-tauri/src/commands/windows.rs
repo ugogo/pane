@@ -42,14 +42,18 @@ pub async fn show_area_selector(app: AppHandle) -> Result<(), String> {
         .ok_or_else(|| "No primary monitor available.".to_string())?;
 
     let scale = monitor.scale_factor();
+    let physical_pos = monitor.position();
     let physical = monitor.size();
     let logical_w = physical.width as f64 / scale;
     let logical_h = physical.height as f64 / scale;
 
-    let overlay_w = logical_w / 2.0;
-    let overlay_h = (logical_h / 2.0 - AREA_SELECTOR_HEIGHT_INSET).max(120.0);
-    let pos_x = (logical_w - overlay_w) / 2.0;
-    let pos_y = (logical_h - overlay_h) / 2.0;
+    // IMPORTANT: On Windows, the primary monitor's virtual-desktop origin is
+    // not guaranteed to be (0,0). Use the monitor's position so the overlay
+    // covers the full display even in multi-monitor layouts.
+    let overlay_w = logical_w.max(120.0);
+    let overlay_h = logical_h.max(120.0);
+    let pos_x = physical_pos.x as f64 / scale;
+    let pos_y = physical_pos.y as f64 / scale;
 
     let url = child_url(&app, "view=area-selector")?;
     WebviewWindowBuilder::new(&app, AREA_SELECTOR_LABEL, url)

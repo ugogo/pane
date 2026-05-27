@@ -30,6 +30,7 @@ export function AreaSelector() {
   const [drag, setDrag] = useState<{ start: { x: number; y: number }; end: { x: number; y: number } } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>();
+  const [shown, setShown] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,11 +38,17 @@ export function AreaSelector() {
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
 
+    // Fade in after first paint (opacity only — no transforms).
+    const raf = requestAnimationFrame(() => setShown(true));
+
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") void closeAreaSelector();
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   function pt(e: React.MouseEvent) {
@@ -83,9 +90,11 @@ export function AreaSelector() {
       ref={rootRef}
       className="fixed inset-0 select-none"
       style={{
-        background: "rgba(15, 23, 42, 0.35)",
+        background: "rgba(2, 6, 23, 0.65)",
         cursor: "crosshair",
         border: "2px solid rgba(56, 189, 248, 0.9)",
+        opacity: shown ? 1 : 0,
+        transition: "opacity 140ms ease-out",
       }}
       onMouseDown={(e) => {
         if (submitting) return;
