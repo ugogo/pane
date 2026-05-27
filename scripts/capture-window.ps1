@@ -3,6 +3,9 @@ param(
     [string]$OutputPath = "c:\Users\Home\dev\home\assets\app-screenshot-current.png"
 )
 
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
 Add-Type -AssemblyName System.Drawing
 Add-Type @"
 using System;
