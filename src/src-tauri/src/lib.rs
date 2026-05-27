@@ -61,6 +61,7 @@ pub fn run() {
             commands::dynamic_lighting::apply_dynamic_lighting,
             commands::light_state::get_light_states,
             commands::light_state::restore_all_lights,
+            commands::light_state::turn_all_lights_off_for_sleep,
             commands::windows::prepare_capture_windows,
             commands::windows::show_area_selector,
             commands::windows::show_capture_preview,

@@ -264,6 +264,10 @@ export function diagnoseDynamicLighting(deviceId: string) {
   return invoke<DynamicLightingDiagnostics>("diagnose_dynamic_lighting", { deviceId });
 }
 
+export function turnAllLightsOffForSleep() {
+  return invoke<[string, string | null][]>("turn_all_lights_off_for_sleep");
+}
+
 // ── Persisted per-light state ─────────────────────────────────────────────────
 
 export interface LightState {

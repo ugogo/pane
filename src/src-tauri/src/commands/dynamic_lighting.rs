@@ -220,6 +220,27 @@ pub async fn apply_dynamic_lighting(
     b: u8,
     brightness: f64,
 ) -> Result<DynamicLightingApplyResult, String> {
+    apply_dynamic_lighting_inner(device_id, r, g, b, brightness, true).await
+}
+
+pub(crate) async fn write_dynamic_lighting(
+    device_id: String,
+    r: u8,
+    g: u8,
+    b: u8,
+    brightness: f64,
+) -> Result<DynamicLightingApplyResult, String> {
+    apply_dynamic_lighting_inner(device_id, r, g, b, brightness, false).await
+}
+
+async fn apply_dynamic_lighting_inner(
+    device_id: String,
+    r: u8,
+    g: u8,
+    b: u8,
+    brightness: f64,
+    persist: bool,
+) -> Result<DynamicLightingApplyResult, String> {
     let device_key = format!("dynamic:{device_id}");
     let device_id = HSTRING::from(device_id);
     let lamp_array = LampArray::FromIdAsync(&device_id)
@@ -303,19 +324,21 @@ pub async fn apply_dynamic_lighting(
 
     let is_available_after = lamp_array.IsAvailable().map_err(|e| e.to_string())?;
 
-    if brightness <= f64::EPSILON {
-        crate::commands::light_state::record_off(&device_key);
-    } else {
-        crate::commands::light_state::record(
-            &device_key,
-            crate::commands::light_state::LightState {
-                r,
-                g,
-                b,
-                brightness,
-                on: true,
-            },
-        );
+    if persist {
+        if brightness <= f64::EPSILON {
+            crate::commands::light_state::record_off(&device_key);
+        } else {
+            crate::commands::light_state::record(
+                &device_key,
+                crate::commands::light_state::LightState {
+                    r,
+                    g,
+                    b,
+                    brightness,
+                    on: true,
+                },
+            );
+        }
     }
 
     Ok(DynamicLightingApplyResult {

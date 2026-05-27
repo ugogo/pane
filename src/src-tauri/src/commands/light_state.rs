@@ -14,7 +14,7 @@
 //! redirects `LOCALAPPDATA` to the package's LocalState dir automatically,
 //! so installed and unpackaged-dev builds keep their state separate.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -152,6 +152,63 @@ pub async fn restore_all() -> Vec<(String, Result<(), String>)> {
     results
 }
 
+/// Temporarily turn off all known lights before system sleep without changing
+/// persisted user intent. Wake restore uses the saved state to bring them back.
+pub async fn turn_all_off_for_sleep() -> Vec<(String, Result<(), String>)> {
+    use crate::commands::{dx_light, dynamic_lighting, lighting};
+
+    let mut keys: HashSet<String> = snapshot().keys().cloned().collect();
+    let mut results = Vec::new();
+
+    match dynamic_lighting::list_dynamic_lighting_devices().await {
+        Ok(devices) => {
+            keys.extend(
+                devices
+                    .into_iter()
+                    .map(|device| format!("dynamic:{}", device.id)),
+            );
+        }
+        Err(e) => results.push(("dynamic:scan".to_string(), Err(e))),
+    }
+
+    match lighting::detect_msi_lighting() {
+        Ok(presence) if presence.present => {
+            keys.insert("msi".to_string());
+        }
+        Ok(_) => {}
+        Err(e) => results.push(("msi:scan".to_string(), Err(e))),
+    }
+
+    match dx_light::detect_dx_light() {
+        Ok(presence) if presence.present => {
+            keys.insert("dxlight".to_string());
+        }
+        Ok(_) => {}
+        Err(e) => results.push(("dxlight:scan".to_string(), Err(e))),
+    }
+
+    let mut keys: Vec<String> = keys.into_iter().collect();
+    keys.sort();
+
+    for key in keys {
+        let outcome = if let Some(device_id) = key.strip_prefix("dynamic:") {
+            dynamic_lighting::write_dynamic_lighting(device_id.to_string(), 0, 0, 0, 0.0)
+                .await
+                .map(|_| ())
+        } else if key == "msi" {
+            lighting::write_msi_lighting(0, 0, 0, 0.0)
+        } else if key == "dxlight" {
+            dx_light::write_dx_light_off()
+        } else {
+            Err(format!("Unknown light kind for key '{key}'"))
+        };
+
+        results.push((key, outcome));
+    }
+
+    results
+}
+
 // ── Tauri commands ────────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -164,6 +221,16 @@ pub fn get_light_states() -> HashMap<String, LightState> {
 #[tauri::command]
 pub async fn restore_all_lights() -> Vec<(String, Option<String>)> {
     restore_all()
+        .await
+        .into_iter()
+        .map(|(k, r)| (k, r.err()))
+        .collect()
+}
+
+/// Manual probe for the suspend path without putting the machine to sleep.
+#[tauri::command]
+pub async fn turn_all_lights_off_for_sleep() -> Vec<(String, Option<String>)> {
+    turn_all_off_for_sleep()
         .await
         .into_iter()
         .map(|(k, r)| (k, r.err()))

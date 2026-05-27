@@ -162,6 +162,22 @@ pub fn detect_dx_light() -> Result<DxLightPresence, String> {
 /// real brightness register), then color goes via `SetSectionLed`.
 #[tauri::command]
 pub fn apply_dx_light(r: u8, g: u8, b: u8, brightness: f64) -> Result<(), String> {
+    write_dx_light(r, g, b, brightness)?;
+    crate::commands::light_state::record(
+        "dxlight",
+        crate::commands::light_state::LightState {
+            r,
+            g,
+            b,
+            brightness,
+            on: true,
+        },
+    );
+
+    Ok(())
+}
+
+pub(crate) fn write_dx_light(r: u8, g: u8, b: u8, brightness: f64) -> Result<(), String> {
     let scale = brightness.clamp(0.0, 1.0);
     // Map 0..1 -> 5..255 so the device never receives below-minimum values
     // (firmware treats those as off).
@@ -182,26 +198,20 @@ pub fn apply_dx_light(r: u8, g: u8, b: u8, brightness: f64) -> Result<(), String
     );
     write_packet(&handle, &color_packet)?;
 
-    crate::commands::light_state::record(
-        "dxlight",
-        crate::commands::light_state::LightState {
-            r,
-            g,
-            b,
-            brightness,
-            on: true,
-        },
-    );
-
     Ok(())
 }
 
 #[tauri::command]
 pub fn dx_light_off() -> Result<(), String> {
+    write_dx_light_off()?;
+    crate::commands::light_state::record_off("dxlight");
+    Ok(())
+}
+
+pub(crate) fn write_dx_light_off() -> Result<(), String> {
     let api = HidApi::new().map_err(|e| e.to_string())?;
     let handle = open_device(&api)?;
     let packet = build_packet(ACTION_TURN_OFF_LIGHT, &[]);
     write_packet(&handle, &packet)?;
-    crate::commands::light_state::record_off("dxlight");
     Ok(())
 }

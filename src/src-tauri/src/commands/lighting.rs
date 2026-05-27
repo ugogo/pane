@@ -121,13 +121,7 @@ pub fn detect_msi_lighting() -> Result<MsiLightingPresence, String> {
 /// firmware has no separate brightness register).
 #[tauri::command]
 pub fn apply_msi_lighting(r: u8, g: u8, b: u8, brightness: f64) -> Result<(), String> {
-    let scale = brightness.clamp(0.0, 1.0);
-    let scaled = (
-        ((r as f64) * scale).round() as u8,
-        ((g as f64) * scale).round() as u8,
-        ((b as f64) * scale).round() as u8,
-    );
-    send_msi_mystic_light_packets(scaled)?;
+    write_msi_lighting(r, g, b, brightness)?;
     // Treat brightness 0 as an explicit off so wake-restore matches intent.
     if brightness <= f64::EPSILON {
         crate::commands::light_state::record_off("msi");
@@ -144,6 +138,16 @@ pub fn apply_msi_lighting(r: u8, g: u8, b: u8, brightness: f64) -> Result<(), St
         );
     }
     Ok(())
+}
+
+pub(crate) fn write_msi_lighting(r: u8, g: u8, b: u8, brightness: f64) -> Result<(), String> {
+    let scale = brightness.clamp(0.0, 1.0);
+    let scaled = (
+        ((r as f64) * scale).round() as u8,
+        ((g as f64) * scale).round() as u8,
+        ((b as f64) * scale).round() as u8,
+    );
+    send_msi_mystic_light_packets(scaled)
 }
 
 fn send_msi_mystic_light_packets(rgb: (u8, u8, u8)) -> Result<(), String> {

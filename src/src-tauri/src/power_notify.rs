@@ -1,16 +1,19 @@
 //! Windows suspend/resume notification → light restore.
 //!
 //! Registers a callback with `PowerRegisterSuspendResumeNotification`. On
-//! resume, schedules a delayed `light_state::restore_all()` so any device
-//! that power-cycled during sleep (notably USB strips like DX Light) comes
-//! back to its last user-selected color/brightness instead of the firmware
-//! default (typically white at full brightness).
+//! suspend, it temporarily turns lights off without changing saved user
+//! intent. On resume, schedules a delayed `light_state::restore_all()` so any
+//! device that power-cycled during sleep (notably USB strips like DX Light)
+//! comes back to its last user-selected color/brightness instead of the
+//! firmware default (typically white at full brightness).
 //!
 //! The callback runs on a system thread; we bounce the actual work onto
 //! Tauri's tokio runtime via `tauri::async_runtime::spawn`.
 
 use std::ffi::c_void;
 use std::ptr;
+use std::sync::mpsc;
+use std::time::Duration;
 
 use windows::core::Result as WResult;
 use windows::Win32::Foundation::HANDLE;
@@ -23,19 +26,36 @@ use windows::Win32::UI::WindowsAndMessaging::DEVICE_NOTIFY_CALLBACK;
 // windows-rs feature flag (Win32_System_SystemServices) just for two ints.
 const PBT_APMRESUMEAUTOMATIC: u32 = 0x0012; // Wake from sleep / hibernation.
 const PBT_APMRESUMESUSPEND: u32 = 0x0007; // Resume after user activity.
+const PBT_APMSUSPEND: u32 = 0x0004; // System is about to suspend.
 
 unsafe extern "system" fn on_power_event(
     _context: *const c_void,
     type_: u32,
     _setting: *const c_void,
 ) -> u32 {
-    if type_ == PBT_APMRESUMEAUTOMATIC || type_ == PBT_APMRESUMESUSPEND {
+    if type_ == PBT_APMSUSPEND {
+        let (tx, rx) = mpsc::channel();
+        tauri::async_runtime::spawn(async move {
+            let results = crate::commands::light_state::turn_all_off_for_sleep().await;
+            for (key, res) in results {
+                match res {
+                    Ok(()) => eprintln!("[sleep] turned off {key}"),
+                    Err(e) => eprintln!("[sleep] failed to turn off {key}: {e}"),
+                }
+            }
+            let _ = tx.send(());
+        });
+
+        if rx.recv_timeout(Duration::from_millis(1_800)).is_err() {
+            eprintln!("[sleep] timed out waiting for lights to turn off");
+        }
+    } else if type_ == PBT_APMRESUMEAUTOMATIC || type_ == PBT_APMRESUMESUSPEND {
         tauri::async_runtime::spawn(async {
             // USB devices typically need a couple of seconds to re-enumerate
             // after wake. Logitech HID++ + DX Light are slower than HID
             // keyboards; 3s is empirically enough on this hardware without
             // making the lighting noticeably lag the user's desktop.
-            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+            tokio::time::sleep(Duration::from_secs(3)).await;
             let results = crate::commands::light_state::restore_all().await;
             for (key, res) in results {
                 match res {
