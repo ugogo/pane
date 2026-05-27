@@ -13,7 +13,7 @@
       1. Builds the debug Tauri binary (frontend + Rust) without producing an
          installer  --  `tauri build --debug --no-bundle`.
       2. Looks up the installed `dev.home.app` package family name.
-      3. Launches `src-tauri/target/debug/Home.exe` via
+      3. Launches `src\src-tauri\target\debug\Home.exe` via
          `Invoke-CommandInDesktopPackage`, which runs the dev exe under the
          installed package's identity.
 
@@ -32,7 +32,6 @@
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
-$srcDir = Join-Path $root "src"
 
 # ---- 1. Verify the packaged identity is installed ---------------------------
 
@@ -41,9 +40,8 @@ if (-not $pkg) {
     Write-Error @"
 dev.home.app is not installed.
 Build and install the MSIX first:
-    cd $srcDir
     npm run tauri:windows:build
-    Add-AppxPackage src-tauri\target\msix\Home_0.1.0.0_x64.msix
+    Add-AppxPackage src\src-tauri\target\msix\Home_0.1.0.0_x64.msix
 "@
     exit 1
 }
@@ -60,22 +58,17 @@ Start-Sleep -Milliseconds 300
 
 # ---- 3. Build the debug binary ----------------------------------------------
 
-Push-Location $srcDir
-try {
-    Write-Host "Building debug binary (this is slower than 'tauri dev' but produces a self-contained exe)..."
-    & npm run tauri -- build --debug --no-bundle
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "tauri build failed (exit $LASTEXITCODE)"
-        exit $LASTEXITCODE
-    }
-}
-finally {
-    Pop-Location
+Set-Location $root
+Write-Host "Building debug binary (this is slower than 'tauri dev' but produces a self-contained exe)..."
+& npm run tauri -- build --debug --no-bundle
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "tauri build failed (exit $LASTEXITCODE)"
+    exit $LASTEXITCODE
 }
 
 # ---- 4. Locate the freshly built exe ----------------------------------------
 
-$exe = Join-Path $srcDir "src-tauri\target\debug\Home.exe"
+$exe = Join-Path $root "src\src-tauri\target\debug\Home.exe"
 if (-not (Test-Path $exe)) {
     Write-Error "Built exe not found at $exe"
     exit 1
