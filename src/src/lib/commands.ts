@@ -20,3 +20,18 @@ export interface ProcessMetrics {
 export function getProcessMetrics() {
   return invoke<ProcessMetrics>("get_process_metrics");
 }
+
+// ── Core infrastructure ───────────────────────────────────────────────────────
+
+export interface StartupResult {
+  enabled: boolean;
+  detail: string;
+}
+
+export function getRunAtStartup() {
+  return invoke<boolean>("get_run_at_startup");
+}
+
+export function setRunAtStartup(enabled: boolean) {
+  return invoke<StartupResult>("set_run_at_startup", { enabled });
+}

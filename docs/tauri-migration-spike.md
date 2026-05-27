@@ -106,19 +106,25 @@ Each item below is a capability the production app depends on.
 
 ### Phase 1 — Instrumentation
 
-- [ ] 🔲 `npm run dev` — app window appears, no compile errors
-- [ ] 🔲 `MetricsCard` renders first, full-width, above all other content
-- [ ] 🔲 Working set (MB) and startup elapsed (ms) show real numbers
-- [ ] 🔲 Auto-refresh updates values every ~2 s
-- [ ] 🔲 "Refresh now" button triggers an immediate update
-- [ ] 🔲 RAM > 300 MB colours the card `fail`; < 150 MB colours it `pass`
-- [ ] 🔲 Sparkline grows with each sample
+- [x] ✅ `npm run dev` — app window appears, no compile errors
+- [x] ✅ `MetricsCard` renders first, full-width, above all other content
+- [x] ✅ Working set (MB) and startup elapsed (ms) show real numbers
+- [x] ✅ Auto-refresh updates values every ~2 s
+- [x] ✅ "Refresh now" button triggers an immediate update
+- [x] ✅ RAM > 300 MB colours the card `fail`; < 150 MB colours it `pass`
+- [x] ✅ Sparkline grows with each sample
 
-### Core infrastructure
-- [ ] 🔲 System tray icon with context menu (Show / Quit)
-- [ ] 🔲 Left-click tray → show main window
-- [ ] 🔲 App startup registry entry (`HKCU\…\Run`) via `winreg`
-- [ ] 🔲 Single-instance enforcement (`tauri-plugin-single-instance`)
+### Phase 2 — Core infrastructure
+
+- [x] ✅ System tray icon with context menu (Show / Quit)
+- [x] ✅ Left-click tray → show main window
+- [x] ✅ Close button hides window to tray — `home.exe` stays resident
+- [x] ✅ Single-instance enforcement — second launch focuses existing window
+- [x] ✅ Run-at-startup toggle writes/removes `HKCU\…\Run\Home` via `winreg`
+  - ⚠️ Dev build writes the debug exe path; production installer will overwrite with the installed path
+- [ ] 🔲 App auto-updater (`tauri-plugin-updater`) — update check + silent install
+- [ ] 🔲 Windows installer produced by `tauri build`
+- [ ] 🔲 App icon embedded in `.exe` and taskbar
 - [ ] 🔲 App auto-updater (`tauri-plugin-updater`) — update check + silent install
 - [ ] 🔲 Windows installer (NSIS or WiX) produced by `tauri build`
 - [ ] 🔲 App icon embedded in `.exe` and taskbar
