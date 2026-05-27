@@ -11,3 +11,8 @@ node_modules/
 target/
 .DS_Store
 Thumbs.db
+
+# Local dev code-signing certificates (never commit private keys)
+**/certs/
+*.pfx
+
