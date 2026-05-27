@@ -44,6 +44,7 @@ pub fn run() {
             commands::capture::take_latest_capture,
             commands::capture::copy_latest_capture_to_clipboard,
             commands::capture::save_latest_capture_to_desktop,
+            commands::lighting::list_hid_devices,
             commands::windows::show_area_selector,
             commands::windows::show_capture_preview,
             commands::windows::preview_ready,

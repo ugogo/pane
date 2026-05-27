@@ -160,11 +160,12 @@ Each item below is a capability the production app depends on.
 
 ### RGB lighting (LightControls)
 
-- [ ] 🔲 HID device enumeration via `hidapi` crate
-- [ ] 🔲 OpenRGB TCP endpoint probe (connect + check reachable)
-- [ ] 🔲 Full OpenRGB protocol (set device color, get device list) — currently only TCP probe
-- [ ] 🔲 Logitech direct HID protocol (HID++ 2.0) — raw HID writes from Rust
-- [ ] 🔲 DxLight direct HID — verify hidapi can open exclusive handles on Windows
+- [x] ✅ HID device enumeration via `hidapi` crate — `list_hid_devices` shows:
+  - MSI Mystic Light controller: `VID_0DB0 PID_0076` (`MSI` / `MYSTIC LIGHT`)
+  - Logitech PRO 2 LIGHTSPEED receiver: `VID_046D PID_C543`
+- [ ] 🔲 MSI Mystic Light control — pick between direct HID writes vs MSI Mystic Light SDK (DLL) and validate solid color set
+- [ ] 🔲 Logitech direct HID protocol (HID++ 2.0) — raw HID writes from Rust (target: PRO 2 LIGHTSPEED via receiver `C543` or wired)
+- [ ] 🔲 DxLight direct HID / USB protocol — identify interface and validate a solid color set
 - [ ] 🔲 Color apply round-trip (UI → Rust command → device)
 
 ### Settings persistence
@@ -315,8 +316,9 @@ At the end of the spike, answer these questions. **All "go" answers → proceed 
 4. ~~**Clipboard probe**~~ — done; `copy_latest_capture_to_clipboard` confirmed via CDP + Windows clipboard read-back.
 5. ~~**Physical hotkey test while hidden**~~ — done; hub stays in tray, capture + preview + shutter sound confirmed.
 6. **Fix first-create preview slide** — follow `.claude/handoff-preview-slide.md`; user eye-test required.
-7. **Phase 3 — HID / lighting probes** — `hidapi` enumeration, OpenRGB TCP, Logitech HID++ write; add `LightingCard` probe panel.
-8. **Capture WinUI 3 baseline numbers** — record in `## Results` for go/no-go rows 6–7.
-9. **Packaging probe** — `npm run build`, verify installer output and embedded icon.
-10. **Document results** in this file under a new `## Results` section.
-11. **Call the decision** using the go/no-go table above.
+7. ~~**Phase 3 — HID / lighting probes: enumerate devices**~~ — done; `list_hid_devices` confirms MSI Mystic Light + Logitech receiver are visible.
+8. **Phase 3 — HID / lighting probes: implement vendor-native control** — MSI (Mystic Light), Logitech HID++ (PRO 2 LIGHTSPEED), DxLight bar protocol.
+9. **Capture WinUI 3 baseline numbers** — record in `## Results` for go/no-go rows 6–7.
+10. **Packaging probe** — `npm run build`, verify installer output and embedded icon.
+11. **Document results** in this file under a new `## Results` section.
+12. **Call the decision** using the go/no-go table above.

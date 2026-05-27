@@ -1,5 +1,6 @@
 import { CaptureCard } from "./components/features/CaptureCard";
 import { InfraCard } from "./components/features/InfraCard";
+import { LightingCard } from "./components/features/LightingCard";
 import { MetricsCard } from "./components/features/MetricsCard";
 
 export function App() {
@@ -18,6 +19,7 @@ export function App() {
           <MetricsCard />
           <CaptureCard />
           <InfraCard />
+          <LightingCard />
         </div>
       </div>
     </main>
