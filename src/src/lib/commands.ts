@@ -147,3 +147,71 @@ export interface ToggleResult {
 export function setVendorLightingEnabled(vendorId: number, productId: number, enabled: boolean) {
   return invoke<ToggleResult>("set_vendor_lighting_enabled", { vendorId, productId, enabled });
 }
+
+// ── Windows Dynamic Lighting (OS-managed) ──────────────────────────────────────
+
+export interface DynamicLightingDevice {
+  id: string;
+  name: string;
+}
+
+export interface DynamicLightingApplyResult {
+  detail: string;
+}
+
+export interface DynamicLightingDeviceInfo {
+  isAvailable: boolean;
+  isEnabled: boolean;
+  isConnected: boolean;
+  brightness: number;
+  lampCount: number;
+  kind: string;
+  hardwareVendorId: number;
+  hardwareProductId: number;
+}
+
+export function listDynamicLightingDevices() {
+  return invoke<DynamicLightingDevice[]>("list_dynamic_lighting_devices");
+}
+
+export function getDynamicLightingInfo(deviceId: string) {
+  return invoke<DynamicLightingDeviceInfo>("get_dynamic_lighting_info", { deviceId });
+}
+
+export interface DynamicLightingLampInfo {
+  index: number;
+  purposes: string;
+  fixedColor: string | null;
+  nearestSupportedColorForWhite: string | null;
+  redLevels: number;
+  greenLevels: number;
+  blueLevels: number;
+  gainLevels: number;
+}
+
+export interface DynamicLightingDiagnostics {
+  isAvailable: boolean;
+  isEnabled: boolean;
+  isConnected: boolean;
+  brightness: number;
+  lampCount: number;
+  kind: string;
+  hardwareVendorId: number;
+  hardwareProductId: number;
+  minUpdateIntervalMs: number;
+  lamps: DynamicLightingLampInfo[];
+}
+
+export function applyDynamicLighting(deviceId: string, r: number, g: number, b: number, brightness: number) {
+  return invoke<DynamicLightingApplyResult>("apply_dynamic_lighting", {
+    deviceId,
+    r,
+    g,
+    b,
+    brightness,
+  });
+}
+
+export function diagnoseDynamicLighting(deviceId: string) {
+  return invoke<DynamicLightingDiagnostics>("diagnose_dynamic_lighting", { deviceId });
+}
