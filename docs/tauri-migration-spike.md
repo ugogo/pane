@@ -7,6 +7,34 @@
 
 ---
 
+## Validation Protocol
+
+> **This section is mandatory reading for any agent working on this spike.**
+
+A checklist item may only be ticked once the behaviour has been **observed at runtime**, not just because the code compiles or a command is wired up.
+
+### Rules
+
+1. **Build and run first.** Before touching any checklist item, run `npm run tauri:spike:dev` and confirm the app window appears. A compile error or blank screen must be fixed before any item is marked.
+
+2. **Test step by step.** For each item being validated, interact with the relevant UI control or trigger the relevant action in the running app. Read the actual output (probe card result, console, tray behaviour, etc.). Do not infer from source code alone.
+
+3. **Prompt the user when needed.** Some probes require physical hardware (HID devices, OpenRGB server) or a specific environment (second monitor, another app holding a hotkey). In those cases, **ask the user to perform the action or confirm the result** before marking the item. It is always acceptable to pause and ask rather than guess.
+
+   Examples of when to prompt:
+   - "Can you click the tray icon and confirm the window appears?"
+   - "Is your Logitech mouse plugged in? I'll now run the HID write probe."
+   - "The OpenRGB probe returned reachable — does the device LED actually change colour?"
+
+4. **Mark the status emoji correctly.**
+   - `✅` — confirmed working by direct observation or user confirmation
+   - `⚠️` — works but with caveats noted inline
+   - `❌` — confirmed broken; add a one-line note with what failed
+
+5. **Record findings inline.** When a test reveals anything unexpected — a workaround needed, a caveat, a driver quirk — add a short note directly under the checklist item. Do not leave it only in your session transcript.
+
+---
+
 ## Why We Are Doing This
 
 Home is currently built on **.NET 10 + WinUI 3**. While this stack works, it comes with a set of long-term costs and constraints:
@@ -190,10 +218,13 @@ A probe card added to the dashboard grid that:
 - Colours the card status based on RAM: `pass` < 150 MB · `warn` 150–300 MB · `fail` > 300 MB.
 - Keeps a rolling history of the last 30 RAM readings and renders a minimal sparkline (flex bar chart, no library needed) so memory growth over time is visible at a glance.
 
+**Placement:** `MetricsCard` must be the **first card rendered in the probe grid**, above all other probes. It spans the full grid width (`lg:col-span-2`) so numbers are immediately visible as soon as the app opens — without scrolling. The intent is that every test session starts with RAM and startup time already on screen.
+
 ```
 src/components/features/MetricsCard.tsx   ← new file
 src/lib/commands.ts                       ← ProcessMetrics interface + getProcessMetrics()
-src/App.tsx                               ← add <MetricsCard /> to the probe grid
+src/App.tsx                               ← <MetricsCard /> as first child of the probe grid,
+                                             full-width (col-span-2), before all other cards
 ```
 
 ### WinUI 3 baseline
@@ -254,11 +285,11 @@ At the end of the spike, answer these questions. **All "go" answers → proceed 
 
 ## Next Steps
 
-1. **Build and run the spike** — `npm run tauri:spike:dev`, open the probe dashboard, confirm all green probes pass.
-2. **Implement the overlay window probe** — most important unknown; write a minimal transparent always-on-top Tauri window and test rubber-band selection.
-3. **Add the instrumentation module** — `commands/metrics.rs` + `MetricsCard.tsx` per the spec above; this unblocks the RAM and startup-time go/no-go criteria.
-4. **Capture WinUI 3 baseline numbers** — run the PowerShell snippets above while the current app is idle; record in Results.
-5. **Clipboard probe** — add a `copy_png_to_clipboard` Rust command and verify it works.
-6. **Full HID write probe** — attempt an actual color-set command to a Logitech device.
+1. **Add the instrumentation module first** — `commands/metrics.rs` + `MetricsCard.tsx` per the spec above. This must be done before validating any other checklist item, because RAM and startup time need to be on screen during every subsequent test session. Follow the Validation Protocol: run the app, confirm the card appears at the top of the grid, and verify numbers update on auto-refresh before moving on.
+2. **Capture WinUI 3 baseline numbers** — with the metrics card live, run the PowerShell snippets above while the current WinUI app is idle; record both sets of numbers in a new `## Results` section.
+3. **Build and run the full spike** — `npm run tauri:spike:dev`, walk through every probe card top to bottom, and tick items per the Validation Protocol.
+4. **Implement and test the overlay window probe** — most important unknown; test rubber-band region selection end-to-end. Prompt the user to confirm the overlay renders correctly on their display.
+5. **Clipboard probe** — add a `copy_png_to_clipboard` Rust command and verify paste works in an external app.
+6. **Full HID write probe** — attempt an actual color-set command to a Logitech device. Prompt the user to confirm the LED changes.
 7. **Document results** in this file under a new `## Results` section.
 8. **Call the decision** using the go/no-go table above.

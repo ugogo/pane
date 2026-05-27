@@ -7,6 +7,11 @@
     "build": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build.ps1",
     "test": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/test.ps1",
     "start": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start.ps1",
+    "tauri:prereqs": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/install-tauri-prereqs.ps1",
+    "tauri:spike": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/tauri-spike.ps1",
+    "tauri:spike:build": "npm --prefix experiments/home-tauri run build",
+    "tauri:spike:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/tauri-spike.ps1 dev",
+    "tauri:spike:info": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/tauri-spike.ps1 info",
     "start:light-controls": "dotnet run --project src/Home.Standalone.LightControls/Home.Standalone.LightControls.csproj -c Release",
     "start:cleanshot": "dotnet run --project src/Home.Standalone.CleanShot/Home.Standalone.CleanShot.csproj -c Release"
   }
