@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { Check, Clipboard, Save, X } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { previewReady, takeLatestCapture, type CaptureResult } from "../lib/commands";
+import {
+  copyLatestCaptureToClipboard,
+  previewReady,
+  saveLatestCaptureToDesktop,
+  takeLatestCapture,
+  type CaptureResult,
+} from "../lib/commands";
 
 /**
  * Floating, always-on-top preview. The native window is a taller transparent
@@ -16,11 +22,19 @@ export function CapturePreview() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [shown, setShown] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "busy" | "success">("idle");
+  const [saveState, setSaveState] = useState<"idle" | "busy" | "success">("idle");
   const reportedReady = useRef(false);
+  const closeTimer = useRef<number>();
 
   useEffect(() => {
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
+    return () => {
+      if (closeTimer.current) {
+        window.clearTimeout(closeTimer.current);
+      }
+    };
   }, []);
 
   async function fetchLatest(isRefresh = false) {
@@ -32,6 +46,8 @@ export function CapturePreview() {
       }
       setError(undefined);
       setCapture(c);
+      setCopyState("idle");
+      setSaveState("idle");
       setRevision((r) => r + 1);
       if (isRefresh && reportedReady.current) {
         setClosing(false);
@@ -93,11 +109,49 @@ export function CapturePreview() {
   }, [revision]);
 
   async function close() {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current);
+    }
     setClosing(true);
     setShown(false);
     window.setTimeout(() => {
       void getCurrentWindow().close().catch((e) => setError(String(e)));
     }, 340);
+  }
+
+  function closeSoon() {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current);
+    }
+    closeTimer.current = window.setTimeout(() => {
+      void close();
+    }, 2200);
+  }
+
+  async function copyCapture() {
+    if (!capture || copyState === "busy") return;
+    setCopyState("busy");
+    try {
+      await copyLatestCaptureToClipboard();
+      setCopyState("success");
+      closeSoon();
+    } catch (e) {
+      setCopyState("idle");
+      setError(String(e));
+    }
+  }
+
+  async function saveCapture() {
+    if (!capture || saveState === "busy") return;
+    setSaveState("busy");
+    try {
+      await saveLatestCaptureToDesktop();
+      setSaveState("success");
+      closeSoon();
+    } catch (e) {
+      setSaveState("idle");
+      setError(String(e));
+    }
   }
 
   const cardTransform = closing
@@ -147,6 +201,23 @@ export function CapturePreview() {
           />
         )}
 
+        {capture && (
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-slate-900/55 opacity-0 backdrop-blur-[1px] transition-opacity duration-150 group-hover:opacity-100">
+            <ActionButton
+              icon={copyState === "success" ? Check : Clipboard}
+              label={copyState === "success" ? "Copied" : "Copy"}
+              busy={copyState === "busy"}
+              onClick={() => void copyCapture()}
+            />
+            <ActionButton
+              icon={saveState === "success" ? Check : Save}
+              label={saveState === "success" ? "Saved" : "Save"}
+              busy={saveState === "busy"}
+              onClick={() => void saveCapture()}
+            />
+          </div>
+        )}
+
         <button
           type="button"
           onClick={() => void close()}
@@ -163,5 +234,30 @@ export function CapturePreview() {
         )}
       </div>
     </div>
+  );
+}
+
+function ActionButton({
+  icon: Icon,
+  label,
+  busy,
+  onClick,
+}: {
+  icon: typeof Clipboard;
+  label: string;
+  busy: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={onClick}
+      className="flex h-8 min-w-[76px] items-center justify-center gap-1.5 rounded-md bg-slate-900/70 px-2.5 text-xs font-semibold text-slate-200 shadow-lg transition hover:bg-slate-900/90 active:bg-slate-950 disabled:cursor-wait"
+    >
+      <Icon aria-hidden="true" size={14} strokeWidth={2.35} />
+      {label}
+    </button>
   );
 }

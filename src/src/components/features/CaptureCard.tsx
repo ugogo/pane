@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import {
   captureFullscreen,
   clearCaptureHotkey,
+  getCaptureHotkeys,
   setCaptureHotkey,
   showAreaSelector,
   showCapturePreview,
@@ -45,6 +46,18 @@ export function CaptureCard() {
   const [status, setStatus] = useState<ProbeStatus>("idle");
   const [message, setMessage] = useState<string>("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void getCaptureHotkeys()
+      .then((hotkeys) => {
+        setFullscreenAccel(hotkeys.fullscreen);
+        setAreaAccel(hotkeys.area);
+      })
+      .catch((err) => {
+        setStatus("warn");
+        setMessage(`Could not load saved hotkeys: ${String(err)}`);
+      });
+  }, []);
 
   // Listen for hotkey-driven captures.
   useEffect(() => {

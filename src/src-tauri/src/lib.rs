@@ -22,6 +22,7 @@ pub fn run() {
         )
         .setup(|app| {
             tray::create(app)?;
+            commands::hotkeys::restore_capture_hotkeys(app.handle());
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -41,6 +42,8 @@ pub fn run() {
             commands::capture::capture_fullscreen,
             commands::capture::capture_region,
             commands::capture::take_latest_capture,
+            commands::capture::copy_latest_capture_to_clipboard,
+            commands::capture::save_latest_capture_to_desktop,
             commands::windows::show_area_selector,
             commands::windows::show_capture_preview,
             commands::windows::preview_ready,
@@ -48,6 +51,7 @@ pub fn run() {
             commands::windows::area_selector_origin,
             commands::windows::commit_region_capture,
             commands::windows::toggle_capture_preview,
+            commands::hotkeys::get_capture_hotkeys,
             commands::hotkeys::set_capture_hotkey,
             commands::hotkeys::clear_capture_hotkey,
         ])

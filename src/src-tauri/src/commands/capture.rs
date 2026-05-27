@@ -1,9 +1,12 @@
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
+use image::ImageReader;
 use image::{ImageBuffer, ImageFormat, Rgba};
 use serde::Serialize;
+use std::borrow::Cow;
 use std::io::Cursor;
 use std::sync::Mutex;
-use tauri::State;
+use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::{AppHandle, Manager, State};
 use xcap::Monitor;
 
 /// Holds the most recent capture so the preview window can fetch it after open.
@@ -32,6 +35,23 @@ fn encode_png(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<String, String> {
     img.write_to(&mut Cursor::new(&mut buf), ImageFormat::Png)
         .map_err(|e| e.to_string())?;
     Ok(format!("data:image/png;base64,{}", B64.encode(&buf)))
+}
+
+fn latest_capture(latest: State<'_, LatestCapture>) -> Result<CaptureResult, String> {
+    latest
+        .0
+        .lock()
+        .unwrap()
+        .clone()
+        .ok_or_else(|| "No capture available.".into())
+}
+
+fn capture_png_bytes(capture: &CaptureResult) -> Result<Vec<u8>, String> {
+    let encoded = capture
+        .data_url
+        .strip_prefix("data:image/png;base64,")
+        .ok_or_else(|| "Latest capture is not a PNG data URL.".to_string())?;
+    B64.decode(encoded).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -88,4 +108,42 @@ pub fn capture_region(
 #[tauri::command]
 pub fn take_latest_capture(latest: State<'_, LatestCapture>) -> Option<CaptureResult> {
     latest.0.lock().unwrap().clone()
+}
+
+#[tauri::command]
+pub fn copy_latest_capture_to_clipboard(latest: State<'_, LatestCapture>) -> Result<(), String> {
+    let capture = latest_capture(latest)?;
+    let bytes = capture_png_bytes(&capture)?;
+    let img = ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()
+        .map_err(|e| e.to_string())?
+        .decode()
+        .map_err(|e| e.to_string())?
+        .to_rgba8();
+
+    let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+    clipboard
+        .set_image(arboard::ImageData {
+            width: img.width() as usize,
+            height: img.height() as usize,
+            bytes: Cow::Owned(img.into_raw()),
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn save_latest_capture_to_desktop(
+    app: AppHandle,
+    latest: State<'_, LatestCapture>,
+) -> Result<String, String> {
+    let capture = latest_capture(latest)?;
+    let bytes = capture_png_bytes(&capture)?;
+    let desktop = app.path().desktop_dir().map_err(|e| e.to_string())?;
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_secs();
+    let path = desktop.join(format!("home-capture-{}.png", now));
+    std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
 }

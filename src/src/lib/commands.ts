@@ -57,6 +57,14 @@ export function takeLatestCapture() {
   return invoke<CaptureResult | null>("take_latest_capture");
 }
 
+export function copyLatestCaptureToClipboard() {
+  return invoke<void>("copy_latest_capture_to_clipboard");
+}
+
+export function saveLatestCaptureToDesktop() {
+  return invoke<string>("save_latest_capture_to_desktop");
+}
+
 // ── Window helpers ────────────────────────────────────────────────────────────
 
 export function showAreaSelector() {
@@ -94,6 +102,15 @@ export type CaptureAction = "fullscreen" | "area";
 export interface HotkeyResult {
   action: string;
   accelerator: string;
+}
+
+export interface CaptureHotkeys {
+  fullscreen: string;
+  area: string;
+}
+
+export function getCaptureHotkeys() {
+  return invoke<CaptureHotkeys>("get_capture_hotkeys");
 }
 
 export function setCaptureHotkey(action: CaptureAction, accelerator: string) {
