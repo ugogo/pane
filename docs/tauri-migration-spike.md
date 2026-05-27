@@ -163,7 +163,7 @@ Each item below is a capability the production app depends on.
 - [x] ✅ HID device enumeration via `hidapi` crate — `list_hid_devices` shows:
   - MSI Mystic Light controller: `VID_0DB0 PID_0076` (`MSI` / `MYSTIC LIGHT`)
   - Logitech PRO 2 LIGHTSPEED receiver: `VID_046D PID_C543`
-- [ ] 🔲 MSI Mystic Light control — pick between direct HID writes vs MSI Mystic Light SDK (DLL) and validate solid color set
+- [x] ✅ MSI Mystic Light on/off — validated by user: `MYSTIC LIGHT 0DB0:0076` toggles reliably via vendor HID feature reports (iface 0, usage `FF00:0001`)
 - [ ] 🔲 Logitech direct HID protocol (HID++ 2.0) — raw HID writes from Rust (target: PRO 2 LIGHTSPEED via receiver `C543` or wired)
 - [ ] 🔲 DxLight direct HID / USB protocol — identify interface and validate a solid color set
 - [ ] 🔲 Color apply round-trip (UI → Rust command → device)

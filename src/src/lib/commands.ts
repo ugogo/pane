@@ -138,3 +138,12 @@ export interface HidDeviceInfo {
 export function listHidDevices() {
   return invoke<HidDeviceInfo[]>("list_hid_devices");
 }
+
+export interface ToggleResult {
+  attempted: boolean;
+  detail: string;
+}
+
+export function setVendorLightingEnabled(vendorId: number, productId: number, enabled: boolean) {
+  return invoke<ToggleResult>("set_vendor_lighting_enabled", { vendorId, productId, enabled });
+}

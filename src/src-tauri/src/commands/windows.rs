@@ -3,12 +3,14 @@ use tauri::{
     WebviewWindowBuilder,
 };
 
+#[allow(dead_code)]
+const AREA_SELECTOR_HEIGHT_INSET: f64 = 50.0;
+
 use crate::commands::capture_sound;
 
 const AREA_SELECTOR_LABEL: &str = "area-selector";
 const CAPTURE_PREVIEW_LABEL: &str = "capture-preview";
 /// Shaved from the default 50%-height overlay so the selector feels less tall.
-const AREA_SELECTOR_HEIGHT_INSET: f64 = 50.0;
 
 /// Builds a `WebviewUrl::External` from the main window's current URL with
 /// the given query string appended. `WebviewUrl::App("…?view=…")` silently
