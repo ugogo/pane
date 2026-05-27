@@ -248,8 +248,6 @@ async fn apply_dynamic_lighting_inner(
         .get()
         .map_err(|e| e.to_string())?;
 
-    let is_available_before = lamp_array.IsAvailable().map_err(|e| e.to_string())?;
-
     if !lamp_array.IsEnabled().map_err(|e| e.to_string())? {
         let _ = lamp_array.SetIsEnabled(true);
     }
@@ -270,10 +268,9 @@ async fn apply_dynamic_lighting_inner(
         vec![]
     };
 
-    // Duration: 1500ms (long enough to observe, short enough not to feel sticky).
-    let duration = TimeSpan {
-        Duration: 1_500_i64 * 10_000_i64,
-    };
+    // Hold the color indefinitely — the effect runs until the app exits or
+    // another playlist takes over. i64::MAX ticks ≈ 29,000 years.
+    let duration = TimeSpan { Duration: i64::MAX };
 
     // Try every available path and record which (if any) yielded errors. We do
     // NOT short-circuit on IsAvailable=false because the OS sometimes grants
@@ -341,19 +338,33 @@ async fn apply_dynamic_lighting_inner(
         }
     }
 
-    Ok(DynamicLightingApplyResult {
-        detail: format!(
-            "Applied rgb({},{},{}) br {:.0}% · available before={} after={} · enabled={} · connected={} · lamps={} · steps: {}",
+    let had_errors = steps.iter().any(|s| s.contains("err:"));
+    let detail = if had_errors {
+        format!(
+            "rgb({},{},{}) at {:.0}% — some steps failed: {}",
             r,
             g,
             b,
             brightness * 100.0,
-            is_available_before,
+            steps.iter().filter(|s| s.contains("err:")).cloned().collect::<Vec<_>>().join("; ")
+        )
+    } else {
+        format!("rgb({},{},{}) at {:.0}%.", r, g, b, brightness * 100.0)
+    };
+
+    // Retain availability context only when something went wrong so the
+    // diagnostic is useful without drowning normal applies in noise.
+    let detail = if had_errors {
+        format!(
+            "{} (available={}, connected={}, lamps={})",
+            detail,
             is_available_after,
-            lamp_array.IsEnabled().map_err(|e| e.to_string())?,
             lamp_array.IsConnected().map_err(|e| e.to_string())?,
             lamp_count,
-            steps.join(" | ")
-        ),
-    })
+        )
+    } else {
+        detail
+    };
+
+    Ok(DynamicLightingApplyResult { detail })
 }

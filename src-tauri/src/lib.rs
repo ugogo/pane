@@ -12,6 +12,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(StartTime(boot))
         .manage(LatestCapture::default())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // Second launch: focus the existing window instead of opening a new one.
             tray::show_main_window(app);
@@ -63,8 +64,6 @@ pub fn run() {
             commands::capture::take_latest_capture,
             commands::capture::copy_latest_capture_to_clipboard,
             commands::capture::save_latest_capture_to_desktop,
-            commands::lighting::list_hid_devices,
-            commands::lighting::set_vendor_lighting_enabled,
             commands::lighting::detect_msi_lighting,
             commands::lighting::apply_msi_lighting,
             commands::dx_light::detect_dx_light,

@@ -129,33 +129,6 @@ export function clearCaptureHotkey(action: CaptureAction) {
   return invoke<void>("clear_capture_hotkey", { action });
 }
 
-// ── Lighting (vendor-native probes) ────────────────────────────────────────────
-
-export interface HidDeviceInfo {
-  vendorId: number;
-  productId: number;
-  manufacturer: string | null;
-  product: string | null;
-  serialNumber: string | null;
-  usagePage: number | null;
-  usage: number | null;
-  interfaceNumber: number | null;
-  path: string;
-}
-
-export function listHidDevices() {
-  return invoke<HidDeviceInfo[]>("list_hid_devices");
-}
-
-export interface ToggleResult {
-  attempted: boolean;
-  detail: string;
-}
-
-export function setVendorLightingEnabled(vendorId: number, productId: number, enabled: boolean) {
-  return invoke<ToggleResult>("set_vendor_lighting_enabled", { vendorId, productId, enabled });
-}
-
 // ── MSI Mystic Light (motherboard ARGB headers) ───────────────────────────────
 
 export interface MsiLightingPresence {
