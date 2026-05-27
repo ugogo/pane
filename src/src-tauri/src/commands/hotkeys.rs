@@ -5,8 +5,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+
+use crate::commands::{capture, capture_sound, windows};
 
 /// Two capture actions can be bound to global shortcuts. The map is
 /// `accelerator string` → action so the plugin handler can dispatch.
@@ -111,9 +113,8 @@ pub fn restore_capture_hotkeys(app: &AppHandle) {
     }
 }
 
-/// Plugin handler — invoked on every registered shortcut press. Looks up the
-/// accelerator in BINDINGS and emits `capture-triggered` so the frontend
-/// can drive the capture flow.
+/// Plugin handler — invoked on every registered shortcut press. Runs the capture
+/// flow entirely in Rust so the main window can stay hidden in the tray.
 pub fn on_shortcut(
     app: &AppHandle,
     shortcut: &tauri_plugin_global_shortcut::Shortcut,
@@ -128,11 +129,23 @@ pub fn on_shortcut(
         .ok()
         .and_then(|b| b.by_accel.get(&accel).copied());
     if let Some(action) = action {
-        let _ = app.emit("capture-triggered", action.as_str());
-        // Bring the main window forward so the user sees the preview chain start.
-        if let Some(win) = app.get_webview_window("main") {
-            let _ = win.show();
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = dispatch_hotkey_capture(app, action).await {
+                eprintln!("Hotkey capture failed: {e}");
+            }
+        });
+    }
+}
+
+async fn dispatch_hotkey_capture(app: AppHandle, action: CaptureAction) -> Result<(), String> {
+    match action {
+        CaptureAction::Fullscreen => {
+            let result = capture::perform_fullscreen_capture(&app)?;
+            capture_sound::play_capture_sound(&app);
+            windows::show_capture_preview(app, result.width, result.height).await
         }
+        CaptureAction::Area => windows::show_area_selector(app).await,
     }
 }
 

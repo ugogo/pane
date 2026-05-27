@@ -3,8 +3,12 @@ use tauri::{
     WebviewWindowBuilder,
 };
 
+use crate::commands::capture_sound;
+
 const AREA_SELECTOR_LABEL: &str = "area-selector";
 const CAPTURE_PREVIEW_LABEL: &str = "capture-preview";
+/// Shaved from the default 50%-height overlay so the selector feels less tall.
+const AREA_SELECTOR_HEIGHT_INSET: f64 = 50.0;
 
 /// Builds a `WebviewUrl::External` from the main window's current URL with
 /// the given query string appended. `WebviewUrl::App("…?view=…")` silently
@@ -18,9 +22,9 @@ fn child_url(app: &AppHandle, query: &str) -> Result<WebviewUrl, String> {
     Ok(WebviewUrl::External(url))
 }
 
-/// Opens a centered, transparent, always-on-top overlay sized to 50% of the
-/// primary monitor. The frontend (view=area-selector) handles rubber-band
-/// selection and calls `capture_region` with the converted screen coordinates.
+/// Opens a centered, transparent, always-on-top overlay sized to half the
+/// primary monitor width and (half height − 50 logical px). The frontend
+/// (view=area-selector) handles rubber-band selection.
 #[tauri::command]
 pub async fn show_area_selector(app: AppHandle) -> Result<(), String> {
     // If an old one is still around, close it first.
@@ -43,7 +47,7 @@ pub async fn show_area_selector(app: AppHandle) -> Result<(), String> {
     let logical_h = physical.height as f64 / scale;
 
     let overlay_w = logical_w / 2.0;
-    let overlay_h = logical_h / 2.0;
+    let overlay_h = (logical_h / 2.0 - AREA_SELECTOR_HEIGHT_INSET).max(120.0);
     let pos_x = (logical_w - overlay_w) / 2.0;
     let pos_y = (logical_h - overlay_h) / 2.0;
 
@@ -264,6 +268,8 @@ pub async fn commit_region_capture(
         let latest = app.state::<LatestCapture>();
         *latest.0.lock().unwrap() = Some(result);
     }
+
+    capture_sound::play_capture_sound(&app);
 
     // 4) Open the preview window with the cropped image.
     show_capture_preview(app, w, h).await

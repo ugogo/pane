@@ -3,7 +3,7 @@
 > **Branch:** `codex/tauri-feasibility-spike`  
 > **Spike location:** `src/` (React frontend + `src-tauri/` Rust backend)  
 > **Started:** 2026-05-27  
-> **Status:** In progress — capture pipeline validated; lighting/HID and packaging still open
+> **Status:** In progress — capture + hotkeys validated; Phase 3 (HID/lighting) and packaging open
 
 ---
 
@@ -81,6 +81,7 @@ src/
             ├── metrics.rs       # Phase 1: process metrics (RAM + startup time)
             ├── startup.rs       # Phase 2: run-at-startup registry toggle
             ├── capture.rs       # Screen capture, clipboard, save-to-desktop
+            ├── capture_sound.rs # Shutter WAV feedback on capture
             ├── hotkeys.rs       # Global shortcuts + persistence
             └── windows.rs       # Overlay, preview, area-selector windows
 ```
@@ -134,7 +135,7 @@ Each item below is a capability the production app depends on.
 
 - [x] ✅ Fullscreen capture via `xcap` crate — PNG returned as base64 data URL (driven via CDP `invoke('capture_fullscreen')`, returns 2560×1440 image on the test rig)
 - [x] ✅ Region capture with `capture_region(x, y, w, h)` (drag (200,200)→(700,500) in the overlay produced a 500×300 PNG)
-- [x] ✅ **Transparent overlay window for region selection** — 50%-centred, transparent (`body bg rgba(0,0,0,0)`), always-on-top, crosshair cursor. Rubber-band selection works; closes via `commit_region_capture` Rust command (single async cmd that closes overlay → captures → opens preview, so the overlay webview's JS death can't cancel the chain).
+- [x] ✅ **Transparent overlay window for region selection** — centred, transparent (`body bg rgba(0,0,0,0)`), always-on-top, crosshair cursor. Window is half monitor width × (half height − 50px). Rubber-band selection works; closes via `commit_region_capture` Rust command (single async cmd that closes overlay → captures → opens preview, so the overlay webview's JS death can't cancel the chain).
   - ⚠️ Two implementation gotchas worth recording:
     1. **Sync commands deadlock window creation.** `show_capture_preview` was a sync `fn` — sync commands run on the main thread, so `WebviewWindowBuilder::build()` (which needs the main thread) deadlocked. The window appeared in CDP as `about:blank` and IPC wedged. Fix: declare these commands `async fn`.
     2. **`WebviewUrl::App("…?view=…")` drops the query string.** Switched to building a `WebviewUrl::External` from the main window's current URL.
@@ -142,6 +143,7 @@ Each item below is a capability the production app depends on.
 - [x] ✅ Clipboard integration — `copy_latest_capture_to_clipboard` via `arboard`; CDP invoke after `capture_fullscreen`, then Windows clipboard read back 2560×1440 PNG
 - [x] ✅ Save capture to desktop — `save_latest_capture_to_desktop` writes `home-capture-<ts>.png` to the user's Desktop folder
 - [x] ✅ Preview window copy/save actions — hover overlay buttons in `CapturePreview.tsx` call the Rust commands above
+- [x] ✅ Capture shutter sound — `capture-shutter.wav` via `PlaySoundW` (async) on fullscreen and region capture; matches CleanShot.WinUI
 - [ ] 🔲 Multi-display capture (correct DPI handling on mixed-DPI setups)
 - [ ] 🔲 Screen recording / GIF (not currently a Tauri crate — may need FFmpeg subprocess)
 - [x] ✅ Floating preview window after capture — `always_on_top: true`, undecorated, draggable title bar, sized to fit aspect ratio (verified: `isAlwaysOnTop()` returns true on the `capture-preview` window).
@@ -152,8 +154,8 @@ Each item below is a capability the production app depends on.
 - [x] ✅ `tauri-plugin-global-shortcut` registers hotkeys (`set_capture_hotkey({ action, accelerator })` round-trips through Rust, stored in a `Lazy<Mutex<HashMap>>`)
 - [x] ✅ Capture hotkeys persist to `%APPDATA%\dev.home.app\capture-hotkeys.json` and restore on launch via `restore_capture_hotkeys` in `setup`
   - ⚠️ Accelerator strings are canonicalized through `Shortcut::from_str` before entering the binding map (`fix(hotkeys): canonicalize accelerators`)
-- [ ] 🔲 Hotkeys survive window minimise / hide to tray — plugin handler emits `capture-triggered` and the listener is wired; **needs a physical keypress while the window is hidden**
-- [ ] 🔲 Hotkey fires the capture flow end-to-end — same; **needs a physical keypress to confirm preview opens**
+- [x] ✅ Hotkeys survive window minimise / hide to tray — user confirmed `Alt+Shift+3` fires capture while hub stays hidden; orchestration moved to Rust (`dispatch_hotkey_capture`), no `main.show()`
+- [x] ✅ Hotkey fires the capture flow end-to-end — shutter sound + floating preview confirmed from tray-hidden state
 - [ ] 🔲 Hotkey conflict detection (another app already holds the combo)
 
 ### RGB lighting (LightControls)
@@ -311,9 +313,10 @@ At the end of the spike, answer these questions. **All "go" answers → proceed 
 2. **Capture WinUI 3 baseline numbers** — with the metrics card live, run the PowerShell snippets above while the current WinUI app is idle; record both sets in a new `## Results` section.
 3. ~~**Overlay window probe**~~ — done; region selection + preview chain validated.
 4. ~~**Clipboard probe**~~ — done; `copy_latest_capture_to_clipboard` confirmed via CDP + Windows clipboard read-back.
-5. **Physical hotkey test while hidden** — hide the window to tray, press the bound combo (e.g. `Alt+Shift+3`), confirm capture + preview fire. This unblocks go/no-go row 4.
+5. ~~**Physical hotkey test while hidden**~~ — done; hub stays in tray, capture + preview + shutter sound confirmed.
 6. **Fix first-create preview slide** — follow `.claude/handoff-preview-slide.md`; user eye-test required.
-7. **Full HID write probe** — attempt an actual color-set command to a Logitech device. Prompt the user to confirm the LED changes.
-8. **Packaging probe** — `npm run build`, verify installer output and embedded icon.
-9. **Document results** in this file under a new `## Results` section.
-10. **Call the decision** using the go/no-go table above.
+7. **Phase 3 — HID / lighting probes** — `hidapi` enumeration, OpenRGB TCP, Logitech HID++ write; add `LightingCard` probe panel.
+8. **Capture WinUI 3 baseline numbers** — record in `## Results` for go/no-go rows 6–7.
+9. **Packaging probe** — `npm run build`, verify installer output and embedded icon.
+10. **Document results** in this file under a new `## Results` section.
+11. **Call the decision** using the go/no-go table above.

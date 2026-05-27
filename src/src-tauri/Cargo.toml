@@ -27,3 +27,6 @@ thiserror = "2"
 tokio = { version = "1", features = ["time"] }
 winreg = "0.52"
 xcap = "0.0.14"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Media_Audio"] }

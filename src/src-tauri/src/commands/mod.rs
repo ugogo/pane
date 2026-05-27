@@ -1,4 +1,5 @@
 pub mod capture;
+pub mod capture_sound;
 pub mod hotkeys;
 pub mod metrics;
 pub mod startup;

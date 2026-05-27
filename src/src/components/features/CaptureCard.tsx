@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
 import {
   captureFullscreen,
   clearCaptureHotkey,
@@ -59,26 +58,6 @@ export function CaptureCard() {
       });
   }, []);
 
-  // Listen for hotkey-driven captures.
-  useEffect(() => {
-    const unlisten = listen<string>("capture-triggered", async (event) => {
-      const action = event.payload as CaptureAction;
-      setBusy(true);
-      const err = action === "fullscreen" ? await runFullscreen() : await runArea();
-      setBusy(false);
-      if (err) {
-        setStatus("fail");
-        setMessage(err);
-      } else {
-        setStatus("pass");
-        setMessage(`Triggered ${action} via hotkey.`);
-      }
-    });
-    return () => {
-      void unlisten.then((u) => u());
-    };
-  }, []);
-
   async function bind(action: CaptureAction, accel: string) {
     try {
       await setCaptureHotkey(action, accel);
@@ -125,7 +104,7 @@ export function CaptureCard() {
           <h2 className="text-base font-semibold text-ink">Screen capture</h2>
           <p className="mt-1 text-sm leading-6 text-neutral-500">
             Fullscreen and area capture, triggerable via global hotkeys. The area
-            selector overlay covers the centre 50% of the primary monitor.
+            selector overlay is centred at half monitor width and half height minus 50px.
           </p>
         </div>
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[status]}`}>
@@ -143,7 +122,7 @@ export function CaptureCard() {
           busy={busy}
         />
         <Row
-          label="Area capture (50% overlay)"
+          label="Area capture"
           hotkey={areaAccel}
           onCommit={(a) => void bind("area", a)}
           onClear={() => void clear("area")}

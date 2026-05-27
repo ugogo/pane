@@ -6,6 +6,7 @@ use std::borrow::Cow;
 use std::io::Cursor;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
+use crate::commands::capture_sound;
 use tauri::{AppHandle, Manager, State};
 use xcap::Monitor;
 
@@ -54,8 +55,7 @@ fn capture_png_bytes(capture: &CaptureResult) -> Result<Vec<u8>, String> {
     B64.decode(encoded).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn capture_fullscreen(latest: State<'_, LatestCapture>) -> Result<CaptureResult, String> {
+pub fn perform_fullscreen_capture(app: &AppHandle) -> Result<CaptureResult, String> {
     let monitor = primary_monitor()?;
     let img = monitor.capture_image().map_err(|e| e.to_string())?;
     let result = CaptureResult {
@@ -63,12 +63,20 @@ pub fn capture_fullscreen(latest: State<'_, LatestCapture>) -> Result<CaptureRes
         height: img.height(),
         data_url: encode_png(&img)?,
     };
-    *latest.0.lock().unwrap() = Some(result.clone());
+    *app.state::<LatestCapture>().0.lock().unwrap() = Some(result.clone());
+    Ok(result)
+}
+
+#[tauri::command]
+pub fn capture_fullscreen(app: AppHandle) -> Result<CaptureResult, String> {
+    let result = perform_fullscreen_capture(&app)?;
+    capture_sound::play_capture_sound(&app);
     Ok(result)
 }
 
 #[tauri::command]
 pub fn capture_region(
+    app: AppHandle,
     x: i32,
     y: i32,
     width: u32,
@@ -101,6 +109,7 @@ pub fn capture_region(
         data_url: encode_png(&cropped)?,
     };
     *latest.0.lock().unwrap() = Some(result.clone());
+    capture_sound::play_capture_sound(&app);
     Ok(result)
 }
 

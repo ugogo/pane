@@ -28,6 +28,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": []
+    "icon": [],
+    "resources": {
+      "resources/capture-shutter.wav": "capture-shutter.wav"
+    }
   }
 }
