@@ -266,6 +266,44 @@ Measure-Command { Start-Process ".\path\to\Home.exe" -Wait }
 
 Record both sets of numbers in the **Results** section below once collected.
 
+## Results
+
+### Capture overlay latency - warm WebView2 reuse
+
+Measured on the Tauri dev build with WebView2 CDP enabled (`--remote-debugging-port=9222`) after `prepare_capture_windows` preloaded hidden `area-selector` and `capture-preview` windows:
+
+- Startup warmup: area selector 476 ms, preview 84 ms, 560 ms total.
+- Area selector reuse: Rust `show_area_selector` logged 0-10 ms to reposition, reset, show, and focus the warmed overlay.
+- Fullscreen capture to preview: 2560x1440 capture took 1521 ms total; monitor capture was 139 ms, PNG/base64 encode was 1379 ms, preview refresh/show was 0 ms.
+- Repeat fullscreen capture after hiding preview: 1507 ms total; monitor capture 135 ms, PNG/base64 encode 1368 ms, preview refresh/show 0-1 ms.
+- Region capture from warmed selector: 320x200 region flow took 300 ms total; full-monitor capture 148 ms, crop+PNG encode 17 ms, preview refresh/show 0 ms.
+- Escape cancel: warmed `area-selector` hides and remains reusable.
+
+The overlay delay is now moved out of the hot path; remaining fullscreen latency is dominated by PNG encoding. Native WinUI CleanShot baseline timing still needs a fresh side-by-side measurement for the final migration decision.
+
+### Capture preview latency - BMP preview and deferred PNG
+
+Second pass changed the hot preview payload from compressed PNG to uncompressed BMP data URL and keeps raw RGBA pixels for copy/save:
+
+- Fullscreen capture to preview via CDP: 764 ms first measured run; repeat after hiding preview: 730 ms.
+- Rust fullscreen capture path: 330 ms first run, then 266 ms repeat; monitor capture 142-183 ms, BMP preview encode 118-142 ms.
+- Preview window refresh/show stayed at 0 ms.
+- Chromium rendered the BMP preview correctly (`naturalWidth=2560`, `naturalHeight=1440`).
+- Region capture from warmed selector: 320x200 flow took 340 ms; full-monitor capture 148 ms, BMP preview encode 1 ms, preview visible.
+
+This confirms PNG compression was the largest hot-path cost. Remaining fullscreen latency is now mostly full-screen capture plus transferring a large uncompressed BMP data URL through IPC/JS; the next likely optimization is a temp-file/custom-protocol preview or direct region capture to reduce payload size.
+
+### Capture preview latency - thumbnail preview payload
+
+Third pass keeps the full-resolution raw capture for copy/save, but sends only a 320px-edge BMP thumbnail to the preview card:
+
+- Fullscreen capture to preview via CDP: 251 ms.
+- Rust fullscreen capture path: 223 ms; monitor capture 169 ms, thumbnail preparation 49 ms, BMP preview encode 2 ms.
+- Preview payload dropped to ~307 KB data URL for a 2560x1440 source, rendered as a 320x180 thumbnail while the UI still reports the original 2560x1440 capture size.
+- Region 320x200 flow: 309 ms; full-monitor capture 158 ms, thumbnail preparation 0 ms, BMP preview encode 1 ms.
+
+This is the simplest high-impact follow-up: the preview no longer pays to transfer a full-resolution bitmap it never displays.
+
 ---
 
 ## Go / No-Go Criteria

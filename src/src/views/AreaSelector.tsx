@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import {
   areaSelectorOrigin,
-  closeAreaSelector,
   commitRegionCapture,
+  hideAreaSelector,
 } from "../lib/commands";
 
 interface Rect {
@@ -20,33 +21,45 @@ function rectFrom(a: { x: number; y: number }, b: { x: number; y: number }): Rec
   return { x, y, w, h };
 }
 
-/**
- * Rubber-band selection inside the 50%-centred overlay. On mouseup the
- * selection is converted to absolute monitor coordinates by adding the
- * overlay window's screen origin, then `capture_region` runs and the
- * preview window opens.
- */
 export function AreaSelector() {
   const [drag, setDrag] = useState<{ start: { x: number; y: number }; end: { x: number; y: number } } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>();
   const [shown, setShown] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const showFrame = useRef<number>();
 
   useEffect(() => {
-    // Required for window transparency to actually show through.
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
 
-    // Fade in after first paint (opacity only — no transforms).
-    const raf = requestAnimationFrame(() => setShown(true));
+    function reset() {
+      if (showFrame.current) {
+        cancelAnimationFrame(showFrame.current);
+      }
+      setDrag(null);
+      setSubmitting(false);
+      setError(undefined);
+      setShown(false);
+      showFrame.current = requestAnimationFrame(() => setShown(true));
+    }
+
+    reset();
 
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") void closeAreaSelector();
+      if (e.key === "Escape") {
+        setShown(false);
+        void hideAreaSelector();
+      }
     }
+
+    const unlisten = listen("reset-area-selector", reset);
     window.addEventListener("keydown", onKey);
     return () => {
-      cancelAnimationFrame(raf);
+      if (showFrame.current) {
+        cancelAnimationFrame(showFrame.current);
+      }
+      void unlisten.then((u) => u());
       window.removeEventListener("keydown", onKey);
     };
   }, []);
@@ -57,15 +70,12 @@ export function AreaSelector() {
 
   async function finish(rect: Rect) {
     if (rect.w < 4 || rect.h < 4) {
-      // Treat as cancel — too small to be intentional.
-      await closeAreaSelector();
+      setShown(false);
+      await hideAreaSelector();
       return;
     }
     setSubmitting(true);
     try {
-      // Window-local coords → screen coords. outer_position is in physical
-      // pixels; clientX/Y are CSS pixels. The Rust side captures in
-      // monitor physical pixels, so multiply by DPR.
       const [originX, originY] = await areaSelectorOrigin();
       const dpr = window.devicePixelRatio || 1;
       const sx = Math.round(originX + rect.x * dpr);
@@ -73,9 +83,6 @@ export function AreaSelector() {
       const sw = Math.max(1, Math.round(rect.w * dpr));
       const sh = Math.max(1, Math.round(rect.h * dpr));
 
-      // Single Rust command does: close overlay → capture → open preview.
-      // Orchestrating in Rust avoids this webview being destroyed mid-await,
-      // which would otherwise cancel the rest of the chain.
       await commitRegionCapture(sx, sy, sw, sh);
     } catch (err) {
       setError(String(err));
@@ -112,19 +119,17 @@ export function AreaSelector() {
         void finish(finalRect);
       }}
     >
-      {/* Instructions */}
       <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-md bg-black/60 px-3 py-1 text-xs font-medium text-white">
-        Drag to select · Esc to cancel
+        Drag to select - Esc to cancel
       </div>
 
-      {/* Selection box */}
       {rect && (
         <div
           className="pointer-events-none absolute border-2 border-sky-300 bg-sky-300/10"
           style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }}
         >
           <span className="absolute -top-5 left-0 rounded bg-sky-500 px-1.5 py-0.5 font-mono text-[10px] text-white">
-            {Math.round(rect.w)} × {Math.round(rect.h)}
+            {Math.round(rect.w)} x {Math.round(rect.h)}
           </span>
         </div>
       )}

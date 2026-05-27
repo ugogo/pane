@@ -5,6 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Mutex;
+use std::time::Instant;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
@@ -139,14 +140,24 @@ pub fn on_shortcut(
 }
 
 async fn dispatch_hotkey_capture(app: AppHandle, action: CaptureAction) -> Result<(), String> {
+    let started = Instant::now();
+    eprintln!("capture timing: hotkey dispatch {:?} started", action);
     match action {
         CaptureAction::Fullscreen => {
             let result = capture::perform_fullscreen_capture(&app)?;
             capture_sound::play_capture_sound(&app);
-            windows::show_capture_preview(app, result.width, result.height).await
+            windows::show_capture_preview(app, result.width, result.height).await?;
         }
-        CaptureAction::Area => windows::show_area_selector(app).await,
+        CaptureAction::Area => {
+            windows::show_area_selector(app).await?;
+        }
     }
+    eprintln!(
+        "capture timing: hotkey dispatch {:?} completed in {}ms",
+        action,
+        started.elapsed().as_millis()
+    );
+    Ok(())
 }
 
 #[derive(Serialize)]

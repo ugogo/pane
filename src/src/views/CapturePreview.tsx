@@ -1,20 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Clipboard, Save, X } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   copyLatestCaptureToClipboard,
+  hideCapturePreview,
   previewReady,
   saveLatestCaptureToDesktop,
   takeLatestCapture,
   type CaptureResult,
 } from "../lib/commands";
 
-/**
- * Floating, always-on-top preview. The native window is a taller transparent
- * strip, and this component slides the visible 200x200 card inside it so the
- * first-create animation is not dependent on OS-level window movement.
- */
 export function CapturePreview() {
   const [capture, setCapture] = useState<CaptureResult | null>(null);
   const [error, setError] = useState<string>();
@@ -24,8 +19,8 @@ export function CapturePreview() {
   const [closing, setClosing] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "busy" | "success">("idle");
   const [saveState, setSaveState] = useState<"idle" | "busy" | "success">("idle");
-  const reportedReady = useRef(false);
   const closeTimer = useRef<number>();
+  const lastFetchAt = useRef(0);
 
   useEffect(() => {
     document.documentElement.style.background = "transparent";
@@ -38,22 +33,30 @@ export function CapturePreview() {
   }, []);
 
   async function fetchLatest(isRefresh = false) {
+    const started = performance.now();
+    lastFetchAt.current = started;
     try {
+      if (isRefresh) {
+        setClosing(false);
+        setShown(false);
+      }
+
       const c = await takeLatestCapture();
       if (!c) {
         setError("No capture available.");
+        console.info(`capture timing: preview fetch found no capture in ${Math.round(performance.now() - started)}ms`);
         return;
       }
+
       setError(undefined);
       setCapture(c);
       setCopyState("idle");
       setSaveState("idle");
       setRevision((r) => r + 1);
-      if (isRefresh && reportedReady.current) {
-        setClosing(false);
-        setShown(true);
+      if (isRefresh) {
         setRefreshKey((key) => key + 1);
       }
+      console.info(`capture timing: preview fetched image in ${Math.round(performance.now() - started)}ms`);
     } catch (e) {
       setError(String(e));
     }
@@ -61,11 +64,24 @@ export function CapturePreview() {
 
   useEffect(() => {
     void fetchLatest();
+
     const unlisten = listen("refresh-capture", () => {
       void fetchLatest(true);
     });
+
+    function fetchWhenWoken() {
+      if (document.visibilityState === "hidden") return;
+      if (performance.now() - lastFetchAt.current < 500) return;
+      void fetchLatest(true);
+    }
+
+    window.addEventListener("focus", fetchWhenWoken);
+    document.addEventListener("visibilitychange", fetchWhenWoken);
+
     return () => {
       void unlisten.then((u) => u());
+      window.removeEventListener("focus", fetchWhenWoken);
+      document.removeEventListener("visibilitychange", fetchWhenWoken);
     };
   }, []);
 
@@ -92,18 +108,18 @@ export function CapturePreview() {
     };
   }
 
-  // First open slides in. Refreshes while open are handled by a keyframed pulse.
   useEffect(() => {
     if (revision === 0) return;
-    if (reportedReady.current) return;
 
     setClosing(false);
-    setShown(false);
 
     return afterPaint(() => {
-      reportedReady.current = true;
+      const started = performance.now();
       void previewReady()
-        .then(() => setShown(true))
+        .then(() => {
+          setShown(true);
+          console.info(`capture timing: preview_ready roundtrip in ${Math.round(performance.now() - started)}ms`);
+        })
         .catch((e) => setError(String(e)));
     });
   }, [revision]);
@@ -115,7 +131,9 @@ export function CapturePreview() {
     setClosing(true);
     setShown(false);
     window.setTimeout(() => {
-      void getCurrentWindow().close().catch((e) => setError(String(e)));
+      void hideCapturePreview()
+        .then(() => setClosing(false))
+        .catch((e) => setError(String(e)));
     }, 340);
   }
 

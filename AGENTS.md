@@ -64,6 +64,10 @@ Premium means the experience should feel carefully composed, not just functional
 
 Avoid adding hero sections, marketing copy, oversized cards, random gradients, or raw color palettes.
 
+## Performance
+
+Prefer fast, native-feeling interactions over implementation convenience. Keep hot paths lean, avoid unnecessary encoding/IPC/render work, and measure runtime behavior when performance matters.
+
 ## Verification
 
 For styling changes:
