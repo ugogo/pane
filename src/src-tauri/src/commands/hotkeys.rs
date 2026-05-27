@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
@@ -71,10 +72,18 @@ fn save_settings(app: &AppHandle) -> Result<(), String> {
     fs::write(path, text).map_err(|e| e.to_string())
 }
 
-fn remember_binding(action: CaptureAction, accelerator: String) {
+fn canonical_accelerator(accelerator: &str) -> Result<String, String> {
+    tauri_plugin_global_shortcut::Shortcut::from_str(accelerator)
+        .map(|shortcut| shortcut.to_string())
+        .map_err(|e| e.to_string())
+}
+
+fn remember_binding(action: CaptureAction, accelerator: String) -> Result<(), String> {
+    let canonical = canonical_accelerator(&accelerator)?;
     let mut b = BINDINGS.lock().unwrap();
-    b.by_accel.insert(accelerator.clone(), action);
+    b.by_accel.insert(canonical, action);
     b.by_action.insert(action, accelerator);
+    Ok(())
 }
 
 pub fn restore_capture_hotkeys(app: &AppHandle) {
@@ -92,7 +101,11 @@ pub fn restore_capture_hotkeys(app: &AppHandle) {
             continue;
         }
         match shortcuts.register(accelerator.as_str()) {
-            Ok(_) => remember_binding(action, accelerator),
+            Ok(_) => {
+                if let Err(e) = remember_binding(action, accelerator.clone()) {
+                    eprintln!("Failed to restore capture hotkey '{}': {}", accelerator, e);
+                }
+            }
             Err(e) => eprintln!("Failed to restore capture hotkey '{}': {}", accelerator, e),
         }
     }
@@ -167,7 +180,9 @@ pub fn set_capture_hotkey(
         let mut b = BINDINGS.lock().unwrap();
         if let Some(old) = b.by_action.remove(&action) {
             let _ = shortcuts.unregister(old.as_str());
-            b.by_accel.remove(&old);
+            if let Ok(canonical) = canonical_accelerator(&old) {
+                b.by_accel.remove(&canonical);
+            }
         }
     }
 
@@ -184,7 +199,7 @@ pub fn set_capture_hotkey(
         .register(accelerator.as_str())
         .map_err(|e| format!("Failed to register '{}': {}", accelerator, e))?;
 
-    remember_binding(action, accelerator.clone());
+    remember_binding(action, accelerator.clone())?;
     save_settings(&app)?;
 
     Ok(HotkeyResult {
@@ -199,7 +214,9 @@ pub fn clear_capture_hotkey(app: AppHandle, action: CaptureAction) -> Result<(),
     let mut b = BINDINGS.lock().unwrap();
     if let Some(old) = b.by_action.remove(&action) {
         let _ = shortcuts.unregister(old.as_str());
-        b.by_accel.remove(&old);
+        if let Ok(canonical) = canonical_accelerator(&old) {
+            b.by_accel.remove(&canonical);
+        }
     }
     drop(b);
     save_settings(&app)?;
