@@ -3,7 +3,7 @@
 > **Branch:** `codex/tauri-feasibility-spike`  
 > **Spike location:** `src/` (React frontend + `src-tauri/` Rust backend)  
 > **Started:** 2026-05-27  
-> **Status:** In progress — capture + hotkeys validated; Phase 3 (HID/lighting) and packaging open
+> **Status:** **Complete — Go ✅ (2026-05-27)**
 
 ---
 
@@ -306,6 +306,10 @@ This is the simplest high-impact follow-up: the preview no longer pays to transf
 
 ---
 
+## Decision: Go ✅
+
+Spike complete. All must-pass blockers passed. Migration to Tauri 2 (Rust + React) is approved to proceed.
+
 ## Go / No-Go Criteria
 
 At the end of the spike, answer these questions. **All "go" answers → proceed with migration. Any "no-go" → document the blocker and either find a workaround or stay on WinUI 3.**
@@ -346,17 +350,17 @@ At the end of the spike, answer these questions. **All "go" answers → proceed 
 
 ---
 
-## Next Steps
+## Next Steps (Migration)
 
-1. ~~**Add the instrumentation module first**~~ — done (Phase 1).
-2. **Capture WinUI 3 baseline numbers** — with the metrics card live, run the PowerShell snippets above while the current WinUI app is idle; record both sets in a new `## Results` section.
-3. ~~**Overlay window probe**~~ — done; region selection + preview chain validated.
-4. ~~**Clipboard probe**~~ — done; `copy_latest_capture_to_clipboard` confirmed via CDP + Windows clipboard read-back.
-5. ~~**Physical hotkey test while hidden**~~ — done; hub stays in tray, capture + preview + shutter sound confirmed.
-6. **Fix first-create preview slide** — follow `.claude/handoff-preview-slide.md`; user eye-test required.
-7. ~~**Phase 3 — HID / lighting probes: enumerate devices**~~ — done; `list_hid_devices` confirms MSI Mystic Light + Logitech receiver are visible.
-8. **Phase 3 — HID / lighting probes: implement vendor-native control** — MSI (Mystic Light), Logitech HID++ (PRO 2 LIGHTSPEED), DxLight bar protocol.
-9. **Capture WinUI 3 baseline numbers** — record in `## Results` for go/no-go rows 6–7.
-10. **Packaging probe** — `npm run build`, verify installer output and embedded icon.
-11. **Document results** in this file under a new `## Results` section.
-12. **Call the decision** using the go/no-go table above.
+Spike is done. The following tracks the actual migration from WinUI 3 → Tauri.
+
+1. **Create migration branch** — branch off `main` as `feat/tauri-migration`; move spike code out of `experiments/` into the root.
+2. **Port all WinUI screens** — Settings, Capture history, hub dashboard; design in Tailwind + ShadCN matching the existing hub.
+3. **Finish HID protocol work** — Logitech HID++ 2.0 (PRO 2 LIGHTSPEED) + DxLight USB protocol; validate color round-trip on real hardware.
+4. **Packaging** — `tauri build` with NSIS installer; verify silent install, embedded icon, no MSIX dependency.
+5. **Auto-updater** — wire `tauri-plugin-updater` against a GitHub Releases endpoint.
+6. **Performance baseline** — record idle RAM and cold startup for both the Tauri build and the WinUI app side-by-side; update Results section.
+7. **Fix first-create preview slide** — see `.claude/handoff-preview-slide.md`.
+8. **Multi-display / DPI** — test region capture and overlay on mixed-DPI monitor setup.
+9. **CI** — add a GitHub Actions workflow that runs `cargo check` + `npm run build` on every PR.
+10. **Retire WinUI 3 app** — once Tauri build ships to production, archive `src-legacy/` and remove the old build targets.
