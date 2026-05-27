@@ -59,39 +59,39 @@ The spike goal is **not to rewrite the app** — it is to answer: *can Tauri fai
 
 ---
 
-## Architecture of the Spike
+## Architecture
+
+The WinUI 3 / C# implementation is preserved in `src-legacy/` for reference.
+The new Tauri app lives in `src/` and is built up incrementally, one phase at a time.
 
 ```
-experiments/home-tauri/
+src/
 ├── src/                         # React + TypeScript frontend
-│   ├── components/features/     # Probe cards (one per capability)
+│   ├── App.tsx                  # Probe grid — MetricsCard is always first
+│   ├── components/features/     # One component per probe area
 │   └── lib/commands.ts          # Typed invoke() wrappers for all Rust commands
 └── src-tauri/
-    ├── src/
-    │   ├── main.rs              # Entry point → runs lib
-    │   ├── tray.rs              # System tray icon + menu
-    │   └── commands/
-    │       ├── status.rs        # App info probe
-    │       ├── startup.rs       # Windows registry run-at-startup
-    │       ├── capture.rs       # Fullscreen + region screen capture
-    │       ├── devices.rs       # HID device enumeration
-    │       ├── openrgb.rs       # TCP probe for OpenRGB SDK
-    │       ├── hotkeys.rs       # Global hotkey registration
-    │       └── settings.rs      # Persistent prototype settings
-    └── Cargo.toml               # Rust deps: tauri 2.x, hidapi, screenshots, winreg…
+    ├── tauri.conf.json
+    ├── capabilities/default.json
+    └── src/
+        ├── main.rs              # Entry point → runs lib
+        ├── lib.rs               # Tauri builder + managed state
+        └── commands/
+            ├── mod.rs
+            └── metrics.rs       # Phase 1: process metrics (RAM + startup time)
 ```
 
-### Running the spike
+### Running
 
 ```powershell
 # Install Rust + MSVC build tools (first time only)
-npm run tauri:prereqs
+npm run prereqs
 
 # Dev mode (hot-reload frontend + Rust backend)
-npm run tauri:spike:dev
+npm run dev
 
 # Production build
-npm run tauri:spike:build
+npm run build
 ```
 
 ---
@@ -99,15 +99,22 @@ npm run tauri:spike:build
 ## Checklist
 
 Each item below is a capability the production app depends on.  
-`✅` = probed and confirmed working in the spike  
+`✅` = probed and confirmed working in the running app  
 `🔲` = not yet tested  
 `⚠️` = partially tested or known risk  
 `❌` = confirmed blocker
 
-### Core infrastructure
+### Phase 1 — Instrumentation
 
-- [ ] 🔲 Tauri 2 project scaffolded and builds on Windows
-- [ ] 🔲 Rust ↔ TypeScript IPC (`invoke`) is working end-to-end
+- [ ] 🔲 `npm run dev` — app window appears, no compile errors
+- [ ] 🔲 `MetricsCard` renders first, full-width, above all other content
+- [ ] 🔲 Working set (MB) and startup elapsed (ms) show real numbers
+- [ ] 🔲 Auto-refresh updates values every ~2 s
+- [ ] 🔲 "Refresh now" button triggers an immediate update
+- [ ] 🔲 RAM > 300 MB colours the card `fail`; < 150 MB colours it `pass`
+- [ ] 🔲 Sparkline grows with each sample
+
+### Core infrastructure
 - [ ] 🔲 System tray icon with context menu (Show / Quit)
 - [ ] 🔲 Left-click tray → show main window
 - [ ] 🔲 App startup registry entry (`HKCU\…\Run`) via `winreg`

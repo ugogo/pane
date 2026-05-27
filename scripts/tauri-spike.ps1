@@ -12,4 +12,4 @@ if (Test-Path $cargoBin) {
 }
 
 Set-Location $root
-npm --prefix experiments/home-tauri run tauri -- @TauriArgs
+npm --prefix src run tauri -- @TauriArgs
