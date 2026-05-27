@@ -1,35 +1,36 @@
 # Home
 
-Windows utility suite monorepo — **Light Controls** and **CleanShot** in one PowerToys-style hub.
+Windows utility suite — **Light Controls** and **CleanShot** in one PowerToys-style hub.
 
 ## Stack
 
-- **.NET 10** + **WinUI 3**
-- `Home.Hub` — unified control panel
-- Shared libraries: `Home.Core`, `Home.Windows`, `CleanShot.Core`, `DXLight.Core`, `LightControls.Core`
+- **Tauri 2** (Rust backend + React/TypeScript/Tailwind frontend)
+- `src-tauri/` — Rust commands (HID, screen capture, hotkeys, tray, registry)
+- `src/` — React frontend (Vite + Tailwind + shadcn)
 
 ## Commands
 
 ```powershell
-npm run build
-npm test
-npm start                      # launch Home.Hub (recommended)
-npm run start:light-controls   # standalone Light Controls module
-npm run start:cleanshot        # standalone CleanShot module
+npm run dev          # full Tauri dev (Vite frontend + Rust backend)
+npm run build        # production build
+npm run stop         # kill stuck dev instances
 ```
 
-## Home.Hub
+## Project layout
 
-Single tray app with sidebar navigation:
+```
+src/                             # React + TypeScript frontend
+├── App.tsx
+├── components/features/         # One component per feature area
+└── lib/commands.ts              # Typed invoke() wrappers for all Rust commands
 
-- **Home** — enable/disable Light Controls and CleanShot
-- **General** — run at startup (login + wake-from-sleep)
+src-tauri/                       # Rust backend
+├── tauri.conf.json
+└── src/
+    ├── lib.rs                   # Tauri builder + managed state
+    └── commands/                # capture, hotkeys, hid, metrics, startup, windows
+```
 
-Settings:
+## Settings
 
-- Hub: `%LocalAppData%\Home\hub-settings.json`
-- CleanShot: `%LocalAppData%\Home\cleanshot-settings.json`
-
-## Status
-
-- Phase 1–4: monorepo, shared cores, module system, and Home.Hub shell
+- Capture hotkeys: `%APPDATA%\dev.home.app\capture-hotkeys.json`

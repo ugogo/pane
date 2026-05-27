@@ -4,7 +4,7 @@
     {
       "name": "tauri-spike-vite",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "src", "run", "dev"],
+      "runtimeArgs": ["run", "dev"],
       "port": 1420
     }
   ]

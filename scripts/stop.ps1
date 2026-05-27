@@ -3,13 +3,7 @@
     Kill all dev instances of the Home app that may be stuck or bugged.
 
 .DESCRIPTION
-    Terminates every dev process in two families:
-
-    Legacy (WinUI 3 / .NET):
-      - Home.Hub.exe
-      - dotnet.exe processes whose command line references Home.Hub
-
-    Tauri spike (Rust + Vite):
+    Terminates every dev process in the Tauri (Rust + Vite) family:
       - home.exe  (Cargo debug binary)
       - cargo.exe / tauri.exe build/runner processes referencing this repo
       - node.exe  processes running Vite from this repo's src/ directory
@@ -35,30 +29,10 @@ function Stop-ProcessById($id) {
 
 $killed = 0
 
-# ---- 1. Home.Hub.exe --------------------------------------------------------
-
-$hubProcs = Get-Process -Name "Home.Hub" -ErrorAction SilentlyContinue
-foreach ($p in $hubProcs) {
-    Write-Killing "Home.Hub.exe" $p.Id
-    Stop-ProcessById $p.Id
-    $killed++
-}
-
-# ---- 2. dotnet.exe hosting Home.Hub -----------------------------------------
-
-Get-CimInstance Win32_Process -Filter "Name = 'dotnet.exe'" -ErrorAction SilentlyContinue |
-    Where-Object { $_.CommandLine -like "*Home.Hub*" } |
-    ForEach-Object {
-        Write-Killing "dotnet.exe (Home.Hub)" $_.ProcessId
-        Stop-ProcessById $_.ProcessId
-        $killed++
-    }
-
-# ---- 3. home.exe (Tauri debug binary) ----------------------------------------
+# ---- 1. home.exe (Tauri debug binary) ----------------------------------------
 
 $homeProcs = Get-Process -Name "home" -ErrorAction SilentlyContinue
 foreach ($p in $homeProcs) {
-    # Guard: only kill if the binary lives inside this repo's target/ tree
     try {
         $exePath = $p.MainModule.FileName
     } catch {
@@ -71,7 +45,7 @@ foreach ($p in $homeProcs) {
     }
 }
 
-# ---- 4. cargo.exe / tauri dev runner ----------------------------------------
+# ---- 2. cargo.exe / tauri dev runner ----------------------------------------
 
 Get-CimInstance Win32_Process -Filter "Name = 'cargo.exe'" -ErrorAction SilentlyContinue |
     Where-Object {
@@ -85,7 +59,7 @@ Get-CimInstance Win32_Process -Filter "Name = 'cargo.exe'" -ErrorAction Silently
         $killed++
     }
 
-# ---- 5. node.exe running Vite from this repo --------------------------------
+# ---- 3. node.exe running Vite from this repo --------------------------------
 
 Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue |
     Where-Object { $_.CommandLine -like "*$root*" } |
@@ -95,25 +69,6 @@ Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyC
         $killed++
     }
 
-# ---- 6. Wait for the Home.Hub single-instance mutex to clear ----------------
-
-$mutexName = "Local\Home_Hub_SingleInstance_v2"
-$deadline   = [datetime]::UtcNow.AddSeconds(8)
-$mutexClear = $false
-
-while ([datetime]::UtcNow -lt $deadline) {
-    try {
-        $mutex = [System.Threading.Mutex]::OpenExisting($mutexName)
-        $mutex.Dispose()
-        Start-Sleep -Milliseconds 200
-    } catch [System.Threading.WaitHandleCannotBeOpenedException] {
-        $mutexClear = $true
-        break
-    } catch {
-        Start-Sleep -Milliseconds 200
-    }
-}
-
 # ---- summary ----------------------------------------------------------------
 
 if ($killed -eq 0) {
@@ -121,7 +76,4 @@ if ($killed -eq 0) {
 } else {
     Write-Host ""
     Write-Host "Stopped $killed process(es)."
-    if (-not $mutexClear) {
-        Write-Warning "Home.Hub single-instance mutex may still be held. Re-run if the app fails to start."
-    }
 }

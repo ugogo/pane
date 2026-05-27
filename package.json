@@ -5,13 +5,12 @@
   "type": "module",
   "description": "Home — Windows desktop utility suite (Tauri 2 + React + Rust)",
   "scripts": {
-    "dev": "cd src && vite",
-    "build": "cd src && powershell -NoProfile -ExecutionPolicy Bypass -Command \"npx tsc; npx vite build\"",
-    "preview": "cd src && vite preview",
-    "tauri": "cd src && tauri",
+    "dev": "tauri dev",
+    "build": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"npx tsc; npx vite build\"",
+    "preview": "vite preview",
+    "tauri": "tauri",
     "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/stop.ps1",
-    "tauri:windows:build": "cd src && tauri-windows-bundle build --arch x64",
-    "tauri:dev:packaged": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-packaged.ps1"
+    "tauri:windows:build": "tauri-windows-bundle build --arch x64"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
