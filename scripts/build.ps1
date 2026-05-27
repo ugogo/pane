@@ -88,17 +88,17 @@ function Stop-RunningHubInstances {
 Stop-RunningHubInstances
 
 Write-Host "Building core libraries..."
-dotnet build src/DXLight.Core/DXLight.Core.csproj -c $Configuration
-dotnet build src/LightControls.Core/LightControls.Core.csproj -c $Configuration
-dotnet build src/CleanShot.Core/CleanShot.Core.csproj -c $Configuration
-dotnet build src/CleanShot.WinUI/CleanShot.WinUI.csproj -c $Configuration -p:Platform=x64
-dotnet build src/Home.Windows/Home.Windows.csproj -c $Configuration
-dotnet build src/Home.Core/Home.Core.csproj -c $Configuration
-dotnet build src/Home.UI/Home.UI.csproj -c $Configuration -p:Platform=x64
+dotnet build src-legacy/DXLight.Core/DXLight.Core.csproj -c $Configuration
+dotnet build src-legacy/LightControls.Core/LightControls.Core.csproj -c $Configuration
+dotnet build src-legacy/CleanShot.Core/CleanShot.Core.csproj -c $Configuration
+dotnet build src-legacy/CleanShot.WinUI/CleanShot.WinUI.csproj -c $Configuration -p:Platform=x64
+dotnet build src-legacy/Home.Windows/Home.Windows.csproj -c $Configuration
+dotnet build src-legacy/Home.Core/Home.Core.csproj -c $Configuration
+dotnet build src-legacy/Home.UI/Home.UI.csproj -c $Configuration -p:Platform=x64
 
 Write-Host "Building hub and standalone launchers..."
-dotnet build src/Home.Hub/Home.Hub.csproj -c $Configuration -p:Platform=x64
-dotnet build src/Home.Standalone.LightControls/Home.Standalone.LightControls.csproj -c $Configuration
-dotnet build src/Home.Standalone.CleanShot/Home.Standalone.CleanShot.csproj -c $Configuration
+dotnet build src-legacy/Home.Hub/Home.Hub.csproj -c $Configuration -p:Platform=x64
+dotnet build src-legacy/Home.Standalone.LightControls/Home.Standalone.LightControls.csproj -c $Configuration
+dotnet build src-legacy/Home.Standalone.CleanShot/Home.Standalone.CleanShot.csproj -c $Configuration
 
 Write-Host "Build complete."

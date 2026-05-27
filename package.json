@@ -12,7 +12,7 @@
     "tauri:spike:build": "npm --prefix experiments/home-tauri run build",
     "tauri:spike:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/tauri-spike.ps1 dev",
     "tauri:spike:info": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/tauri-spike.ps1 info",
-    "start:light-controls": "dotnet run --project src/Home.Standalone.LightControls/Home.Standalone.LightControls.csproj -c Release",
-    "start:cleanshot": "dotnet run --project src/Home.Standalone.CleanShot/Home.Standalone.CleanShot.csproj -c Release"
+    "start:light-controls": "dotnet run --project src-legacy/Home.Standalone.LightControls/Home.Standalone.LightControls.csproj -c Release",
+    "start:cleanshot": "dotnet run --project src-legacy/Home.Standalone.CleanShot/Home.Standalone.CleanShot.csproj -c Release"
   }
 }

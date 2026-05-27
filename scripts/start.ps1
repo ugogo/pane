@@ -7,8 +7,8 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
-$hubProject = "src/Home.Hub/Home.Hub.csproj"
-$hubExe = Join-Path $root "src/Home.Hub/bin/x64/$Configuration/net10.0-windows10.0.19041.0/Home.Hub.exe"
+$hubProject = "src-legacy/Home.Hub/Home.Hub.csproj"
+$hubExe = Join-Path $root "src-legacy/Home.Hub/bin/x64/$Configuration/net10.0-windows10.0.19041.0/Home.Hub.exe"
 $mutexName = "Local\Home_Hub_SingleInstance_v2"
 $processName = "Home.Hub"
 
