@@ -71,6 +71,10 @@ export function showAreaSelector() {
   return invoke<void>("show_area_selector");
 }
 
+export function prepareCaptureWindows() {
+  return invoke<void>("prepare_capture_windows");
+}
+
 export function showCapturePreview(width: number, height: number) {
   return invoke<void>("show_capture_preview", { width, height });
 }
@@ -81,6 +85,14 @@ export function previewReady() {
 
 export function closeAreaSelector() {
   return invoke<void>("close_area_selector");
+}
+
+export function hideAreaSelector() {
+  return invoke<void>("hide_area_selector");
+}
+
+export function hideCapturePreview() {
+  return invoke<void>("hide_capture_preview");
 }
 
 export function areaSelectorOrigin() {
@@ -146,6 +158,42 @@ export interface ToggleResult {
 
 export function setVendorLightingEnabled(vendorId: number, productId: number, enabled: boolean) {
   return invoke<ToggleResult>("set_vendor_lighting_enabled", { vendorId, productId, enabled });
+}
+
+// ── MSI Mystic Light (motherboard ARGB headers) ───────────────────────────────
+
+export interface MsiLightingPresence {
+  present: boolean;
+  vendorId: number;
+  productId: number;
+}
+
+export function detectMsiLighting() {
+  return invoke<MsiLightingPresence>("detect_msi_lighting");
+}
+
+export function applyMsiLighting(r: number, g: number, b: number, brightness: number) {
+  return invoke<void>("apply_msi_lighting", { r, g, b, brightness });
+}
+
+// ── DX Light (Robobloq monitor bias strip) ────────────────────────────────────
+
+export interface DxLightPresence {
+  present: boolean;
+  vendorId: number;
+  productId: number;
+}
+
+export function detectDxLight() {
+  return invoke<DxLightPresence>("detect_dx_light");
+}
+
+export function applyDxLight(r: number, g: number, b: number, brightness: number) {
+  return invoke<void>("apply_dx_light", { r, g, b, brightness });
+}
+
+export function dxLightOff() {
+  return invoke<void>("dx_light_off");
 }
 
 // ── Windows Dynamic Lighting (OS-managed) ──────────────────────────────────────
@@ -214,4 +262,30 @@ export function applyDynamicLighting(deviceId: string, r: number, g: number, b: 
 
 export function diagnoseDynamicLighting(deviceId: string) {
   return invoke<DynamicLightingDiagnostics>("diagnose_dynamic_lighting", { deviceId });
+}
+
+// ── Persisted per-light state ─────────────────────────────────────────────────
+
+export interface LightState {
+  r: number;
+  g: number;
+  b: number;
+  brightness: number;
+  /** False means the user explicitly turned the light off (last color preserved). */
+  on: boolean;
+}
+
+/**
+ * State keys:
+ *  - "msi"                          → MSI Mystic Light
+ *  - "dxlight"                      → DX Light strip
+ *  - `dynamic:${deviceId}`          → a specific Dynamic Lighting LampArray
+ */
+export function getLightStates() {
+  return invoke<Record<string, LightState>>("get_light_states");
+}
+
+/** Re-apply every persisted state. Returns per-light error messages (null = ok). */
+export function restoreAllLights() {
+  return invoke<Array<[string, string | null]>>("restore_all_lights");
 }

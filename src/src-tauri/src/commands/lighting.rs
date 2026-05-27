@@ -41,8 +41,7 @@ pub fn list_hid_devices() -> Result<Vec<HidDeviceInfo>, String> {
 
     // Keep it stable for UI diffing and logs.
     out.sort_by(|a, b| {
-        (a.vendor_id, a.product_id, &a.path)
-            .cmp(&(b.vendor_id, b.product_id, &b.path))
+        (a.vendor_id, a.product_id, &a.path).cmp(&(b.vendor_id, b.product_id, &b.path))
     });
 
     Ok(out)
@@ -60,9 +59,14 @@ pub struct ToggleResult {
 /// **Safety invariant:** this command only targets vendor-defined endpoints
 /// and does not interfere with normal HID mouse/keyboard collections.
 #[tauri::command]
-pub fn set_vendor_lighting_enabled(vendor_id: u16, product_id: u16, enabled: bool) -> Result<ToggleResult, String> {
+pub fn set_vendor_lighting_enabled(
+    vendor_id: u16,
+    product_id: u16,
+    enabled: bool,
+) -> Result<ToggleResult, String> {
     if vendor_id == MSI_VID && product_id == MSI_MYSTIC_LIGHT_PID {
-        set_msi_mystic_light_enabled(enabled)?;
+        let rgb = if enabled { (255, 255, 255) } else { (0, 0, 0) };
+        send_msi_mystic_light_packets(rgb)?;
         return Ok(ToggleResult {
             attempted: true,
             detail: if enabled {
@@ -86,7 +90,63 @@ pub fn set_vendor_lighting_enabled(vendor_id: u16, product_id: u16, enabled: boo
     })
 }
 
-fn set_msi_mystic_light_enabled(enabled: bool) -> Result<(), String> {
+// ── MSI Mystic Light — color + brightness ────────────────────────────────────
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MsiLightingPresence {
+    pub present: bool,
+    pub vendor_id: u16,
+    pub product_id: u16,
+}
+
+/// Quick probe — is the MSI Mystic Light HID endpoint reachable right now?
+/// Returns `present=false` if HID enumeration succeeds but the device is
+/// absent. Returns an `Err` only if hidapi itself fails to initialize.
+#[tauri::command]
+pub fn detect_msi_lighting() -> Result<MsiLightingPresence, String> {
+    let api = hidapi::HidApi::new().map_err(|e| e.to_string())?;
+    let present = api
+        .device_list()
+        .any(|d| d.vendor_id() == MSI_VID && d.product_id() == MSI_MYSTIC_LIGHT_PID);
+    Ok(MsiLightingPresence {
+        present,
+        vendor_id: MSI_VID,
+        product_id: MSI_MYSTIC_LIGHT_PID,
+    })
+}
+
+/// Push a solid color to all MSI Mystic Light zones (motherboard ARGB headers).
+/// Brightness is applied by pre-scaling the RGB values (MSI's direct-mode
+/// firmware has no separate brightness register).
+#[tauri::command]
+pub fn apply_msi_lighting(r: u8, g: u8, b: u8, brightness: f64) -> Result<(), String> {
+    let scale = brightness.clamp(0.0, 1.0);
+    let scaled = (
+        ((r as f64) * scale).round() as u8,
+        ((g as f64) * scale).round() as u8,
+        ((b as f64) * scale).round() as u8,
+    );
+    send_msi_mystic_light_packets(scaled)?;
+    // Treat brightness 0 as an explicit off so wake-restore matches intent.
+    if brightness <= f64::EPSILON {
+        crate::commands::light_state::record_off("msi");
+    } else {
+        crate::commands::light_state::record(
+            "msi",
+            crate::commands::light_state::LightState {
+                r,
+                g,
+                b,
+                brightness,
+                on: true,
+            },
+        );
+    }
+    Ok(())
+}
+
+fn send_msi_mystic_light_packets(rgb: (u8, u8, u8)) -> Result<(), String> {
     // Packet format mirrored from OpenRGB's MSI Mystic Light 761-byte controller.
     // (FeaturePacket_PerLED_761) — report_id 0x51, 240 LEDs, 720 RGB bytes.
     const REPORT_ID: u8 = 0x51;
@@ -113,8 +173,6 @@ fn set_msi_mystic_light_enabled(enabled: bool) -> Result<(), String> {
         }
         buf
     }
-
-    let rgb = if enabled { (255, 255, 255) } else { (0, 0, 0) };
 
     let api = hidapi::HidApi::new().map_err(|e| e.to_string())?;
     let dev = api
@@ -146,4 +204,3 @@ fn set_msi_mystic_light_enabled(enabled: bool) -> Result<(), String> {
 
     Ok(())
 }
-

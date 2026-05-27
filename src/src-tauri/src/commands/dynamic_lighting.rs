@@ -1,9 +1,9 @@
 use serde::Serialize;
+use windows::core::HSTRING;
 use windows::Devices::Enumeration::DeviceInformation;
+use windows::Devices::Lights::Effects::{LampArrayEffectPlaylist, LampArraySolidEffect};
 use windows::Devices::Lights::LampArray;
 use windows::Devices::Lights::LampPurposes;
-use windows::Devices::Lights::Effects::{LampArrayEffectPlaylist, LampArraySolidEffect};
-use windows::core::HSTRING;
 use windows::Foundation::TimeSpan;
 use windows::UI::Color;
 
@@ -109,7 +109,9 @@ pub async fn list_dynamic_lighting_devices() -> Result<Vec<DynamicLightingDevice
 }
 
 #[tauri::command]
-pub async fn get_dynamic_lighting_info(device_id: String) -> Result<DynamicLightingDeviceInfo, String> {
+pub async fn get_dynamic_lighting_info(
+    device_id: String,
+) -> Result<DynamicLightingDeviceInfo, String> {
     let device_id = HSTRING::from(device_id);
     let lamp_array = LampArray::FromIdAsync(&device_id)
         .map_err(|e| e.to_string())?
@@ -121,7 +123,10 @@ pub async fn get_dynamic_lighting_info(device_id: String) -> Result<DynamicLight
     let is_connected = lamp_array.IsConnected().map_err(|e| e.to_string())?;
     let brightness = lamp_array.BrightnessLevel().map_err(|e| e.to_string())?;
     let lamp_count = lamp_array.LampCount().map_err(|e| e.to_string())?;
-    let kind = format!("{:?}", lamp_array.LampArrayKind().map_err(|e| e.to_string())?);
+    let kind = format!(
+        "{:?}",
+        lamp_array.LampArrayKind().map_err(|e| e.to_string())?
+    );
     let hardware_vendor_id = lamp_array.HardwareVendorId().map_err(|e| e.to_string())?;
     let hardware_product_id = lamp_array.HardwareProductId().map_err(|e| e.to_string())?;
 
@@ -138,7 +143,9 @@ pub async fn get_dynamic_lighting_info(device_id: String) -> Result<DynamicLight
 }
 
 #[tauri::command]
-pub async fn diagnose_dynamic_lighting(device_id: String) -> Result<DynamicLightingDiagnostics, String> {
+pub async fn diagnose_dynamic_lighting(
+    device_id: String,
+) -> Result<DynamicLightingDiagnostics, String> {
     let device_id = HSTRING::from(device_id);
     let lamp_array = LampArray::FromIdAsync(&device_id)
         .map_err(|e| e.to_string())?
@@ -150,14 +157,22 @@ pub async fn diagnose_dynamic_lighting(device_id: String) -> Result<DynamicLight
     let is_connected = lamp_array.IsConnected().map_err(|e| e.to_string())?;
     let brightness = lamp_array.BrightnessLevel().map_err(|e| e.to_string())?;
     let lamp_count = lamp_array.LampCount().map_err(|e| e.to_string())?;
-    let kind = format!("{:?}", lamp_array.LampArrayKind().map_err(|e| e.to_string())?);
+    let kind = format!(
+        "{:?}",
+        lamp_array.LampArrayKind().map_err(|e| e.to_string())?
+    );
     let hardware_vendor_id = lamp_array.HardwareVendorId().map_err(|e| e.to_string())?;
     let hardware_product_id = lamp_array.HardwareProductId().map_err(|e| e.to_string())?;
     let min_update_interval = lamp_array.MinUpdateInterval().map_err(|e| e.to_string())?;
     let min_update_interval_ms = std::time::Duration::from(min_update_interval).as_millis() as i64;
 
     let mut lamps = Vec::new();
-    let white = Color { A: 255, R: 255, G: 255, B: 255 };
+    let white = Color {
+        A: 255,
+        R: 255,
+        G: 255,
+        B: 255,
+    };
 
     for i in 0..lamp_count {
         let info = lamp_array.GetLampInfo(i).map_err(|e| e.to_string())?;
@@ -205,6 +220,7 @@ pub async fn apply_dynamic_lighting(
     b: u8,
     brightness: f64,
 ) -> Result<DynamicLightingApplyResult, String> {
+    let device_key = format!("dynamic:{device_id}");
     let device_id = HSTRING::from(device_id);
     let lamp_array = LampArray::FromIdAsync(&device_id)
         .map_err(|e| e.to_string())?
@@ -234,7 +250,9 @@ pub async fn apply_dynamic_lighting(
     };
 
     // Duration: 1500ms (long enough to observe, short enough not to feel sticky).
-    let duration = TimeSpan { Duration: 1_500_i64 * 10_000_i64 };
+    let duration = TimeSpan {
+        Duration: 1_500_i64 * 10_000_i64,
+    };
 
     // Try every available path and record which (if any) yielded errors. We do
     // NOT short-circuit on IsAvailable=false because the OS sometimes grants
@@ -258,7 +276,9 @@ pub async fn apply_dynamic_lighting(
                     }
                     match playlist.Start() {
                         Ok(_) => steps.push("playlist.Start ok".to_string()),
-                        Err(e) => steps.push(format!("playlist.Start err: {e} ({:#x})", e.code().0)),
+                        Err(e) => {
+                            steps.push(format!("playlist.Start err: {e} ({:#x})", e.code().0))
+                        }
                     }
                 }
                 Err(e) => steps.push(format!("Playlist::new err: {e}")),
@@ -272,13 +292,31 @@ pub async fn apply_dynamic_lighting(
         Err(e) => steps.push(format!("SetColor err: {e} ({:#x})", e.code().0)),
     }
 
-    let purposes = LampPurposes::Illumination | LampPurposes::Branding | LampPurposes::Accent | LampPurposes::Status;
+    let purposes = LampPurposes::Illumination
+        | LampPurposes::Branding
+        | LampPurposes::Accent
+        | LampPurposes::Status;
     match lamp_array.SetColorsForPurposes(color, purposes) {
         Ok(_) => steps.push("SetColorsForPurposes ok".to_string()),
         Err(e) => steps.push(format!("SetColorsForPurposes err: {e} ({:#x})", e.code().0)),
     }
 
     let is_available_after = lamp_array.IsAvailable().map_err(|e| e.to_string())?;
+
+    if brightness <= f64::EPSILON {
+        crate::commands::light_state::record_off(&device_key);
+    } else {
+        crate::commands::light_state::record(
+            &device_key,
+            crate::commands::light_state::LightState {
+                r,
+                g,
+                b,
+                brightness,
+                on: true,
+            },
+        );
+    }
 
     Ok(DynamicLightingApplyResult {
         detail: format!(
@@ -296,4 +334,3 @@ pub async fn apply_dynamic_lighting(
         ),
     })
 }
-

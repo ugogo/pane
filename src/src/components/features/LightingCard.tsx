@@ -1,21 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
+import { Cpu, Lightbulb, Monitor, Mouse, type LucideIcon } from "lucide-react";
 import {
+  applyDxLight,
   applyDynamicLighting,
-  diagnoseDynamicLighting,
-  getDynamicLightingInfo,
+  applyMsiLighting,
+  detectDxLight,
+  detectMsiLighting,
+  dxLightOff,
+  getLightStates,
   listDynamicLightingDevices,
-  listHidDevices,
-  setVendorLightingEnabled,
+  restoreAllLights,
   type DynamicLightingDevice,
-  type DynamicLightingDiagnostics,
-  type DynamicLightingDeviceInfo,
-  type HidDeviceInfo,
+  type LightState,
 } from "../../lib/commands";
 
 type ProbeStatus = "idle" | "pass" | "warn" | "fail";
-
-const MSI_VID = 0x0db0;
-const MSI_MYSTIC_LIGHT_PID = 0x0076;
 
 const statusStyles: Record<ProbeStatus, string> = {
   idle: "bg-neutral-100 text-neutral-600",
@@ -24,162 +23,304 @@ const statusStyles: Record<ProbeStatus, string> = {
   fail: "bg-rose-100 text-rose-800",
 };
 
-function hex4(n: number) {
-  return n.toString(16).toUpperCase().padStart(4, "0");
+// A "light" is anything we can paint a color onto. We normalize all three
+// sources (Windows Dynamic Lighting devices, MSI Mystic Light, DX Light) into
+// this discriminated union so the UI can render them with the same row layout.
+type Light =
+  | { kind: "dynamic"; id: string; device: DynamicLightingDevice }
+  | { kind: "msi" }
+  | { kind: "dxlight" };
+
+function lightKey(l: Light) {
+  return l.kind === "dynamic" ? `dynamic:${l.id}` : l.kind;
 }
 
-function looksInteresting(d: HidDeviceInfo) {
-  const vendor = d.manufacturer?.toLowerCase() ?? "";
-  const product = d.product?.toLowerCase() ?? "";
-  const text = `${vendor} ${product}`;
+function lightTitle(l: Light) {
+  switch (l.kind) {
+    case "dynamic":
+      return l.device.name;
+    case "msi":
+      return "MSI motherboard";
+    case "dxlight":
+      return "DX Light strip";
+  }
+}
+
+function lightSubtitle(l: Light) {
+  switch (l.kind) {
+    case "dynamic":
+      return "Windows Dynamic Lighting";
+    case "msi":
+      return "Mystic Light ARGB headers";
+    case "dxlight":
+      return "Robobloq monitor bias strip";
+  }
+}
+
+function lightIcon(l: Light): LucideIcon {
+  switch (l.kind) {
+    case "dynamic":
+      return Mouse;
+    case "msi":
+      return Cpu;
+    case "dxlight":
+      return Monitor;
+  }
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const stripped = hex.startsWith("#") ? hex.slice(1) : hex;
+  if (stripped.length !== 6) return null;
+  const r = Number.parseInt(stripped.slice(0, 2), 16);
+  const g = Number.parseInt(stripped.slice(2, 4), 16);
+  const b = Number.parseInt(stripped.slice(4, 6), 16);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return null;
+  return { r, g, b };
+}
+
+function rgbToHex(r: number, g: number, b: number) {
+  const h = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+  return `#${h(r)}${h(g)}${h(b)}`;
+}
+
+interface LightRowProps {
+  light: Light;
+  initialState?: LightState;
+}
+
+function LightRow({ light, initialState }: LightRowProps) {
+  const Icon = lightIcon(light);
+  // Lazy initializers so the persisted state seeds the controls once, on
+  // first mount. Subsequent refreshes don't clobber user input.
+  const [color, setColor] = useState<string>(() =>
+    initialState ? rgbToHex(initialState.r, initialState.g, initialState.b) : "#ffffff",
+  );
+  const [brightness, setBrightness] = useState<number>(() => {
+    if (!initialState) return 0.75;
+    // If the user last turned this off, fall back to a sane default so they
+    // can hit Apply without having to also drag the slider up.
+    return initialState.on && initialState.brightness > 0 ? initialState.brightness : 0.75;
+  });
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string>("");
+  const [status, setStatus] = useState<ProbeStatus>("idle");
+
+  async function apply() {
+    const rgb = hexToRgb(color);
+    if (!rgb) {
+      setStatus("fail");
+      setMessage("Invalid color (expected #RRGGBB).");
+      return;
+    }
+    setBusy(true);
+    setStatus("idle");
+    try {
+      switch (light.kind) {
+        case "dynamic": {
+          const res = await applyDynamicLighting(light.id, rgb.r, rgb.g, rgb.b, brightness);
+          setMessage(res.detail);
+          break;
+        }
+        case "msi": {
+          await applyMsiLighting(rgb.r, rgb.g, rgb.b, brightness);
+          setMessage(`MSI: rgb(${rgb.r},${rgb.g},${rgb.b}) at ${Math.round(brightness * 100)}%.`);
+          break;
+        }
+        case "dxlight": {
+          await applyDxLight(rgb.r, rgb.g, rgb.b, brightness);
+          setMessage(`DX Light: rgb(${rgb.r},${rgb.g},${rgb.b}) at ${Math.round(brightness * 100)}%.`);
+          break;
+        }
+      }
+      setStatus("pass");
+    } catch (e) {
+      setStatus("fail");
+      setMessage(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function turnOff() {
+    setBusy(true);
+    setStatus("idle");
+    try {
+      switch (light.kind) {
+        case "dynamic":
+          // No dedicated off — paint black at 0% brightness.
+          await applyDynamicLighting(light.id, 0, 0, 0, 0);
+          break;
+        case "msi":
+          await applyMsiLighting(0, 0, 0, 0);
+          break;
+        case "dxlight":
+          await dxLightOff();
+          break;
+      }
+      setMessage("Off.");
+      setStatus("pass");
+    } catch (e) {
+      setStatus("fail");
+      setMessage(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    text.includes("logitech") ||
-    text.includes("msi") ||
-    text.includes("mystic") ||
-    text.includes("dx") ||
-    text.includes("light")
+    <div className="rounded-md border border-line p-3">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-line bg-neutral-50 text-neutral-600">
+          <Icon size={16} aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-ink">{lightTitle(light)}</p>
+          <p className="truncate text-xs text-neutral-500">{lightSubtitle(light)}</p>
+        </div>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${statusStyles[status]}`}>
+          {status}
+        </span>
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-[auto_1fr_auto_auto]">
+        <input
+          type="color"
+          aria-label={`Color for ${lightTitle(light)}`}
+          className="h-9 w-12 rounded-md border border-line bg-white p-1"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+        />
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] font-semibold text-neutral-600">
+            Brightness {Math.round(brightness * 100)}%
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={brightness}
+            onChange={(e) => setBrightness(Number(e.target.value))}
+            className="w-full"
+          />
+        </label>
+
+        <button
+          type="button"
+          disabled={busy}
+          className="h-9 rounded-md border border-line bg-white px-3 text-xs font-semibold text-ink hover:bg-neutral-50 disabled:opacity-50"
+          onClick={() => void apply()}
+        >
+          Apply
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="h-9 rounded-md border border-line bg-white px-3 text-xs font-semibold text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+          onClick={() => void turnOff()}
+        >
+          Off
+        </button>
+      </div>
+
+      {message && (
+        <p
+          className={`mt-2 text-[11px] ${status === "fail" ? "text-rose-600" : "text-neutral-500"}`}
+        >
+          {message}
+        </p>
+      )}
+    </div>
   );
 }
 
-function supportsToggle(d: HidDeviceInfo) {
-  return d.vendorId === MSI_VID && d.productId === MSI_MYSTIC_LIGHT_PID;
-}
-
 export function LightingCard() {
-  const [devices, setDevices] = useState<HidDeviceInfo[]>([]);
-  const [dynamicDevices, setDynamicDevices] = useState<DynamicLightingDevice[]>([]);
-  const [selectedDynamic, setSelectedDynamic] = useState<string>("");
-  const [dynamicColor, setDynamicColor] = useState("#ffffff");
-  const [dynamicBrightness, setDynamicBrightness] = useState(0.75);
-  const [dynamicInfo, setDynamicInfo] = useState<DynamicLightingDeviceInfo | null>(null);
-  const [dynamicDiag, setDynamicDiag] = useState<DynamicLightingDiagnostics | null>(null);
-  const [status, setStatus] = useState<ProbeStatus>("idle");
-  const [message, setMessage] = useState<string>("");
+  const [lights, setLights] = useState<Light[]>([]);
+  const [savedStates, setSavedStates] = useState<Record<string, LightState>>({});
+  const [scanStatus, setScanStatus] = useState<ProbeStatus>("idle");
+  const [scanMessage, setScanMessage] = useState<string>("");
   const [busy, setBusy] = useState(false);
-  const [toggles, setToggles] = useState<Record<string, boolean>>({});
-
-  const interesting = useMemo(() => devices.filter(looksInteresting), [devices]);
-
-  function keyFor(d: HidDeviceInfo) {
-    return `${d.vendorId}:${d.productId}:${d.path}`;
-  }
 
   async function refresh() {
     setBusy(true);
+    setScanStatus("idle");
     try {
-      const list = await listHidDevices();
-      const dyn = await listDynamicLightingDevices();
-      setDevices(list);
-      setDynamicDevices(dyn);
-      if (!selectedDynamic && dyn.length > 0) setSelectedDynamic(dyn[0].id);
-      setStatus("pass");
-      setMessage(
-        `Found ${list.length} HID devices (${interesting.length} likely relevant) · ${dyn.length} Dynamic Lighting devices.`
+      const [dynamic, msi, dxlight, states] = await Promise.all([
+        listDynamicLightingDevices().catch(() => []),
+        detectMsiLighting().catch(() => ({ present: false, vendorId: 0, productId: 0 })),
+        detectDxLight().catch(() => ({ present: false, vendorId: 0, productId: 0 })),
+        getLightStates().catch(() => ({}) as Record<string, LightState>),
+      ]);
+
+      const collected: Light[] = [
+        ...dynamic.map((d) => ({ kind: "dynamic" as const, id: d.id, device: d })),
+        ...(msi.present ? [{ kind: "msi" as const }] : []),
+        ...(dxlight.present ? [{ kind: "dxlight" as const }] : []),
+      ];
+
+      setSavedStates(states);
+      setLights(collected);
+      setScanStatus(collected.length > 0 ? "pass" : "warn");
+      setScanMessage(
+        collected.length === 0
+          ? "No controllable lights detected."
+          : `${collected.length} light${collected.length === 1 ? "" : "s"} detected.`,
       );
     } catch (e) {
-      setStatus("fail");
-      setMessage(String(e));
+      setScanStatus("fail");
+      setScanMessage(String(e));
     } finally {
       setBusy(false);
     }
   }
 
-  useEffect(() => {
-    if (!selectedDynamic) return;
-    void (async () => {
-      try {
-        const info = await getDynamicLightingInfo(selectedDynamic);
-        setDynamicInfo(info);
-        setDynamicDiag(null);
-        // We can only reliably read brightness; color readback isn't exposed by LampArray.
-        if (Number.isFinite(info.brightness)) {
-          setDynamicBrightness(Math.min(1, Math.max(0, info.brightness)));
-        }
-      } catch (e) {
-        setDynamicInfo(null);
-        setDynamicDiag(null);
+  async function restore() {
+    setBusy(true);
+    try {
+      const results = await restoreAllLights();
+      const errors = results.filter(([, err]) => err !== null);
+      if (errors.length === 0) {
+        setScanStatus("pass");
+        setScanMessage(`Restored ${results.length} light${results.length === 1 ? "" : "s"}.`);
+      } else {
+        setScanStatus("warn");
+        setScanMessage(
+          `Restored ${results.length - errors.length}/${results.length}; failed: ${errors
+            .map(([k, e]) => `${k} (${e})`)
+            .join(", ")}`,
+        );
       }
-    })();
-  }, [selectedDynamic]);
+    } catch (e) {
+      setScanStatus("fail");
+      setScanMessage(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     void refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function toggleDevice(d: HidDeviceInfo, enabled: boolean) {
-    setBusy(true);
-    try {
-      const res = await setVendorLightingEnabled(d.vendorId, d.productId, enabled);
-      setToggles((prev) => ({ ...prev, [keyFor(d)]: enabled }));
-      setStatus(res.attempted ? "pass" : "warn");
-      setMessage(res.detail);
-    } catch (e) {
-      setStatus("fail");
-      setMessage(String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function applyDynamic() {
-    if (!selectedDynamic) return;
-    const hex = dynamicColor.startsWith("#") ? dynamicColor.slice(1) : dynamicColor;
-    if (hex.length !== 6) {
-      setStatus("fail");
-      setMessage("Invalid color; expected #RRGGBB.");
-      return;
-    }
-    const r = Number.parseInt(hex.slice(0, 2), 16);
-    const g = Number.parseInt(hex.slice(2, 4), 16);
-    const b = Number.parseInt(hex.slice(4, 6), 16);
-
-    setBusy(true);
-    try {
-      const res = await applyDynamicLighting(selectedDynamic, r, g, b, dynamicBrightness);
-      setStatus("pass");
-      setMessage(res.detail);
-    } catch (e) {
-      setStatus("fail");
-      setMessage(String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function diagnoseDynamic() {
-    if (!selectedDynamic) return;
-    setBusy(true);
-    try {
-      const diag = await diagnoseDynamicLighting(selectedDynamic);
-      setDynamicDiag(diag);
-      setStatus(diag.isAvailable ? "pass" : "warn");
-      setMessage(
-        `Diagnostics: available=${String(diag.isAvailable)} · vendor=${diag.hardwareVendorId.toString(
-          16
-        )} product=${diag.hardwareProductId.toString(16)} · lamps=${diag.lampCount}`
-      );
-    } catch (e) {
-      setDynamicDiag(null);
-      setStatus("fail");
-      setMessage(String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
+  // Stable key list so React doesn't re-mount rows on every refresh.
+  const keyedLights = useMemo(() => lights.map((l) => ({ key: lightKey(l), light: l })), [lights]);
 
   return (
     <div className="col-span-2 rounded-lg border border-line bg-white/80 p-5 shadow-sm">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-ink">Lighting (vendor-native)</h2>
+          <h2 className="text-base font-semibold text-ink flex items-center gap-2">
+            <Lightbulb size={16} className="text-accent" aria-hidden />
+            Lights
+          </h2>
           <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Vendor-native controls (MSI) plus Windows Dynamic Lighting (OS-managed) for compatible devices
-            like Logitech LIGHTSYNC.
+            Per-device color and brightness for Windows Dynamic Lighting, MSI Mystic Light, and the
+            DX Light monitor bias strip.
           </p>
         </div>
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[status]}`}>
-          {status}
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[scanStatus]}`}>
+          {scanStatus}
         </span>
       </div>
 
@@ -192,134 +333,27 @@ export function LightingCard() {
         >
           Refresh
         </button>
-        {message && (
-          <p className={`text-xs ${status === "fail" ? "text-rose-600" : "text-neutral-500"}`}>{message}</p>
+        <button
+          type="button"
+          disabled={busy || keyedLights.length === 0}
+          className="rounded-md border border-line bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+          onClick={() => void restore()}
+          title="Re-apply the last saved color/brightness to every light"
+        >
+          Restore
+        </button>
+        {scanMessage && (
+          <p className={`text-xs ${scanStatus === "fail" ? "text-rose-600" : "text-neutral-500"}`}>
+            {scanMessage}
+          </p>
         )}
       </div>
 
-      {dynamicDevices.length > 0 && (
-        <div className="mt-4 rounded-md border border-line bg-white p-3">
-          <p className="text-sm font-semibold text-ink">Windows Dynamic Lighting</p>
-          <p className="mt-1 text-xs text-neutral-500">
-            This uses the OS Dynamic Lighting API. Keep Windows “Dynamic Lighting” enabled for the device.
-          </p>
-          {dynamicInfo && (
-            <p className="mt-1 text-[11px] text-neutral-500">
-              {dynamicInfo.kind} · lamps {dynamicInfo.lampCount} · available {String(dynamicInfo.isAvailable)} ·
-              enabled {String(dynamicInfo.isEnabled)} · connected {String(dynamicInfo.isConnected)}
-            </p>
-          )}
-
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <div className="sm:col-span-2">
-              <label className="text-[11px] font-semibold text-neutral-600">Device</label>
-              <select
-                className="mt-1 w-full rounded-md border border-line bg-white px-2 py-1.5 text-xs text-ink"
-                value={selectedDynamic}
-                onChange={(e) => setSelectedDynamic(e.target.value)}
-              >
-                {dynamicDevices.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-[11px] font-semibold text-neutral-600">Color</label>
-              <input
-                type="color"
-                className="mt-1 h-9 w-full rounded-md border border-line bg-white p-1"
-                value={dynamicColor}
-                onChange={(e) => setDynamicColor(e.target.value)}
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="text-[11px] font-semibold text-neutral-600">
-                Brightness ({Math.round(dynamicBrightness * 100)}%)
-              </label>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={dynamicBrightness}
-                onChange={(e) => setDynamicBrightness(Number(e.target.value))}
-                className="mt-1 w-full"
-              />
-            </div>
-
-            <div className="flex items-end">
-              <div className="grid w-full grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  disabled={busy || !selectedDynamic}
-                  className="h-9 w-full rounded-md border border-line bg-white px-3 text-xs font-semibold text-ink hover:bg-neutral-50 disabled:opacity-50"
-                  onClick={() => void applyDynamic()}
-                >
-                  Apply
-                </button>
-                <button
-                  type="button"
-                  disabled={busy || !selectedDynamic}
-                  className="h-9 w-full rounded-md border border-line bg-white px-3 text-xs font-semibold text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
-                  onClick={() => void diagnoseDynamic()}
-                >
-                  Diagnose
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {dynamicDiag && (
-            <pre className="mt-3 max-h-48 overflow-auto rounded-md border border-line bg-neutral-50 p-2 text-[11px] text-neutral-700">
-              {JSON.stringify(dynamicDiag, null, 2)}
-            </pre>
-          )}
-        </div>
-      )}
-
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        {(interesting.length > 0 ? interesting : devices.slice(0, 8)).map((d) => (
-          <div key={keyFor(d)} className="rounded-md border border-line p-3">
-            <p className="text-sm font-medium text-ink">
-              {d.product ?? "Unknown device"}{" "}
-              <span className="font-mono text-xs text-neutral-500">
-                {hex4(d.vendorId)}:{hex4(d.productId)}
-              </span>
-            </p>
-            <div className="mt-1 flex items-start justify-between gap-3">
-              <p className="text-xs text-neutral-500">
-                {d.manufacturer ?? "Unknown manufacturer"}
-                {d.interfaceNumber != null ? ` · iface ${d.interfaceNumber}` : ""}
-                {d.usagePage != null && d.usage != null ? ` · usage ${hex4(d.usagePage)}:${hex4(d.usage)}` : ""}
-              </p>
-              {supportsToggle(d) && (
-                <div className="shrink-0">
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className="rounded-md border border-line bg-white px-2 py-1 text-[11px] font-semibold text-ink hover:bg-neutral-50 disabled:opacity-50"
-                    onClick={() => void toggleDevice(d, !(toggles[keyFor(d)] ?? true))}
-                    title="Vendor-native toggle (where supported)"
-                  >
-                    {(toggles[keyFor(d)] ?? true) ? "Turn off" : "Turn on"}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+      <div className="mt-4 grid gap-3">
+        {keyedLights.map(({ key, light }) => (
+          <LightRow key={key} light={light} initialState={savedStates[key]} />
         ))}
       </div>
-
-      {interesting.length === 0 && devices.length > 8 && (
-        <p className="mt-3 text-xs text-neutral-500">
-          Showing first 8 devices. Refresh after plugging in the mouse receiver / DxLight to spot new entries.
-        </p>
-      )}
     </div>
   );
 }
-

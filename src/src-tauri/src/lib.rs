@@ -1,4 +1,5 @@
 mod commands;
+mod power_notify;
 mod tray;
 
 use commands::capture::LatestCapture;
@@ -23,6 +24,9 @@ pub fn run() {
         .setup(|app| {
             tray::create(app)?;
             commands::hotkeys::restore_capture_hotkeys(app.handle());
+            if let Err(e) = power_notify::register() {
+                eprintln!("Failed to register power notification: {e}");
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -46,10 +50,17 @@ pub fn run() {
             commands::capture::save_latest_capture_to_desktop,
             commands::lighting::list_hid_devices,
             commands::lighting::set_vendor_lighting_enabled,
+            commands::lighting::detect_msi_lighting,
+            commands::lighting::apply_msi_lighting,
+            commands::dx_light::detect_dx_light,
+            commands::dx_light::apply_dx_light,
+            commands::dx_light::dx_light_off,
             commands::dynamic_lighting::list_dynamic_lighting_devices,
             commands::dynamic_lighting::get_dynamic_lighting_info,
             commands::dynamic_lighting::diagnose_dynamic_lighting,
             commands::dynamic_lighting::apply_dynamic_lighting,
+            commands::light_state::get_light_states,
+            commands::light_state::restore_all_lights,
             commands::windows::show_area_selector,
             commands::windows::show_capture_preview,
             commands::windows::preview_ready,
