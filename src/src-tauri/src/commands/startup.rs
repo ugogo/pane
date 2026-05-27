@@ -33,9 +33,7 @@ fn apply(enabled: bool) -> Result<(), String> {
     use winreg::{enums::HKEY_CURRENT_USER, RegKey};
 
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let (key, _) = hkcu
-        .create_subkey(RUN_KEY)
-        .map_err(|e| e.to_string())?;
+    let (key, _) = hkcu.create_subkey(RUN_KEY).map_err(|e| e.to_string())?;
 
     if enabled {
         let exe = std::env::current_exe().map_err(|e| e.to_string())?;

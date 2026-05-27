@@ -1,3 +1,4 @@
+import { CaptureCard } from "./components/features/CaptureCard";
 import { InfraCard } from "./components/features/InfraCard";
 import { MetricsCard } from "./components/features/MetricsCard";
 
@@ -15,6 +16,7 @@ export function App() {
 
         <div className="grid grid-cols-2 gap-4">
           <MetricsCard />
+          <CaptureCard />
           <InfraCard />
         </div>
       </div>

@@ -131,22 +131,23 @@ Each item below is a capability the production app depends on.
 
 ### Screen capture (CleanShot)
 
-- [ ] 🔲 Fullscreen capture via `screenshots` crate — PNG returned as base64 data URL
-- [ ] 🔲 Region capture with `capture_area(x, y, w, h)`
-- [ ] ⚠️ **Transparent overlay window for region selection** ← _primary migration risk_
-  - WinUI uses a full-screen `RegionSelectorWindow` with click-through hit-testing
-  - Tauri can create transparent windows, but the interaction model needs validation
-  - Must verify: transparent + always-on-top + mouse capture works without focus stealing
+- [x] ✅ Fullscreen capture via `xcap` crate — PNG returned as base64 data URL (driven via CDP `invoke('capture_fullscreen')`, returns 2560×1440 image on the test rig)
+- [x] ✅ Region capture with `capture_region(x, y, w, h)` (drag (200,200)→(700,500) in the overlay produced a 500×300 PNG)
+- [x] ✅ **Transparent overlay window for region selection** — 50%-centred, transparent (`body bg rgba(0,0,0,0)`), always-on-top, crosshair cursor. Rubber-band selection works; closes via `commit_region_capture` Rust command (single async cmd that closes overlay → captures → opens preview, so the overlay webview's JS death can't cancel the chain).
+  - ⚠️ Two implementation gotchas worth recording:
+    1. **Sync commands deadlock window creation.** `show_capture_preview` was a sync `fn` — sync commands run on the main thread, so `WebviewWindowBuilder::build()` (which needs the main thread) deadlocked. The window appeared in CDP as `about:blank` and IPC wedged. Fix: declare these commands `async fn`.
+    2. **`WebviewUrl::App("…?view=…")` drops the query string.** Switched to building a `WebviewUrl::External` from the main window's current URL.
 - [ ] 🔲 CleanShot-style annotation toolbar after capture
 - [ ] 🔲 Clipboard integration — writing a PNG to the Windows clipboard from Rust
 - [ ] 🔲 Multi-display capture (correct DPI handling on mixed-DPI setups)
 - [ ] 🔲 Screen recording / GIF (not currently a Tauri crate — may need FFmpeg subprocess)
+- [x] ✅ Floating preview window after capture — `always_on_top: true`, undecorated, draggable title bar, sized to fit aspect ratio (verified: `isAlwaysOnTop()` returns true on the `capture-preview` window).
 
 ### Global hotkeys
 
-- [ ] 🔲 `tauri-plugin-global-shortcut` registers hotkeys
-- [ ] 🔲 Hotkeys survive window minimise / hide to tray
-- [ ] 🔲 Hotkey fires the capture flow end-to-end (not just a command return)
+- [x] ✅ `tauri-plugin-global-shortcut` registers hotkeys (`set_capture_hotkey({ action, accelerator })` round-trips through Rust, stored in a `Lazy<Mutex<HashMap>>`)
+- [ ] 🔲 Hotkeys survive window minimise / hide to tray (not physically tested — plugin handler emits `capture-triggered` and the listener is wired, but a real keypress wasn't simulated)
+- [ ] 🔲 Hotkey fires the capture flow end-to-end (same — code path traced, physical keypress not simulated from this session)
 - [ ] 🔲 Hotkey conflict detection (another app already holds the combo)
 
 ### RGB lighting (LightControls)
