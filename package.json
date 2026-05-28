@@ -6,11 +6,10 @@
   "description": "Home — Windows desktop utility suite (Tauri 2 + React + Rust)",
   "scripts": {
     "dev": "tauri dev",
-    "build": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"npx tsc; npx vite build\"",
-    "preview": "vite preview",
+    "build": "tsc && vite build",
+    "typecheck": "tsc --noEmit",
     "tauri": "tauri",
-    "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/stop.ps1",
-    "tauri:windows:build": "tauri-windows-bundle build --arch x64"
+    "build:windows": "tauri-windows-bundle build --arch x64"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
