@@ -16,6 +16,14 @@ pub struct DynamicLightingDevice {
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DynamicLightingStatus {
+    pub can_control: bool,
+    pub has_package_identity: bool,
+    pub reason: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DynamicLightingApplyResult {
     pub detail: String,
 }
@@ -85,6 +93,58 @@ fn fmt_purposes(p: LampPurposes) -> String {
         "None".to_string()
     } else {
         out.join("|")
+    }
+}
+
+#[cfg(windows)]
+fn current_package_full_name() -> Result<Option<String>, String> {
+    use windows_sys::Win32::Foundation::APPMODEL_ERROR_NO_PACKAGE;
+    use windows_sys::Win32::Storage::Packaging::Appx::GetCurrentPackageFullName;
+
+    let mut len = 0u32;
+    let first = unsafe { GetCurrentPackageFullName(&mut len, std::ptr::null_mut()) };
+    if first == APPMODEL_ERROR_NO_PACKAGE {
+        return Ok(None);
+    }
+    if len == 0 {
+        return Err(format!("GetCurrentPackageFullName returned {first} with empty length."));
+    }
+
+    let mut buf = vec![0u16; len as usize];
+    let second = unsafe { GetCurrentPackageFullName(&mut len, buf.as_mut_ptr()) };
+    if second != 0 {
+        return Err(format!("GetCurrentPackageFullName failed with code {second}."));
+    }
+
+    let text_len = buf.iter().position(|c| *c == 0).unwrap_or(buf.len());
+    Ok(Some(String::from_utf16_lossy(&buf[..text_len])))
+}
+
+#[cfg(not(windows))]
+fn current_package_full_name() -> Result<Option<String>, String> {
+    Ok(None)
+}
+
+#[tauri::command]
+pub fn get_dynamic_lighting_status() -> DynamicLightingStatus {
+    match current_package_full_name() {
+        Ok(Some(_)) => DynamicLightingStatus {
+            can_control: true,
+            has_package_identity: true,
+            reason: None,
+        },
+        Ok(None) => DynamicLightingStatus {
+            can_control: false,
+            has_package_identity: false,
+            reason: Some(
+                "Windows Dynamic Lighting requires a signed packaged Pane build.".to_string(),
+            ),
+        },
+        Err(e) => DynamicLightingStatus {
+            can_control: false,
+            has_package_identity: false,
+            reason: Some(e),
+        },
     }
 }
 

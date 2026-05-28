@@ -74,6 +74,7 @@ pub fn run() {
             commands::dx_light::detect_dx_light,
             commands::dx_light::apply_dx_light,
             commands::dx_light::dx_light_off,
+            commands::dynamic_lighting::get_dynamic_lighting_status,
             commands::dynamic_lighting::list_dynamic_lighting_devices,
             commands::dynamic_lighting::get_dynamic_lighting_info,
             commands::dynamic_lighting::diagnose_dynamic_lighting,

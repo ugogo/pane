@@ -172,6 +172,12 @@ export interface DynamicLightingDevice {
   name: string;
 }
 
+export interface DynamicLightingStatus {
+  canControl: boolean;
+  hasPackageIdentity: boolean;
+  reason: string | null;
+}
+
 export interface DynamicLightingApplyResult {
   detail: string;
 }
@@ -189,6 +195,10 @@ export interface DynamicLightingDeviceInfo {
 
 export function listDynamicLightingDevices() {
   return invoke<DynamicLightingDevice[]>("list_dynamic_lighting_devices");
+}
+
+export function getDynamicLightingStatus() {
+  return invoke<DynamicLightingStatus>("get_dynamic_lighting_status");
 }
 
 export function getDynamicLightingInfo(deviceId: string) {

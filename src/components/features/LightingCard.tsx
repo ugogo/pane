@@ -7,6 +7,7 @@ import {
   detectDxLight,
   detectMsiLighting,
   dxLightOff,
+  getDynamicLightingStatus,
   getLightStates,
   listDynamicLightingDevices,
   restoreAllLights,
@@ -14,13 +15,14 @@ import {
   type LightState,
 } from "../../lib/commands";
 
-type ProbeStatus = "idle" | "pass" | "warn" | "fail";
+type ProbeStatus = "idle" | "pass" | "warn" | "fail" | "disabled";
 
 const statusStyles: Record<ProbeStatus, string> = {
   idle: "bg-neutral-100 text-neutral-600",
   pass: "bg-emerald-100 text-emerald-800",
   warn: "bg-amber-100 text-amber-800",
   fail: "bg-rose-100 text-rose-800",
+  disabled: "bg-neutral-200 text-neutral-600",
 };
 
 // A "light" is anything we can paint a color onto. We normalize all three
@@ -86,9 +88,10 @@ function rgbToHex(r: number, g: number, b: number) {
 interface LightRowProps {
   light: Light;
   initialState?: LightState;
+  disabledReason?: string;
 }
 
-function LightRow({ light, initialState }: LightRowProps) {
+function LightRow({ light, initialState, disabledReason }: LightRowProps) {
   const Icon = lightIcon(light);
   // Lazy initializers so the persisted state seeds the controls once, on
   // first mount. Subsequent refreshes don't clobber user input.
@@ -104,8 +107,11 @@ function LightRow({ light, initialState }: LightRowProps) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string>("");
   const [status, setStatus] = useState<ProbeStatus>("idle");
+  const disabled = Boolean(disabledReason);
+  const visibleStatus = disabled ? "disabled" : status;
 
   async function apply() {
+    if (disabled) return;
     const rgb = hexToRgb(color);
     if (!rgb) {
       setStatus("fail");
@@ -142,6 +148,7 @@ function LightRow({ light, initialState }: LightRowProps) {
   }
 
   async function turnOff() {
+    if (disabled) return;
     setBusy(true);
     setStatus("idle");
     try {
@@ -177,8 +184,8 @@ function LightRow({ light, initialState }: LightRowProps) {
           <p className="truncate text-sm font-medium text-ink">{lightTitle(light)}</p>
           <p className="truncate text-xs text-neutral-500">{lightSubtitle(light)}</p>
         </div>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${statusStyles[status]}`}>
-          {status}
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${statusStyles[visibleStatus]}`}>
+          {visibleStatus}
         </span>
       </div>
 
@@ -186,7 +193,8 @@ function LightRow({ light, initialState }: LightRowProps) {
         <input
           type="color"
           aria-label={`Color for ${lightTitle(light)}`}
-          className="h-9 w-12 rounded-md border border-line bg-white p-1"
+          disabled={disabled}
+          className="h-9 w-12 rounded-md border border-line bg-white p-1 disabled:cursor-not-allowed disabled:opacity-50"
           value={color}
           onChange={(e) => setColor(e.target.value)}
         />
@@ -202,13 +210,14 @@ function LightRow({ light, initialState }: LightRowProps) {
             step={0.01}
             value={brightness}
             onChange={(e) => setBrightness(Number(e.target.value))}
-            className="w-full"
+            disabled={disabled}
+            className="w-full disabled:cursor-not-allowed disabled:opacity-50"
           />
         </label>
 
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || disabled}
           className="h-9 rounded-md border border-line bg-white px-3 text-xs font-semibold text-ink hover:bg-neutral-50 disabled:opacity-50"
           onClick={() => void apply()}
         >
@@ -216,13 +225,19 @@ function LightRow({ light, initialState }: LightRowProps) {
         </button>
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || disabled}
           className="h-9 rounded-md border border-line bg-white px-3 text-xs font-semibold text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
           onClick={() => void turnOff()}
         >
           Off
         </button>
       </div>
+
+      {disabledReason && (
+        <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          {disabledReason}
+        </p>
+      )}
 
       {message && (
         <p
@@ -240,6 +255,7 @@ export function LightingCard() {
   const [savedStates, setSavedStates] = useState<Record<string, LightState>>({});
   const [scanStatus, setScanStatus] = useState<ProbeStatus>("idle");
   const [scanMessage, setScanMessage] = useState<string>("");
+  const [dynamicLightingDisabledReason, setDynamicLightingDisabledReason] = useState<string>("");
   const [busy, setBusy] = useState(false);
 
   async function refresh() {
@@ -247,7 +263,21 @@ export function LightingCard() {
     setScanStatus("idle");
     try {
       const [dynamic, msi, dxlight, states] = await Promise.all([
-        listDynamicLightingDevices().catch(() => []),
+        Promise.all([
+          getDynamicLightingStatus(),
+          listDynamicLightingDevices().catch(() => []),
+        ])
+          .then(([status, devices]) => {
+            const reason = status.canControl ? "" : (status.reason ?? "");
+            setDynamicLightingDisabledReason(reason);
+            return devices;
+          })
+          .catch((e) => {
+            setDynamicLightingDisabledReason("");
+            setScanStatus("warn");
+            setScanMessage(String(e));
+            return [];
+          }),
         detectMsiLighting().catch(() => ({ present: false, vendorId: 0, productId: 0 })),
         detectDxLight().catch(() => ({ present: false, vendorId: 0, productId: 0 })),
         getLightStates().catch(() => ({}) as Record<string, LightState>),
@@ -348,10 +378,14 @@ export function LightingCard() {
           </p>
         )}
       </div>
-
       <div className="mt-4 grid gap-3">
         {keyedLights.map(({ key, light }) => (
-          <LightRow key={key} light={light} initialState={savedStates[key]} />
+          <LightRow
+            key={key}
+            light={light}
+            initialState={savedStates[key]}
+            disabledReason={light.kind === "dynamic" ? dynamicLightingDisabledReason : undefined}
+          />
         ))}
       </div>
     </div>
