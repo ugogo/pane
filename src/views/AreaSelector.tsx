@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   areaSelectorOrigin,
@@ -25,30 +25,21 @@ export function AreaSelector() {
   const [drag, setDrag] = useState<{ start: { x: number; y: number }; end: { x: number; y: number } } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>();
-  const [shown, setShown] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const showFrame = useRef<number>();
 
   useEffect(() => {
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
 
     function reset() {
-      if (showFrame.current) {
-        cancelAnimationFrame(showFrame.current);
-      }
       setDrag(null);
       setSubmitting(false);
       setError(undefined);
-      setShown(false);
-      showFrame.current = requestAnimationFrame(() => setShown(true));
     }
 
     reset();
 
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        setShown(false);
         void hideAreaSelector();
       }
     }
@@ -56,9 +47,6 @@ export function AreaSelector() {
     const unlisten = listen("reset-area-selector", reset);
     window.addEventListener("keydown", onKey);
     return () => {
-      if (showFrame.current) {
-        cancelAnimationFrame(showFrame.current);
-      }
       void unlisten.then((u) => u());
       window.removeEventListener("keydown", onKey);
     };
@@ -70,7 +58,6 @@ export function AreaSelector() {
 
   async function finish(rect: Rect) {
     if (rect.w < 4 || rect.h < 4) {
-      setShown(false);
       await hideAreaSelector();
       return;
     }
@@ -94,14 +81,10 @@ export function AreaSelector() {
 
   return (
     <div
-      ref={rootRef}
       className="fixed inset-0 select-none"
       style={{
-        background: "rgba(2, 6, 23, 0.65)",
+        background: "transparent",
         cursor: "crosshair",
-        border: "2px solid rgba(56, 189, 248, 0.9)",
-        opacity: shown ? 1 : 0,
-        transition: "opacity 140ms ease-out",
       }}
       onMouseDown={(e) => {
         if (submitting) return;
@@ -119,20 +102,33 @@ export function AreaSelector() {
         void finish(finalRect);
       }}
     >
-      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-md bg-black/60 px-3 py-1 text-xs font-medium text-white">
-        Drag to select - Esc to cancel
-      </div>
+      {!rect && (
+        <div
+          className="pointer-events-none fixed inset-0"
+          style={{ background: "rgba(2, 6, 23, 0.65)" }}
+        />
+      )}
 
       {rect && (
         <div
-          className="pointer-events-none absolute border-2 border-sky-300 bg-sky-300/10"
-          style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }}
+          className="pointer-events-none absolute border-2 border-sky-300"
+          style={{
+            left: rect.x,
+            top: rect.y,
+            width: rect.w,
+            height: rect.h,
+            boxShadow: "0 0 0 100vmax rgba(2, 6, 23, 0.65)",
+          }}
         >
           <span className="absolute -top-5 left-0 rounded bg-sky-500 px-1.5 py-0.5 font-mono text-[10px] text-white">
             {Math.round(rect.w)} x {Math.round(rect.h)}
           </span>
         </div>
       )}
+
+      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-md bg-black/60 px-3 py-1 text-xs font-medium text-white">
+        Drag to select - Esc to cancel
+      </div>
 
       {error && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-md bg-rose-600 px-3 py-1 text-xs text-white">
