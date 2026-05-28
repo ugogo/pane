@@ -190,6 +190,9 @@ if (-not $env:TAURI_SIGNING_PRIVATE_KEY) {
     $env:TAURI_SIGNING_PRIVATE_KEY = Get-Content -LiteralPath $SigningKey -Raw
 }
 if ($null -eq $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD) {
+    # Tauri treats this as the updater signing key password. Use an empty
+    # password only when the key was generated that way; otherwise set
+    # TAURI_SIGNING_PRIVATE_KEY_PASSWORD before running this script.
     $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
 }
 
@@ -215,7 +218,7 @@ Set-FirstMatch "src-tauri/Cargo.lock" `
 # ---- build + sign -----------------------------------------------------------
 
 Step "building + signing installer (npx tauri build)"
-npx tauri build
+npx tauri build --ci
 if ($LASTEXITCODE -ne 0) {
     Fail "tauri build failed. Version files left modified; run 'git checkout -- package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json' to revert."
 }

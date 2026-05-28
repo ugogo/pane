@@ -8,6 +8,7 @@
     "dev": "tauri dev",
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
+    "release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release.ps1",
     "tauri": "tauri",
     "build:windows": "tauri-windows-bundle build --arch x64"
   },
