@@ -1,14 +1,13 @@
 //! Persistent per-light state + restore-on-wake.
 //!
 //! Each apply command records its outcome here so that on:
-//!  - app restart  → the UI seeds its color/brightness from the last value
-//!                   (no more falling back to white),
-//!  - system wake from sleep → the OS-level power notification fires
-//!                             `restore_all()`, which re-applies every
-//!                             persisted state so devices that power-cycled
-//!                             during sleep (notably the DX Light strip
-//!                             over USB) come back to the user's last
-//!                             selection instead of the firmware default.
+//!
+//! - app restart: the UI seeds its color/brightness from the last value
+//!   (no more falling back to white).
+//! - system wake from sleep: the OS-level power notification fires
+//!   `restore_all()`, which re-applies every persisted state so devices
+//!   that power-cycled during sleep (notably the DX Light strip over USB)
+//!   come back to the user's last selection instead of the firmware default.
 //!
 //! Storage: `%LocalAppData%\Home\lights.json`. For packaged apps Windows
 //! redirects `LOCALAPPDATA` to the package's LocalState dir automatically,

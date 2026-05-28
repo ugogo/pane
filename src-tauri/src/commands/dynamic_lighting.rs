@@ -91,7 +91,6 @@ fn fmt_purposes(p: LampPurposes) -> String {
 #[tauri::command]
 pub async fn list_dynamic_lighting_devices() -> Result<Vec<DynamicLightingDevice>, String> {
     let selector = LampArray::GetDeviceSelector().map_err(|e| e.to_string())?;
-    let selector = HSTRING::from(selector);
     let devices = DeviceInformation::FindAllAsyncAqsFilter(&selector)
         .map_err(|e| e.to_string())?
         .get()
@@ -183,7 +182,7 @@ pub async fn diagnose_dynamic_lighting(
         };
         let nearest_supported_color_for_white = info
             .GetNearestSupportedColor(white)
-            .map(|c| fmt_rgb(c))
+            .map(fmt_rgb)
             .ok();
 
         lamps.push(DynamicLightingLampInfo {
