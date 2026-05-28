@@ -25,10 +25,25 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/ugogo/home/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY5NTg5M0M2MkZBMEM2MTQKUldRVXhxQXZ4cE5ZYWFSYlJhWGxZOExFeUFSTXNRQU15a2FMVmdNODJ1WEpJUVBJaGxEcnBuZ0QK"
+    }
+  },
   "bundle": {
     "active": true,
-    "targets": "all",
-    "icon": [],
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
     "resources": {
       "resources/capture-shutter.wav": "capture-shutter.wav"
     }

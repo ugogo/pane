@@ -61,12 +61,15 @@ export function InfraCard() {
               <p className="text-sm font-medium text-ink">Run at startup</p>
               <p className="text-xs text-neutral-500">
                 Writes / removes <code className="rounded bg-neutral-100 px-1">HKCU\…\Run\Home</code>
+                {import.meta.env.DEV && (
+                  <span className="ml-1 text-amber-600">(disabled in dev — would register the debug binary)</span>
+                )}
               </p>
             </div>
             <input
               type="checkbox"
               className="h-5 w-5 accent-accent"
-              disabled={runAtStartup === null}
+              disabled={runAtStartup === null || import.meta.env.DEV}
               checked={runAtStartup ?? false}
               onChange={(e) => void handleStartupToggle(e.target.checked)}
             />

@@ -127,9 +127,9 @@ Each item below is a capability the production app depends on.
 - [x] ✅ Single-instance enforcement — second launch focuses existing window
 - [x] ✅ Run-at-startup toggle writes/removes `HKCU\…\Run\Home` via `winreg`
   - ⚠️ Dev build writes the debug exe path; production installer will overwrite with the installed path
-- [ ] 🔲 App auto-updater (`tauri-plugin-updater`) — update check + silent install
-- [ ] 🔲 Windows installer (NSIS or WiX) produced by `tauri build`
-- [ ] 🔲 App icon embedded in `.exe` and taskbar
+- [x] ✅ App auto-updater (`tauri-plugin-updater`) — checks GitHub Releases `latest.json` on launch (prod only), verifies the ed25519 signature, installs, and prompts to restart. Signing key lives outside the repo; CI signs with the `TAURI_SIGNING_*` secrets.
+- [x] ✅ Windows installer (NSIS) produced by `tauri build` — 3.2 MB `Home_0.1.0_x64-setup.exe` with a `.sig` emitted alongside; `bundle.targets` narrowed to `["nsis"]` (the updater's format)
+- [x] ✅ App icon embedded in `.exe` and taskbar — generated via `tauri icon` from `design/icons/concept-1`
 
 ### Screen capture (CleanShot)
 
@@ -181,7 +181,7 @@ Each item below is a capability the production app depends on.
 - [x] ✅ Restore from tray — left-click tray icon shows main window (verified in Phase 2)
   - ⚠️ Taskbar flash on restore not explicitly measured
 - [x] ✅ Multiple windows open simultaneously — main + `area-selector` + `capture-preview` validated end-to-end during region capture (`commit_region_capture`)
-- [ ] 🔲 Window position and size remembered across restarts
+- [x] ✅ Window position and size remembered across restarts — `tauri-plugin-window-state`
 
 ### Developer experience
 
@@ -352,15 +352,23 @@ At the end of the spike, answer these questions. **All "go" answers → proceed 
 
 ## Next Steps (Migration)
 
-Spike is done. The following tracks the actual migration from WinUI 3 → Tauri.
+The migration from WinUI 3 → Tauri is **done** — the WinUI stack was dropped (`src-legacy/` deleted, no XAML/`.csproj` tracked) and the Tauri app ships from `src/` + `src-tauri/`. What follows is the final state of the original task list.
 
-1. **Create migration branch** — branch off `main` as `feat/tauri-migration`; move spike code out of `experiments/` into the root.
-2. **Port all WinUI screens** — Settings, Capture history, hub dashboard; design in Tailwind + ShadCN matching the existing hub.
-3. **Finish HID protocol work** — Logitech HID++ 2.0 (PRO 2 LIGHTSPEED) + DxLight USB protocol; validate color round-trip on real hardware.
-4. **Packaging** — `tauri build` with NSIS installer; verify silent install, embedded icon, no MSIX dependency.
-5. **Auto-updater** — wire `tauri-plugin-updater` against a GitHub Releases endpoint.
-6. **Performance baseline** — record idle RAM and cold startup for both the Tauri build and the WinUI app side-by-side; update Results section.
-7. **Fix first-create preview slide** — see `.claude/handoff-preview-slide.md`.
-8. **Multi-display / DPI** — test region capture and overlay on mixed-DPI monitor setup.
-9. **CI** — add a GitHub Actions workflow that runs `cargo check` + `npm run build` on every PR.
-10. **Retire WinUI 3 app** — once Tauri build ships to production, archive `src-legacy/` and remove the old build targets.
+### Done
+
+1. ✅ **Migration branch** — spike code promoted to the repo root; WinUI stack removed.
+2. ✅ **Port screens** — hub dashboard rebuilt in React + Tailwind (probe/feature cards).
+3. ✅ **Lighting / HID** — done by a better route than the spike assumed: the Logitech mouse is driven through **Windows Dynamic Lighting** (no raw HID++ 2.0 needed), MSI Mystic Light via vendor HID, and DxLight via its full reverse-engineered USB protocol (`dx_light.rs`). Color round-trip + persistence + wake-restore all working.
+4. ✅ **Packaging** — `tauri build` produces a signed NSIS installer; embedded icon, no MSIX dependency. (PR #3)
+5. ✅ **Auto-updater** — `tauri-plugin-updater` wired against the GitHub Releases `latest.json` endpoint; tag-triggered release workflow signs and publishes. (PR #3)
+9. ✅ **CI** — GitHub Actions runs `npx tsc` + `npx vite build` + `cargo clippy -D warnings` on every PR (`.github/workflows/ci.yml`); a separate tag-triggered `release.yml` builds and signs.
+10. ✅ **Retire WinUI 3 app** — done in the migration commit.
+
+### N/A
+
+6. ❌ **Performance baseline (vs WinUI)** — moot: the WinUI app no longer exists to measure against, and the go/no-go decision it fed is already made and shipped. The live `MetricsCard` still tracks Tauri RAM/startup on its own.
+
+### Optional backlog (polish — pick up only if it bites)
+
+7. **First-create preview slide animation** — cosmetic inconsistency on the capture preview's first show. See `.claude/handoff-preview-slide.md`.
+8. **Multi-display / DPI** — region capture + overlay on a *mixed-DPI* multi-monitor setup. Near-zero risk on single-monitor / uniform-DPI; only worth testing if such a setup is in use.

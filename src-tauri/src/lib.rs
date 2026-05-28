@@ -12,6 +12,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(StartTime(boot))
         .manage(LatestCapture::default())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // Second launch: focus the existing window instead of opening a new one.

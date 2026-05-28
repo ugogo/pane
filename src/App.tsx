@@ -4,6 +4,7 @@ import { InfraCard } from "./components/features/InfraCard";
 import { LightingCard } from "./components/features/LightingCard";
 import { MetricsCard } from "./components/features/MetricsCard";
 import { prepareCaptureWindows } from "./lib/commands";
+import { checkForUpdatesOnLaunch } from "./lib/updater";
 
 export function App() {
   useEffect(() => {
@@ -14,6 +15,8 @@ export function App() {
         });
       });
     });
+
+    void checkForUpdatesOnLaunch();
 
     return () => cancelAnimationFrame(firstFrame);
   }, []);
