@@ -62,6 +62,26 @@ function Step($msg) {
     Write-Host "==> $msg" -ForegroundColor Cyan
 }
 
+# Print the commits that this release will contain (everything since the
+# previous v* tag, or the whole history if there is none).
+function Show-ReleaseCommits($prevTag) {
+    Write-Host ""
+    if ($prevTag) {
+        Write-Host "Commits in this release (since $prevTag):" -ForegroundColor Cyan
+        $range = "$prevTag..HEAD"
+    } else {
+        Write-Host "Commits in this release (no prior release tag):" -ForegroundColor Cyan
+        $range = "HEAD"
+    }
+    $lines = git log --oneline --no-merges $range
+    if ($lines) {
+        $lines | ForEach-Object { Write-Host "  $_" }
+    } else {
+        Write-Host "  (none)"
+    }
+    Write-Host ""
+}
+
 # Replace the first regex match in a file, preserving its exact formatting and
 # line endings. Fails loudly if the pattern is not found.
 function Set-FirstMatch($path, $pattern, $replacement, $label) {
@@ -111,9 +131,14 @@ $tag = "v$new"
 git rev-parse -q --verify "refs/tags/$tag" | Out-Null
 if ($LASTEXITCODE -eq 0) { Fail "tag $tag already exists." }
 
+# Resolve the previous release tag now, before we create the new one.
+$prevTag = git describe --tags --abbrev=0 --match "v*" 2>$null
+if ($LASTEXITCODE -ne 0 -or -not $prevTag) { $prevTag = $null } else { $prevTag = $prevTag.Trim() }
+
 Step "release $current -> $new  (tag $tag)"
 
 if ($DryRun) {
+    Show-ReleaseCommits $prevTag
     Write-Host "[dry-run] would:"
     Write-Host "  - bump package.json, Cargo.toml, Cargo.lock, tauri.conf.json to $new"
     if (-not $SkipChecks) { Write-Host "  - run npm run typecheck + cargo check" }
@@ -171,6 +196,8 @@ git tag -a $tag -m "Release $tag"
 if ($LASTEXITCODE -ne 0) { Fail "git tag failed." }
 
 # ---- push -------------------------------------------------------------------
+
+Show-ReleaseCommits $prevTag
 
 if (-not $Yes) {
     $ans = Read-Host "Push '$branch' and tag '$tag' to origin? This starts the release build (y/N)"
