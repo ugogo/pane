@@ -1,6 +1,6 @@
 [package]
 name = "home"
-version = "0.2.0"
+version = "0.3.0"
 description = "Home desktop utility suite"
 authors = ["Home"]
 edition = "2021"
