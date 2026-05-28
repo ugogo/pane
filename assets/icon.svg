@@ -5,12 +5,14 @@
       <stop offset="1" stop-color="#2f7bff"/>
     </linearGradient>
   </defs>
-  <!-- house silhouette -->
-  <path d="M512 196 L832 452 V812 a40 40 0 0 1 -40 40 H232 a40 40 0 0 1 -40 -40 V452 Z"
-        fill="none" stroke="url(#house1)" stroke-width="80" stroke-linejoin="round"/>
-  <!-- power symbol inside (home base / on) -->
-  <g stroke="url(#house1)" stroke-width="80" stroke-linecap="round" fill="none">
-    <path d="M512 460 V596"/>
-    <path d="M430 486 a118 118 0 1 0 164 0"/>
+  <g transform="translate(512,512) scale(1.2) translate(-512,-512)">
+    <!-- house silhouette -->
+    <path d="M512 196 L832 452 V812 a40 40 0 0 1 -40 40 H232 a40 40 0 0 1 -40 -40 V452 Z"
+          fill="none" stroke="url(#house1)" stroke-width="80" stroke-linejoin="round"/>
+    <!-- power symbol inside (home base / on) -->
+    <g stroke="url(#house1)" stroke-width="80" stroke-linecap="round" fill="none">
+      <path d="M512 460 V596"/>
+      <path d="M430 486 a118 118 0 1 0 164 0"/>
+    </g>
   </g>
 </svg>
