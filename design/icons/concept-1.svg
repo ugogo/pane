@@ -1,0 +1,21 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b2a4a"/>
+      <stop offset="1" stop-color="#0d1526"/>
+    </linearGradient>
+    <linearGradient id="house1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3fd0ff"/>
+      <stop offset="1" stop-color="#2f7bff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg1)"/>
+  <!-- house silhouette -->
+  <path d="M512 196 L832 452 V812 a40 40 0 0 1 -40 40 H232 a40 40 0 0 1 -40 -40 V452 Z"
+        fill="none" stroke="url(#house1)" stroke-width="56" stroke-linejoin="round"/>
+  <!-- power symbol inside (home base / on) -->
+  <g stroke="url(#house1)" stroke-width="56" stroke-linecap="round" fill="none">
+    <path d="M512 540 V676"/>
+    <path d="M430 566 a118 118 0 1 0 164 0"/>
+  </g>
+</svg>

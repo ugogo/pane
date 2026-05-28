@@ -1,0 +1,34 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a1444"/>
+      <stop offset="1" stop-color="#140a22"/>
+    </linearGradient>
+    <radialGradient id="core2" cx="0.5" cy="0.4" r="0.7">
+      <stop offset="0" stop-color="#ff8adf"/>
+      <stop offset="1" stop-color="#a23bff"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg2)"/>
+  <!-- spokes -->
+  <g stroke="#8a4bff" stroke-width="34" stroke-linecap="round" opacity="0.85">
+    <line x1="512" y1="512" x2="512" y2="252"/>
+    <line x1="512" y1="512" x2="737" y2="382"/>
+    <line x1="512" y1="512" x2="737" y2="642"/>
+    <line x1="512" y1="512" x2="512" y2="772"/>
+    <line x1="512" y1="512" x2="287" y2="642"/>
+    <line x1="512" y1="512" x2="287" y2="382"/>
+  </g>
+  <!-- outer nodes -->
+  <g fill="#d99bff">
+    <circle cx="512" cy="252" r="58"/>
+    <circle cx="737" cy="382" r="58"/>
+    <circle cx="737" cy="642" r="58"/>
+    <circle cx="512" cy="772" r="58"/>
+    <circle cx="287" cy="642" r="58"/>
+    <circle cx="287" cy="382" r="58"/>
+  </g>
+  <!-- core hub -->
+  <circle cx="512" cy="512" r="132" fill="url(#core2)"/>
+  <circle cx="512" cy="512" r="132" fill="none" stroke="#ffd6f4" stroke-width="14" opacity="0.6"/>
+</svg>
