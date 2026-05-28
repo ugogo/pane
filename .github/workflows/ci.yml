@@ -39,6 +39,13 @@ jobs:
       - name: Build frontend
         run: npx vite build
 
+      - name: Stage placeholder identity resources
+        run: |
+          # Release builds generate the signed identity artifacts before packaging; clippy only needs the configured resource paths to exist.
+          New-Item -ItemType Directory -Force src-tauri/resources/identity | Out-Null
+          New-Item -ItemType File -Force src-tauri/resources/identity/Pane-identity.msix | Out-Null
+          New-Item -ItemType File -Force src-tauri/resources/identity/pane-codesign.cer | Out-Null
+
       - name: cargo clippy
         working-directory: src-tauri
         run: cargo clippy -- -D warnings
