@@ -131,9 +131,17 @@ $tag = "v$new"
 git rev-parse -q --verify "refs/tags/$tag" | Out-Null
 if ($LASTEXITCODE -eq 0) { Fail "tag $tag already exists." }
 
-# Resolve the previous release tag now, before we create the new one.
-$prevTag = git describe --tags --abbrev=0 --match "v*" 2>$null
-if ($LASTEXITCODE -ne 0 -or -not $prevTag) { $prevTag = $null } else { $prevTag = $prevTag.Trim() }
+# Resolve the previous release tag now, before we create the new one. `git
+# describe` writes to stderr when there are no tags; redirecting that under a
+# Stop preference would terminate the script, so relax it for this one call.
+$prevTag = $null
+$savedEap = $ErrorActionPreference
+$ErrorActionPreference = "SilentlyContinue"
+$describe = git describe --tags --abbrev=0 --match "v*" 2>$null
+$ErrorActionPreference = $savedEap
+if ($LASTEXITCODE -eq 0 -and $describe) {
+    $prevTag = ($describe | Select-Object -First 1).ToString().Trim()
+}
 
 Step "release $current -> $new  (tag $tag)"
 
