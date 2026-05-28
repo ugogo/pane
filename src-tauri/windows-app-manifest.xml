@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <!-- Binds pane.exe to the sparse identity package so the process runs with
+       package identity. publisher/packageName/applicationId MUST match the
+       Identity element and Application Id in identity/AppxManifest.xml, and
+       publisher MUST match the signing certificate subject. -->
+  <assemblyIdentity type="win32" name="Pane" version="0.0.0.0" />
+  <msix xmlns="urn:schemas-microsoft-com:msix.v1"
+        publisher="CN=Pane"
+        packageName="Pane"
+        applicationId="Pane" />
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity
+        type="win32"
+        name="Microsoft.Windows.Common-Controls"
+        version="6.0.0.0"
+        processorArchitecture="*"
+        publicKeyToken="6595b64144ccf1df"
+        language="*"
+      />
+    </dependentAssembly>
+  </dependency>
+</assembly>

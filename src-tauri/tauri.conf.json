@@ -45,7 +45,17 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "resources/capture-shutter.wav": "capture-shutter.wav"
+      "resources/capture-shutter.wav": "capture-shutter.wav",
+      "resources/identity/Pane-identity.msix": "identity/Pane-identity.msix",
+      "resources/identity/pane-codesign.cer": "identity/pane-codesign.cer",
+      "resources/identity/register-identity.ps1": "identity/register-identity.ps1",
+      "resources/identity/unregister-identity.ps1": "identity/unregister-identity.ps1"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "installerHooks": "installer-hooks.nsh"
+      }
     }
   }
 }

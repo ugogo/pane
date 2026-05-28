@@ -9,8 +9,8 @@
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
     "release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release.ps1",
-    "tauri": "tauri",
-    "build:windows": "tauri-windows-bundle build --arch x64"
+    "dev:trusted": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-trusted.ps1",
+    "tauri": "tauri"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -21,7 +21,6 @@
     "react-dom": "^18"
   },
   "devDependencies": {
-    "@choochmeque/tauri-windows-bundle": "^0.1.20",
     "@tauri-apps/cli": "^2",
     "@types/react": "^18",
     "@types/react-dom": "^18",

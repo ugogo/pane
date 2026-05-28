@@ -215,6 +215,17 @@ Set-FirstMatch "src-tauri/Cargo.lock" `
     ('(name = "pane"\r?\nversion = ")' + [regex]::Escape($current) + '(")') `
     ('${1}' + $new + '${2}') "Cargo.lock"
 
+# ---- stage Dynamic Lighting identity package --------------------------------
+
+# Build + sign the sparse identity package and stage it (with its public cert)
+# into src-tauri/resources/identity so `tauri build` bundles it. The installer
+# hook registers it on install, giving pane.exe package identity for background
+# Dynamic Lighting control. Runs after the version bump so the package version
+# (read from tauri.conf.json) matches the release.
+Step "building + signing Dynamic Lighting identity package"
+& (Join-Path $PSScriptRoot "build-identity-package.ps1") -StageBundle
+if ($LASTEXITCODE -ne 0) { Fail "identity package build failed." }
+
 # ---- build + sign -----------------------------------------------------------
 
 Step "building + signing installer (npx tauri build)"
