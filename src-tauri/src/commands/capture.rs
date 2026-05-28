@@ -91,6 +91,16 @@ fn encode_bmp_preview(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<String, St
     Ok(data_url)
 }
 
+/// GDI desktop captures on Windows 8+ leave the alpha channel undefined (xcap
+/// only forces it opaque on older versions). The transparent pixels then blend
+/// with the preview card background and produce semi-transparent saved files,
+/// so force every pixel fully opaque.
+pub fn force_opaque(img: &mut ImageBuffer<Rgba<u8>, Vec<u8>>) {
+    for pixel in img.pixels_mut() {
+        pixel.0[3] = 255;
+    }
+}
+
 fn preview_image(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     const PREVIEW_MAX_EDGE: u32 = 320;
 
@@ -147,7 +157,8 @@ fn encode_png_bytes(capture: &StoredCapture) -> Result<Vec<u8>, String> {
 
 pub fn perform_fullscreen_capture(app: &AppHandle) -> Result<CaptureResult, String> {
     let monitor = primary_monitor()?;
-    let img = monitor.capture_image().map_err(|e| e.to_string())?;
+    let mut img = monitor.capture_image().map_err(|e| e.to_string())?;
+    force_opaque(&mut img);
     let stored = make_stored_capture(&img)?;
     let result = stored.result.clone();
     *app.state::<LatestCapture>().0.lock().unwrap() = Some(stored);
@@ -175,7 +186,8 @@ pub fn capture_region(
     }
 
     let monitor = primary_monitor()?;
-    let full = monitor.capture_image().map_err(|e| e.to_string())?;
+    let mut full = monitor.capture_image().map_err(|e| e.to_string())?;
+    force_opaque(&mut full);
 
     let mw = full.width() as i32;
     let mh = full.height() as i32;

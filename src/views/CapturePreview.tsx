@@ -10,17 +10,36 @@ import {
   type CaptureResult,
 } from "../lib/commands";
 
+type Phase = "hidden" | "slide-in" | "idle" | "scale-out" | "scale-in" | "closing";
+
+const PHASE_ANIMATION: Record<Phase, string | undefined> = {
+  hidden: undefined,
+  idle: undefined,
+  "slide-in": "cap-slide-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both",
+  "scale-out": "cap-scale-out 130ms ease-in both",
+  "scale-in": "cap-scale-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
+  closing: "cap-close-out 200ms ease-in both",
+};
+
 export function CapturePreview() {
   const [capture, setCapture] = useState<CaptureResult | null>(null);
   const [error, setError] = useState<string>();
   const [revision, setRevision] = useState(0);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [shown, setShown] = useState(false);
-  const [closing, setClosing] = useState(false);
+  const [phase, setPhase] = useState<Phase>("hidden");
   const [copyState, setCopyState] = useState<"idle" | "busy" | "success">("idle");
   const [saveState, setSaveState] = useState<"idle" | "busy" | "success">("idle");
   const closeTimer = useRef<number>();
   const lastFetchAt = useRef(0);
+  const phaseRef = useRef<Phase>("hidden");
+  const captureRef = useRef<CaptureResult | null>(null);
+  const pending = useRef<CaptureResult | null>(null);
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+  useEffect(() => {
+    captureRef.current = capture;
+  }, [capture]);
 
   useEffect(() => {
     document.documentElement.style.background = "transparent";
@@ -36,27 +55,32 @@ export function CapturePreview() {
     const started = performance.now();
     lastFetchAt.current = started;
     try {
-      if (isRefresh) {
-        setClosing(false);
-        setShown(false);
-      }
-
       const c = await takeLatestCapture();
       if (!c) {
         setError("No capture available.");
-        console.info(`capture timing: preview fetch found no capture in ${Math.round(performance.now() - started)}ms`);
+        return;
+      }
+
+      // Re-displaying the identical capture (e.g. on window focus) shouldn't
+      // replay the swap animation.
+      if (isRefresh && captureRef.current && c.dataUrl === captureRef.current.dataUrl) {
         return;
       }
 
       setError(undefined);
-      setCapture(c);
       setCopyState("idle");
       setSaveState("idle");
-      setRevision((r) => r + 1);
-      if (isRefresh) {
-        setRefreshKey((key) => key + 1);
+
+      const visible = phaseRef.current !== "hidden" && phaseRef.current !== "closing";
+      if (isRefresh && visible && captureRef.current) {
+        // A preview is already on screen: scale the old one out, then the new in.
+        pending.current = c;
+        setPhase("scale-out");
+      } else {
+        // First display: slide it in once the window is shown.
+        setCapture(c);
+        setRevision((r) => r + 1);
       }
-      console.info(`capture timing: preview fetched image in ${Math.round(performance.now() - started)}ms`);
     } catch (e) {
       setError(String(e));
     }
@@ -111,30 +135,37 @@ export function CapturePreview() {
   useEffect(() => {
     if (revision === 0) return;
 
-    setClosing(false);
-
     return afterPaint(() => {
-      const started = performance.now();
       void previewReady()
-        .then(() => {
-          setShown(true);
-          console.info(`capture timing: preview_ready roundtrip in ${Math.round(performance.now() - started)}ms`);
-        })
+        .then(() => setPhase("slide-in"))
         .catch((e) => setError(String(e)));
     });
   }, [revision]);
+
+  function onCardAnimationEnd(e: React.AnimationEvent<HTMLDivElement>) {
+    if (e.target !== e.currentTarget) return;
+    const current = phaseRef.current;
+    if (current === "scale-out") {
+      if (pending.current) {
+        setCapture(pending.current);
+        pending.current = null;
+      }
+      setPhase("scale-in");
+    } else if (current === "slide-in" || current === "scale-in") {
+      setPhase("idle");
+    }
+  }
 
   async function close() {
     if (closeTimer.current) {
       window.clearTimeout(closeTimer.current);
     }
-    setClosing(true);
-    setShown(false);
+    setPhase("closing");
     window.setTimeout(() => {
       void hideCapturePreview()
-        .then(() => setClosing(false))
+        .then(() => setPhase("hidden"))
         .catch((e) => setError(String(e)));
-    }, 340);
+    }, 200);
   }
 
   function closeSoon() {
@@ -172,35 +203,36 @@ export function CapturePreview() {
     }
   }
 
-  const cardTransform = closing
-    ? "translateY(48px) scale(0.98)"
-    : shown
-      ? "translateY(0) scale(1)"
-      : "translateY(48px) scale(1)";
-
   return (
     <div className="fixed inset-0 overflow-hidden bg-transparent" data-tauri-drag-region>
       <style>
         {`
-          @keyframes capture-preview-refresh {
-            0% { opacity: 0.45; transform: translateY(0) scale(0.94); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
+          @keyframes cap-slide-in {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes cap-scale-in {
+            from { opacity: 0; transform: scale(0.92); }
+            to   { opacity: 1; transform: scale(1); }
+          }
+          @keyframes cap-scale-out {
+            from { opacity: 1; transform: scale(1); }
+            to   { opacity: 0; transform: scale(0.92); }
+          }
+          @keyframes cap-close-out {
+            from { opacity: 1; transform: translateY(0); }
+            to   { opacity: 0; transform: translateY(14px); }
           }
         `}
       </style>
       <div
-        key={refreshKey}
-        className="group absolute bottom-0 left-0 h-[200px] w-[200px] overflow-hidden rounded-lg bg-slate-900 shadow-2xl"
+        className="group absolute bottom-0 left-0 h-[200px] w-[250px] overflow-hidden rounded-lg bg-slate-900 shadow-2xl"
         data-tauri-drag-region
+        onAnimationEnd={onCardAnimationEnd}
         style={{
-          opacity: shown && !closing ? 1 : 0,
-          transform: cardTransform,
+          opacity: phase === "hidden" ? 0 : 1,
           transformOrigin: "50% 50%",
-          transition: "opacity 240ms ease-out, transform 320ms cubic-bezier(0.16, 1, 0.3, 1)",
-          animation:
-            refreshKey > 0 && !closing
-              ? "capture-preview-refresh 240ms cubic-bezier(0.2, 0, 0, 1)"
-              : undefined,
+          animation: PHASE_ANIMATION[phase],
         }}
       >
         {error && (
