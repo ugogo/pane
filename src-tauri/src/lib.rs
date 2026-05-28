@@ -95,5 +95,5 @@ pub fn run() {
             commands::hotkeys::clear_capture_hotkey,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Home");
+        .expect("error while running Pane");
 }

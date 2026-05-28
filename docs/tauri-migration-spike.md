@@ -1,4 +1,7 @@
-# Tauri Migration Feasibility Spike
+# Pane Tauri Migration Feasibility Spike
+
+This historical spike records the decision to move Pane from WinUI 3 to
+Tauri 2. Product references have been updated to the current app name, Pane.
 
 > **Branch:** `codex/tauri-feasibility-spike`  
 > **Spike location:** `src/` (React frontend + `src-tauri/` Rust backend)  
@@ -37,7 +40,7 @@ A checklist item may only be ticked once the behaviour has been **observed at ru
 
 ## Why We Are Doing This
 
-Home is currently built on **.NET 10 + WinUI 3**. While this stack works, it comes with a set of long-term costs and constraints:
+Pane is currently built on **.NET 10 + WinUI 3**. While this stack works, it comes with a set of long-term costs and constraints:
 
 | Pain point | Impact |
 |---|---|
@@ -123,12 +126,12 @@ Each item below is a capability the production app depends on.
 
 - [x] ✅ System tray icon with context menu (Show / Quit)
 - [x] ✅ Left-click tray → show main window
-- [x] ✅ Close button hides window to tray — `home.exe` stays resident
+- [x] ✅ Close button hides window to tray — `pane.exe` stays resident
 - [x] ✅ Single-instance enforcement — second launch focuses existing window
-- [x] ✅ Run-at-startup toggle writes/removes `HKCU\…\Run\Home` via `winreg`
+- [x] ✅ Run-at-startup toggle writes/removes `HKCU\…\Run\Pane` via `winreg`
   - ⚠️ Dev build writes the debug exe path; production installer will overwrite with the installed path
 - [x] ✅ App auto-updater (`tauri-plugin-updater`) — checks GitHub Releases `latest.json` on launch (prod only), verifies the ed25519 signature, installs, and prompts to restart. Signing key lives outside the repo; CI signs with the `TAURI_SIGNING_*` secrets.
-- [x] ✅ Windows installer (NSIS) produced by `tauri build` — 3.2 MB `Home_0.1.0_x64-setup.exe` with a `.sig` emitted alongside; `bundle.targets` narrowed to `["nsis"]` (the updater's format)
+- [x] ✅ Windows installer (NSIS) produced by `tauri build` — 3.2 MB `Pane_0.1.0_x64-setup.exe` with a `.sig` emitted alongside; `bundle.targets` narrowed to `["nsis"]` (the updater's format)
 - [x] ✅ App icon embedded in `.exe` and taskbar — generated via `tauri icon` from `design/icons/concept-1`
 
 ### Screen capture (CleanShot)
@@ -141,7 +144,7 @@ Each item below is a capability the production app depends on.
     2. **`WebviewUrl::App("…?view=…")` drops the query string.** Switched to building a `WebviewUrl::External` from the main window's current URL.
 - [ ] 🔲 CleanShot-style annotation toolbar after capture
 - [x] ✅ Clipboard integration — `copy_latest_capture_to_clipboard` via `arboard`; CDP invoke after `capture_fullscreen`, then Windows clipboard read back 2560×1440 PNG
-- [x] ✅ Save capture to desktop — `save_latest_capture_to_desktop` writes `home-capture-<ts>.png` to the user's Desktop folder
+- [x] ✅ Save capture to desktop — `save_latest_capture_to_desktop` writes `pane-capture-<ts>.png` to the user's Desktop folder
 - [x] ✅ Preview window copy/save actions — hover overlay buttons in `CapturePreview.tsx` call the Rust commands above
 - [x] ✅ Capture shutter sound — `capture-shutter.wav` via `PlaySoundW` (async) on fullscreen and region capture; matches CleanShot.WinUI
 - [ ] 🔲 Multi-display capture (correct DPI handling on mixed-DPI setups)
@@ -152,7 +155,7 @@ Each item below is a capability the production app depends on.
 ### Global hotkeys
 
 - [x] ✅ `tauri-plugin-global-shortcut` registers hotkeys (`set_capture_hotkey({ action, accelerator })` round-trips through Rust, stored in a `Lazy<Mutex<HashMap>>`)
-- [x] ✅ Capture hotkeys persist to `%APPDATA%\dev.home.app\capture-hotkeys.json` and restore on launch via `restore_capture_hotkeys` in `setup`
+- [x] ✅ Capture hotkeys persist to `%APPDATA%\dev.pane.app\capture-hotkeys.json` and restore on launch via `restore_capture_hotkeys` in `setup`
   - ⚠️ Accelerator strings are canonicalized through `Shortcut::from_str` before entering the binding map (`fix(hotkeys): canonicalize accelerators`)
 - [x] ✅ Hotkeys survive window minimise / hide to tray — user confirmed `Alt+Shift+3` fires capture while hub stays hidden; orchestration moved to Rust (`dispatch_hotkey_capture`), no `main.show()`
 - [x] ✅ Hotkey fires the capture flow end-to-end — shutter sound + floating preview confirmed from tray-hidden state
@@ -177,7 +180,7 @@ Each item below is a capability the production app depends on.
 
 ### Window management
 
-- [x] ✅ Hide to tray (window close → hide, not exit) — verified in Phase 2; `home.exe` stays resident
+- [x] ✅ Hide to tray (window close → hide, not exit) — verified in Phase 2; `pane.exe` stays resident
 - [x] ✅ Restore from tray — left-click tray icon shows main window (verified in Phase 2)
   - ⚠️ Taskbar flash on restore not explicitly measured
 - [x] ✅ Multiple windows open simultaneously — main + `area-selector` + `capture-preview` validated end-to-end during region capture (`commit_region_capture`)
@@ -258,10 +261,10 @@ Before calling the migration decision, capture equivalent numbers from the curre
 
 ```powershell
 # Working set of the running WinUI process (MB)
-Get-Process -Name "Home*" | Select-Object Name, @{n="RAM_MB";e={[math]::Round($_.WorkingSet64/1MB,1)}}
+Get-Process -Name "Pane*" | Select-Object Name, @{n="RAM_MB";e={[math]::Round($_.WorkingSet64/1MB,1)}}
 
 # Startup time — measure wall-clock from launch to first window visible
-Measure-Command { Start-Process ".\path\to\Home.exe" -Wait }
+Measure-Command { Start-Process ".\path\to\Pane.exe" -Wait }
 ```
 
 Record both sets of numbers in the **Results** section below once collected.

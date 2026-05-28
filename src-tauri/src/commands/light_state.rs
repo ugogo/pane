@@ -9,7 +9,7 @@
 //!   that power-cycled during sleep (notably the DX Light strip over USB)
 //!   come back to the user's last selection instead of the firmware default.
 //!
-//! Storage: `%LocalAppData%\Home\lights.json`. For packaged apps Windows
+//! Storage: `%LocalAppData%\Pane\lights.json`. For packaged apps Windows
 //! redirects `LOCALAPPDATA` to the package's LocalState dir automatically,
 //! so installed and unpackaged-dev builds keep their state separate.
 
@@ -62,7 +62,7 @@ static STATE: Lazy<Mutex<HashMap<String, LightState>>> =
 
 fn state_path() -> Option<PathBuf> {
     let local = std::env::var_os("LOCALAPPDATA")?;
-    Some(PathBuf::from(local).join("Home").join("lights.json"))
+    Some(PathBuf::from(local).join("Pane").join("lights.json"))
 }
 
 fn load_from_disk() -> Option<HashMap<String, LightState>> {

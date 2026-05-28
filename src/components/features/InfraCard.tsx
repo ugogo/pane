@@ -60,7 +60,7 @@ export function InfraCard() {
             <div>
               <p className="text-sm font-medium text-ink">Run at startup</p>
               <p className="text-xs text-neutral-500">
-                Writes / removes <code className="rounded bg-neutral-100 px-1">HKCU\…\Run\Home</code>
+                Writes / removes <code className="rounded bg-neutral-100 px-1">HKCU\…\Run\Pane</code>
                 {import.meta.env.DEV && (
                   <span className="ml-1 text-amber-600">(disabled in dev — would register the debug binary)</span>
                 )}
@@ -87,7 +87,7 @@ export function InfraCard() {
           <p className="text-sm font-medium text-ink">Hide to tray</p>
           <p className="mt-1 text-xs text-neutral-500">
             Close this window — it should disappear to the system tray without
-            exiting. Left-click the tray icon or choose <em>Show Home</em> to
+            exiting. Left-click the tray icon or choose <em>Show Pane</em> to
             restore it.
           </p>
         </div>
@@ -96,7 +96,7 @@ export function InfraCard() {
         <div className="rounded-md border border-line p-3">
           <p className="text-sm font-medium text-ink">Single instance</p>
           <p className="mt-1 text-xs text-neutral-500">
-            Launch a second copy of <code className="rounded bg-neutral-100 px-1">home.exe</code> while
+            Launch a second copy of <code className="rounded bg-neutral-100 px-1">pane.exe</code> while
             this window is open — the second process should exit immediately and
             this window should come to the foreground.
           </p>

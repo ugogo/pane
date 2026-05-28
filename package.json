@@ -1,9 +1,9 @@
 {
-  "name": "home",
+  "name": "pane",
   "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Home — Windows desktop utility suite (Tauri 2 + React + Rust)",
+  "description": "Pane — Windows desktop utility suite (Tauri 2 + React + Rust)",
   "scripts": {
     "dev": "tauri dev",
     "build": "tsc && vite build",

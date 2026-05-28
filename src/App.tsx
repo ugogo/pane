@@ -40,7 +40,7 @@ export function App() {
     <main className="min-h-screen bg-panel">
       <div className="mx-auto max-w-5xl px-6 py-6">
         <header className="mb-6 border-b border-line pb-6">
-          <h1 className="text-2xl font-semibold text-ink">Home</h1>
+          <h1 className="text-2xl font-semibold text-ink">Pane</h1>
           <p className="mt-1 text-sm text-slate-500">
             Version {appVersion ?? "unavailable"}
           </p>

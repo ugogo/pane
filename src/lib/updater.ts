@@ -31,7 +31,7 @@ export async function checkForUpdatesOnLaunch(): Promise<UpdateCheckResult> {
     await update.downloadAndInstall();
 
     const restart = window.confirm(
-      `Home ${update.version} has been installed. Restart now to apply it?`,
+      `Pane ${update.version} has been installed. Restart now to apply it?`,
     );
     if (restart) {
       await relaunch();

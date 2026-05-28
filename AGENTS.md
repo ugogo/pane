@@ -2,11 +2,12 @@
 
 ## Stack
 
-Windows desktop utility suite — **Light Controls** and **CleanShot** in one hub.
+**Pane** is a Windows desktop utility suite: **Light Controls** and
+**CleanShot** in one modular hub, with more modules expected over time.
 
 - **Frontend**: TypeScript + React + Tailwind (Vite)
 - **Backend**: Rust + Tauri 2
-- **Entry point**: `src/App.tsx` → `src-tauri/src/lib.rs`
+- **Entry point**: `src/App.tsx` -> `src-tauri/src/lib.rs`
 
 ## Running the app
 
@@ -57,7 +58,7 @@ Drop the `Monitor` before any `.await`. Tauri async commands need everything hel
 
 - Vite frontend: `http://localhost:1420`
 - CDP target list: `http://localhost:9222/json/version`
-- `home.exe` exit code `0xffffffff` = Rust panic. Re-run with `$env:RUST_BACKTRACE=1`.
+- `pane.exe` exit code `0xffffffff` = Rust panic. Re-run with `$env:RUST_BACKTRACE=1`.
 - Port 1420 already in use: `Get-NetTCPConnection -LocalPort 1420 -State Listen` to find the owner.
 
 ## Git

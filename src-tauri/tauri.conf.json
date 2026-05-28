@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Home",
+  "productName": "Pane",
   "version": "0.3.0",
-  "identifier": "dev.home.app",
+  "identifier": "dev.pane.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Home",
+        "title": "Pane",
         "width": 900,
         "height": 600,
         "resizable": true,
@@ -28,7 +28,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/ugogo/home/releases/latest/download/latest.json"
+        "https://github.com/ugogo/pane/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY5NTg5M0M2MkZBMEM2MTQKUldRVXhxQXZ4cE5ZYWFSYlJhWGxZOExFeUFSTXNRQU15a2FMVmdNODJ1WEpJUVBJaGxEcnBuZ0QK"
     }

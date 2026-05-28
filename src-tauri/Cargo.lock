@@ -1782,32 +1782,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "home"
-version = "0.3.0"
-dependencies = [
- "arboard",
- "base64 0.22.1",
- "hidapi",
- "image",
- "once_cell",
- "serde",
- "serde_json",
- "sysinfo 0.30.13",
- "tauri",
- "tauri-build",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-single-instance",
- "tauri-plugin-updater",
- "tauri-plugin-window-state",
- "thiserror 2.0.18",
- "tokio",
- "windows 0.60.0",
- "windows-sys 0.59.0",
- "winreg 0.52.0",
- "xcap",
-]
-
-[[package]]
 name = "html5ever"
 version = "0.38.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2925,6 +2899,32 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "pane"
+version = "0.3.0"
+dependencies = [
+ "arboard",
+ "base64 0.22.1",
+ "hidapi",
+ "image",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "sysinfo 0.30.13",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-updater",
+ "tauri-plugin-window-state",
+ "thiserror 2.0.18",
+ "tokio",
+ "windows 0.60.0",
+ "windows-sys 0.59.0",
+ "winreg 0.52.0",
+ "xcap",
 ]
 
 [[package]]

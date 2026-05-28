@@ -1,6 +1,6 @@
 {
-  "publisher": "CN=Home",
-  "publisherDisplayName": "Home",
+  "publisher": "CN=Pane",
+  "publisherDisplayName": "Pane",
   "capabilities": {
     "general": [
       "internetClient"

@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-    Kill all dev instances of the Home app that may be stuck or bugged.
+    Kill all dev instances of the Pane app that may be stuck or bugged.
 
 .DESCRIPTION
     Terminates every dev process in the Tauri (Rust + Vite) family:
-      - home.exe  (Cargo debug binary)
+      - pane.exe  (Cargo debug binary)
       - cargo.exe / tauri.exe build/runner processes referencing this repo
       - node.exe  processes running Vite from this repo's src/ directory
 
@@ -29,17 +29,17 @@ function Stop-ProcessById($id) {
 
 $killed = 0
 
-# ---- 1. home.exe (Tauri debug binary) ----------------------------------------
+# ---- 1. pane.exe (Tauri debug binary) ----------------------------------------
 
-$homeProcs = Get-Process -Name "home" -ErrorAction SilentlyContinue
-foreach ($p in $homeProcs) {
+$paneProcs = Get-Process -Name "pane" -ErrorAction SilentlyContinue
+foreach ($p in $paneProcs) {
     try {
         $exePath = $p.MainModule.FileName
     } catch {
         $exePath = ""
     }
     if ($exePath -like "*$root*" -or $exePath -eq "") {
-        Write-Killing "home.exe (Tauri)" $p.Id
+        Write-Killing "pane.exe (Tauri)" $p.Id
         Stop-ProcessById $p.Id
         $killed++
     }
@@ -50,8 +50,8 @@ foreach ($p in $homeProcs) {
 Get-CimInstance Win32_Process -Filter "Name = 'cargo.exe'" -ErrorAction SilentlyContinue |
     Where-Object {
         $_.CommandLine -like "*$root*" -or
-        $_.CommandLine -like "*home*tauri*" -or
-        $_.CommandLine -like "*tauri*home*"
+        $_.CommandLine -like "*pane*tauri*" -or
+        $_.CommandLine -like "*tauri*pane*"
     } |
     ForEach-Object {
         Write-Killing "cargo.exe (tauri dev)" $_.ProcessId

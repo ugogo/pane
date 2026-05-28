@@ -1,12 +1,12 @@
 [package]
-name = "home"
+name = "pane"
 version = "0.3.0"
-description = "Home desktop utility suite"
-authors = ["Home"]
+description = "Pane desktop utility suite"
+authors = ["Pane"]
 edition = "2021"
 
 [lib]
-name = "home_lib"
+name = "pane_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

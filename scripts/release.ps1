@@ -37,7 +37,7 @@
 
 .PARAMETER SigningKey
     Path to the updater minisign private key. Defaults to
-    "$HOME\.tauri\home-updater.key". Ignored if TAURI_SIGNING_PRIVATE_KEY is
+    "$HOME\.tauri\pane-updater.key". Ignored if TAURI_SIGNING_PRIVATE_KEY is
     already set in the environment.
 
 .EXAMPLE
@@ -57,7 +57,7 @@ param(
     [switch]$DryRun,
     [switch]$NoPublish,
     [switch]$Yes,
-    [string]$SigningKey = "$HOME\.tauri\home-updater.key"
+    [string]$SigningKey = "$HOME\.tauri\pane-updater.key"
 )
 
 $ErrorActionPreference = "Stop"
@@ -209,10 +209,10 @@ Step "bumping src-tauri/tauri.conf.json"
 Set-FirstMatch "src-tauri/tauri.conf.json" '"version"\s*:\s*"[^"]*"' ('"version": "{0}"' -f $new) "tauri.conf.json"
 
 # Scope the lockfile edit to the entry matching the OLD version so we never
-# touch an unrelated crate that also happens to be named "home".
+# touch an unrelated crate that also happens to be named "pane".
 Step "bumping src-tauri/Cargo.lock"
 Set-FirstMatch "src-tauri/Cargo.lock" `
-    ('(name = "home"\r?\nversion = ")' + [regex]::Escape($current) + '(")') `
+    ('(name = "pane"\r?\nversion = ")' + [regex]::Escape($current) + '(")') `
     ('${1}' + $new + '${2}') "Cargo.lock"
 
 # ---- build + sign -----------------------------------------------------------
@@ -275,7 +275,7 @@ if ($NoPublish) {
     Write-Host ""
     Write-Host "NoPublish: built, committed, and tagged locally. To publish later:"
     Write-Host "  git push origin $branch; git push origin $tag"
-    Write-Host "  gh release create $tag `"$($installer.FullName)`" `"$sigPath`" `"$latestPath`" --title `"Home $tag`" --latest"
+    Write-Host "  gh release create $tag `"$($installer.FullName)`" `"$sigPath`" `"$latestPath`" --title `"Pane $tag`" --latest"
     exit 0
 }
 
@@ -285,7 +285,7 @@ if (-not $Yes) {
         Write-Host ""
         Write-Host "Not published. The commit, tag, and build exist locally. To finish later:"
         Write-Host "  git push origin $branch; git push origin $tag"
-        Write-Host "  gh release create $tag `"$($installer.FullName)`" `"$sigPath`" `"$latestPath`" --title `"Home $tag`" --latest"
+        Write-Host "  gh release create $tag `"$($installer.FullName)`" `"$sigPath`" `"$latestPath`" --title `"Pane $tag`" --latest"
         Write-Host "Or to undo the commit + tag:"
         Write-Host "  git tag -d $tag; git reset --hard HEAD~1"
         exit 0
@@ -308,12 +308,12 @@ $notesBody = "Download the installer below. Existing installs update automatical
 if ($changes) {
     $notesBody += "`n`n## Changes`n" + ($changes -join "`n")
 }
-$notesFile = Join-Path $env:TEMP "home-release-notes-$new.md"
+$notesFile = Join-Path $env:TEMP "pane-release-notes-$new.md"
 [System.IO.File]::WriteAllText($notesFile, $notesBody)
 
 Step "creating GitHub release $tag"
 gh release create $tag "$($installer.FullName)" "$sigPath" "$latestPath" `
-    --title "Home $tag" --notes-file "$notesFile" --latest
+    --title "Pane $tag" --notes-file "$notesFile" --latest
 if ($LASTEXITCODE -ne 0) { Fail "gh release create failed (tag is pushed; re-run the gh command to retry)." }
 
 Write-Host ""

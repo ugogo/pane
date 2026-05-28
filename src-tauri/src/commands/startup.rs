@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
-const RUN_VALUE_NAME: &str = "Home";
+const RUN_VALUE_NAME: &str = "Pane";
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]

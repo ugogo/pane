@@ -51,9 +51,9 @@
         <uap3:Extension Category="windows.appExtension">
           <uap3:AppExtension
             Name="com.microsoft.windows.lighting"
-            Id="homeLighting"
+            Id="paneLighting"
             PublicFolder="public"
-            DisplayName="Home Dynamic Lighting" />
+            DisplayName="Pane Dynamic Lighting" />
         </uap3:Extension>
 {{EXTENSIONS}}
       </Extensions>

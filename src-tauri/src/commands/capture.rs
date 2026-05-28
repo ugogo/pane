@@ -244,7 +244,7 @@ pub fn save_latest_capture_to_desktop(
         .duration_since(UNIX_EPOCH)
         .map_err(|e| e.to_string())?
         .as_secs();
-    let path = desktop.join(format!("home-capture-{}.png", now));
+    let path = desktop.join(format!("pane-capture-{}.png", now));
     std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
     Ok(path.to_string_lossy().into_owned())
 }
