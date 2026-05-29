@@ -16,9 +16,11 @@
          the auto-updater verifies). Uses the key in -SigningKey /
          TAURI_SIGNING_PRIVATE_KEY.
       - Authenticode / MSIX code signing: signs the Dynamic Lighting identity
-         package (.msix) and is what Windows trusts. Production runs require an
-         externally supplied cert (see build-identity-package.ps1); pass
-         -DevSelfSigned only for throwaway local builds.
+         package (.msix) and is what Windows trusts. Pane is a personal app and
+         signs this self-signed automatically — no cert, no flag, nothing to set
+         up. The installer's POSTINSTALL hook trusts the bundled public cert
+         per-machine so the package registers. (If Pane ever needs a real CA
+         cert, call build-identity-package.ps1 directly without -DevSelfSigned.)
       3. Generates latest.json (the manifest the app's updater polls at
          releases/latest/download/latest.json).
       4. Commits "chore(release): vX.Y.Z" and creates the tag.
@@ -30,7 +32,8 @@
 
 .PARAMETER Version
     Target version: an explicit semver ("0.2.0") or a bump keyword
-    ("patch" | "minor" | "major").
+    ("patch" | "minor" | "major"). Defaults to "patch", so a bare
+    `.\scripts\release.ps1` cuts the next patch release.
 
 .PARAMETER DryRun
     Print the resolved version, the commits, and the planned steps without
@@ -43,16 +46,13 @@
 .PARAMETER Yes
     Skip the interactive confirmation before pushing/publishing.
 
-.PARAMETER DevSelfSigned
-    Sign the Dynamic Lighting identity package with a throwaway self-signed dev
-    certificate instead of a production cert. LOCAL/TEST ONLY — pair with
-    -NoPublish. Without this switch the identity build requires a real signing
-    cert (see build-identity-package.ps1) and fails fast otherwise.
-
 .PARAMETER SigningKey
     Path to the updater minisign private key. Defaults to
     "$HOME\.tauri\pane-updater.key". Ignored if TAURI_SIGNING_PRIVATE_KEY is
     already set in the environment.
+
+.EXAMPLE
+    .\scripts\release.ps1                      # cut the next patch release
 
 .EXAMPLE
     .\scripts\release.ps1 0.2.0
@@ -66,12 +66,11 @@
 
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true, Position = 0)]
-    [string]$Version,
+    [Parameter(Position = 0)]
+    [string]$Version = "patch",
     [switch]$DryRun,
     [switch]$NoPublish,
     [switch]$Yes,
-    [switch]$DevSelfSigned,
     [string]$SigningKey = "$HOME\.tauri\pane-updater.key"
 )
 
@@ -237,15 +236,11 @@ Set-FirstMatch "src-tauri/Cargo.lock" `
 # hook registers it on install, giving pane.exe package identity for background
 # Dynamic Lighting control. Runs after the version bump so the package version
 # (read from tauri.conf.json) matches the release.
-Step "building + signing Dynamic Lighting identity package"
-# Production releases require an externally supplied signing cert: set -PfxPath
-# and PANE_SIGNING_PFX_PASSWORD (or use the env var alone with the default
-# path). Pass -DevSelfSigned only for throwaway local/test builds (e.g. with
-# -NoPublish) — it ships a self-signed cert and must never reach a published
-# release.
-$identityArgs = @('-StageBundle')
-if ($DevSelfSigned) { $identityArgs += '-DevSelfSigned' }
-& (Join-Path $PSScriptRoot "build-identity-package.ps1") @identityArgs
+Step "building + signing Dynamic Lighting identity package (self-signed)"
+# Pane is a personal app and signs the identity package self-signed: the cert is
+# generated on first run, and the installer's POSTINSTALL hook trusts the bundled
+# public cert per-machine so the package registers. No cert or env var to set up.
+& (Join-Path $PSScriptRoot "build-identity-package.ps1") -StageBundle -DevSelfSigned
 if ($LASTEXITCODE -ne 0) { Fail "identity package build failed." }
 
 # ---- build + sign -----------------------------------------------------------

@@ -74,6 +74,10 @@ Two independent signatures are involved, and they must not be conflated:
   so the Tauri updater accepts it. Configured by `scripts/release.ps1`.
 - **Authenticode / code signing** (Windows cert): signs the sparse identity
   MSIX so Windows registers package identity. Configured by
-  `scripts/build-identity-package.ps1`. Pass `-DevSelfSigned` for local
-  testing only; release builds require an externally supplied production
-  certificate (the script fails closed on the dev cert/password/path).
+  `scripts/build-identity-package.ps1`. Pane is a personal app and ships
+  **self-signed** releases — `scripts/release.ps1` does this automatically with
+  no cert or flag, and the installer's POSTINSTALL hook trusts the bundled
+  public cert per-machine so the package registers. The tradeoff is that each
+  installing machine trusts a cert generated on the build host. (For a real CA
+  cert later, call `build-identity-package.ps1` directly without
+  `-DevSelfSigned` and supply `-PfxPath` + `PANE_SIGNING_PFX_PASSWORD`.)

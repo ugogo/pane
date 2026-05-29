@@ -40,11 +40,15 @@
     password if unset.
 
 .PARAMETER DevSelfSigned
-    Opt in to generating/using a self-signed dev certificate. This is for LOCAL
-    identity testing only and must never be used for a published release.
-    Without this switch the script requires an externally supplied production
-    signing certificate + password and refuses the dev cert/password/default
-    path.
+    Opt in to generating/using a self-signed certificate. Pane currently ships
+    self-signed releases as a deliberate cost tradeoff: the installer's
+    POSTINSTALL hook (register-identity.ps1) imports the bundled public cert
+    into LocalMachine\TrustedPeople, so the sparse package registers on end-user
+    machines without a paid CA cert — at the cost of each machine trusting a
+    cert generated on the build host. Without this switch the script requires an
+    externally supplied signing certificate + password and fails closed on the
+    dev cert/password/default path, so a release can't be cut self-signed by
+    mistake.
 
 .PARAMETER Register
     After signing, register the package via Add-AppxPackage -ExternalLocation.
@@ -73,8 +77,11 @@ Set-Location $root
 function Fail($m) { Write-Host "error: $m" -ForegroundColor Red; exit 1 }
 function Step($m) { Write-Host "==> $m" -ForegroundColor Cyan }
 
-# The self-signed dev cert path + password. These are deliberately weak and
-# must never sign a published release — the release guard below rejects them.
+# The self-signed cert path + password. The password is deliberately weak; it
+# only protects the local .pfx of a self-signed cert (which carries no trust of
+# its own). The production path (no -DevSelfSigned) rejects them so a release
+# can't be signed against the dev cert by mistake; with -DevSelfSigned they are
+# used intentionally for a self-signed release.
 $DevPfxPath = "$HOME\.pane\pane-codesign.pfx"
 $DevPassword = "pane-dev"
 
@@ -85,8 +92,9 @@ $pfxPassword = if ($CertPassword) { $CertPassword }
     elseif ($DevSelfSigned) { $DevPassword }
     else { $null }
 
-# Release guard: without -DevSelfSigned this is a production signing run, so
-# fail closed on any sign of the dev cert/password/default path.
+# Production guard: without -DevSelfSigned this is an externally-signed run, so
+# fail closed on any sign of the dev cert/password/default path. (-DevSelfSigned
+# is the supported self-signed release path; see the DevSelfSigned param docs.)
 if (-not $DevSelfSigned) {
     if (-not $pfxPassword) {
         Fail "production signing requires a certificate password (set -CertPassword or the PANE_SIGNING_PFX_PASSWORD env var), or pass -DevSelfSigned for local identity testing only."
