@@ -36,6 +36,7 @@ pub fn run() {
                 eprintln!("Failed to register power notification: {e}");
             }
             brightness_keys::register(app.handle().clone());
+            commands::audio::start_watch(app.handle().clone());
             // Push persisted color/brightness back to each device so the
             // hardware matches what the UI displays. Cold-boot launches may
             // race USB enumeration, so give devices a moment to settle —

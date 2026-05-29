@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX, Mic, MicOff } from "lucide-react";
+import { listen } from "@tauri-apps/api/event";
+import { Volume2, VolumeX, Mic, MicOff, Star } from "lucide-react";
 import {
   listOutputDevices,
   listInputDevices,
@@ -29,6 +30,12 @@ const WRITE_DEBOUNCE_MS = 100;
 
 type Kind = "output" | "input";
 
+interface VolumeChange {
+  kind: Kind;
+  volume: number;
+  muted: boolean;
+}
+
 const setVolumeFor: Record<Kind, (v: number) => Promise<void>> = {
   output: setOutputVolume,
   input: setInputVolume,
@@ -46,8 +53,31 @@ function vpct(volume: number) {
   return Math.round(volume * 100);
 }
 
-function defaultId(devices: AudioDevice[]) {
-  return devices.find((d) => d.isDefault)?.id ?? "";
+function favKey(kind: Kind) {
+  return `pane.audio.favorites.${kind}`;
+}
+
+function readFavorites(kind: Kind): Set<string> {
+  try {
+    const raw = localStorage.getItem(favKey(kind));
+    if (!raw) return new Set();
+    const arr: unknown = JSON.parse(raw);
+    return Array.isArray(arr)
+      ? new Set(arr.filter((x): x is string => typeof x === "string"))
+      : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+// Favorites float to the top; everything else stays alphabetical.
+function orderDevices(devices: AudioDevice[], favs: Set<string>): AudioDevice[] {
+  return [...devices].sort((a, b) => {
+    const fa = favs.has(a.id) ? 0 : 1;
+    const fb = favs.has(b.id) ? 0 : 1;
+    if (fa !== fb) return fa - fb;
+    return a.name.localeCompare(b.name);
+  });
 }
 
 export function SoundCard() {
@@ -55,6 +85,10 @@ export function SoundCard() {
   const [inputDevices, setInputDevices] = useState<AudioDevice[]>([]);
   const [outputVol, setOutputVol] = useState<VolumeInfo | null>(null);
   const [inputVol, setInputVol] = useState<VolumeInfo | null>(null);
+  const [favorites, setFavorites] = useState<Record<Kind, Set<string>>>(() => ({
+    output: readFavorites("output"),
+    input: readFavorites("input"),
+  }));
   const [status, setStatus] = useState<ProbeStatus>("idle");
   const [message, setMessage] = useState<string>("");
   const [busy, setBusy] = useState(false);
@@ -105,6 +139,32 @@ export function SoundCard() {
     void load();
   }, []);
 
+  // The backend pushes volume/mute changes (media keys, mixer, other apps) and
+  // device changes as events, so we never poll. A pending debounce timer means
+  // the user is dragging that slider — skip those so we don't clobber the drag.
+  useEffect(() => {
+    function applyExternal(kind: Kind, next: VolumeInfo) {
+      if (timers.current[kind]) return;
+      const update = (prev: VolumeInfo | null) =>
+        prev && vpct(prev.volume) === vpct(next.volume) && prev.muted === next.muted
+          ? prev
+          : next;
+      if (kind === "output") setOutputVol(update);
+      else setInputVol(update);
+    }
+    const volSub = listen<VolumeChange>("audio-volume-changed", (e) => {
+      applyExternal(e.payload.kind, {
+        volume: e.payload.volume,
+        muted: e.payload.muted,
+      });
+    });
+    const devSub = listen("audio-devices-changed", () => void load());
+    return () => {
+      void volSub.then((un) => un());
+      void devSub.then((un) => un());
+    };
+  }, []);
+
   function setVolState(kind: Kind, next: VolumeInfo) {
     if (kind === "output") setOutputVol(next);
     else setInputVol(next);
@@ -114,11 +174,15 @@ export function SoundCard() {
     const cur = kind === "output" ? outputVol : inputVol;
     setVolState(kind, { volume: percent / 100, muted: cur?.muted ?? false });
     if (timers.current[kind]) clearTimeout(timers.current[kind]);
-    timers.current[kind] = setTimeout(() => {
-      void setVolumeFor[kind](percent / 100).catch((e) => {
+    timers.current[kind] = setTimeout(async () => {
+      try {
+        await setVolumeFor[kind](percent / 100);
+      } catch (e) {
         setStatus("fail");
         setMessage(String(e));
-      });
+      } finally {
+        timers.current[kind] = undefined;
+      }
     }, WRITE_DEBOUNCE_MS);
   }
 
@@ -136,7 +200,8 @@ export function SoundCard() {
   }
 
   async function onSelectDevice(kind: Kind, id: string) {
-    if (!id) return;
+    const devices = kind === "output" ? outputDevices : inputDevices;
+    if (!id || devices.find((d) => d.id === id)?.isDefault) return;
     setBusy(true);
     try {
       await setDefaultFor[kind](id);
@@ -149,6 +214,20 @@ export function SoundCard() {
     }
   }
 
+  function toggleFavorite(kind: Kind, id: string) {
+    setFavorites((prev) => {
+      const next = new Set(prev[kind]);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      try {
+        localStorage.setItem(favKey(kind), JSON.stringify([...next]));
+      } catch {
+        /* storage unavailable; favorites just won't persist */
+      }
+      return { ...prev, [kind]: next };
+    });
+  }
+
   function renderSection(
     kind: Kind,
     label: string,
@@ -157,24 +236,66 @@ export function SoundCard() {
   ) {
     const muted = vol?.muted ?? false;
     const MuteIcon = kind === "output" ? (muted ? VolumeX : Volume2) : muted ? MicOff : Mic;
+    const favs = favorites[kind];
+    const ordered = orderDevices(devices, favs);
     return (
       <div className="rounded-md border border-line p-3">
         <p className="text-sm font-medium text-ink">{label}</p>
 
-        <select
-          value={defaultId(devices)}
-          disabled={busy || devices.length === 0}
-          onChange={(e) => void onSelectDevice(kind, e.target.value)}
-          aria-label={`${label} device`}
-          className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink disabled:opacity-50"
-        >
-          {devices.length === 0 && <option value="">No devices</option>}
-          {devices.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
+        {ordered.length === 0 ? (
+          <p className="mt-2 text-xs italic text-neutral-400">No devices.</p>
+        ) : (
+          <ul className="mt-2 max-h-40 divide-y divide-line overflow-y-auto rounded-md border border-line">
+            {ordered.map((d) => {
+              const isFav = favs.has(d.id);
+              return (
+                <li
+                  key={d.id}
+                  className={`flex items-center gap-2 px-2 py-1.5 ${
+                    d.isDefault ? "bg-accent/10" : ""
+                  }`}
+                >
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onSelectDevice(kind, d.id)}
+                    title={d.isDefault ? "Current default" : `Set as default ${label.toLowerCase()}`}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:opacity-50"
+                  >
+                    <span
+                      aria-hidden
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                        d.isDefault ? "bg-accent" : "bg-transparent"
+                      }`}
+                    />
+                    <span
+                      className={`truncate text-sm ${
+                        d.isDefault ? "font-medium text-ink" : "text-neutral-600"
+                      }`}
+                    >
+                      {d.name}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleFavorite(kind, d.id)}
+                    aria-label={isFav ? `Unfavorite ${d.name}` : `Favorite ${d.name}`}
+                    aria-pressed={isFav}
+                    title={isFav ? "Unfavorite" : "Favorite"}
+                    className="shrink-0 rounded p-1 hover:bg-neutral-100"
+                  >
+                    <Star
+                      size={13}
+                      aria-hidden
+                      fill={isFav ? "currentColor" : "none"}
+                      className={isFav ? "text-amber-500" : "text-neutral-300"}
+                    />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
 
         {vol ? (
           <div className="mt-3 flex items-center gap-3">

@@ -223,6 +223,233 @@ mod imp {
     pub const CAPTURE: EDataFlow = eCapture;
 }
 
+// ── Change notifications ──────────────────────────────────────────────────────
+//
+// Rather than poll, we register Core Audio callbacks and push changes to the UI
+// as Tauri events. `IAudioEndpointVolumeCallback` fires whenever an endpoint's
+// volume or mute changes from anywhere (media keys, the mixer, other apps);
+// `IMMNotificationClient` fires on default-device and hotplug changes, which we
+// use to re-bind the volume callback to the new default and refresh the list.
+//
+// The objects must outlive the call that registers them, so a dedicated thread
+// initialises COM (MTA), wires everything up, and parks for the process's life.
+
+#[cfg(windows)]
+pub fn start_watch(app: tauri::AppHandle) {
+    watch::start(app);
+}
+
+#[cfg(not(windows))]
+pub fn start_watch(_app: tauri::AppHandle) {}
+
+#[cfg(windows)]
+mod watch {
+    #![allow(non_snake_case)]
+
+    use std::sync::{Arc, Mutex};
+
+    use serde::Serialize;
+    use tauri::{AppHandle, Emitter};
+    use windows::core::{implement, Result, PCWSTR};
+    use windows::Win32::Foundation::PROPERTYKEY;
+    use windows::Win32::Media::Audio::Endpoints::{
+        IAudioEndpointVolume, IAudioEndpointVolumeCallback, IAudioEndpointVolumeCallback_Impl,
+    };
+    use windows::Win32::Media::Audio::{
+        eCapture, eConsole, eRender, EDataFlow, ERole, IMMDeviceEnumerator, IMMNotificationClient,
+        IMMNotificationClient_Impl, MMDeviceEnumerator, AUDIO_VOLUME_NOTIFICATION_DATA,
+        DEVICE_STATE,
+    };
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED,
+    };
+
+    #[derive(Clone, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct VolumePayload {
+        kind: &'static str,
+        volume: f64,
+        muted: bool,
+    }
+
+    fn kind_of(flow: EDataFlow) -> &'static str {
+        if flow == eRender {
+            "output"
+        } else {
+            "input"
+        }
+    }
+
+    /// Fires on any volume/mute change of the endpoint it's registered on.
+    #[implement(IAudioEndpointVolumeCallback)]
+    struct VolumeCallback {
+        app: AppHandle,
+        kind: &'static str,
+    }
+
+    impl IAudioEndpointVolumeCallback_Impl for VolumeCallback_Impl {
+        fn OnNotify(&self, data: *mut AUDIO_VOLUME_NOTIFICATION_DATA) -> Result<()> {
+            if !data.is_null() {
+                let d = unsafe { &*data };
+                let _ = self.app.emit(
+                    "audio-volume-changed",
+                    VolumePayload {
+                        kind: self.kind,
+                        volume: d.fMasterVolume as f64,
+                        muted: d.bMuted.as_bool(),
+                    },
+                );
+            }
+            Ok(())
+        }
+    }
+
+    /// Owns the per-flow volume callback registrations so they can be swapped
+    /// when the default device changes underneath us.
+    struct Endpoints {
+        enumerator: IMMDeviceEnumerator,
+        app: AppHandle,
+        render: Option<(IAudioEndpointVolume, IAudioEndpointVolumeCallback)>,
+        capture: Option<(IAudioEndpointVolume, IAudioEndpointVolumeCallback)>,
+    }
+
+    impl Endpoints {
+        fn slot(
+            &mut self,
+            flow: EDataFlow,
+        ) -> &mut Option<(IAudioEndpointVolume, IAudioEndpointVolumeCallback)> {
+            if flow == eRender {
+                &mut self.render
+            } else {
+                &mut self.capture
+            }
+        }
+
+        /// Unregister any existing callback for `flow`, then bind one to the
+        /// current default endpoint (if there is one).
+        fn rebind(&mut self, flow: EDataFlow) {
+            if let Some((vol, cb)) = self.slot(flow).take() {
+                unsafe {
+                    let _ = vol.UnregisterControlChangeNotify(&cb);
+                }
+            }
+            let kind = kind_of(flow);
+            let bound = unsafe {
+                self.enumerator
+                    .GetDefaultAudioEndpoint(flow, eConsole)
+                    .ok()
+                    .and_then(|device| {
+                        let vol: IAudioEndpointVolume =
+                            device.Activate(CLSCTX_ALL, None).ok()?;
+                        let cb: IAudioEndpointVolumeCallback = VolumeCallback {
+                            app: self.app.clone(),
+                            kind,
+                        }
+                        .into();
+                        vol.RegisterControlChangeNotify(&cb).ok()?;
+                        Some((vol, cb))
+                    })
+            };
+            *self.slot(flow) = bound;
+        }
+    }
+
+    /// Fires on default-device changes and device add/remove/state changes.
+    #[implement(IMMNotificationClient)]
+    struct DeviceNotify {
+        app: AppHandle,
+        endpoints: Arc<Mutex<Endpoints>>,
+    }
+
+    impl DeviceNotify_Impl {
+        fn notify_devices(&self) {
+            let _ = self.app.emit("audio-devices-changed", ());
+        }
+    }
+
+    impl IMMNotificationClient_Impl for DeviceNotify_Impl {
+        fn OnDefaultDeviceChanged(
+            &self,
+            flow: EDataFlow,
+            role: ERole,
+            _id: &PCWSTR,
+        ) -> Result<()> {
+            // Fires once per role; act on eConsole only so we rebind just once.
+            if role == eConsole {
+                if let Ok(mut ep) = self.endpoints.lock() {
+                    ep.rebind(flow);
+                }
+                self.notify_devices();
+            }
+            Ok(())
+        }
+
+        fn OnDeviceStateChanged(&self, _id: &PCWSTR, _state: DEVICE_STATE) -> Result<()> {
+            self.notify_devices();
+            Ok(())
+        }
+
+        fn OnDeviceAdded(&self, _id: &PCWSTR) -> Result<()> {
+            self.notify_devices();
+            Ok(())
+        }
+
+        fn OnDeviceRemoved(&self, _id: &PCWSTR) -> Result<()> {
+            self.notify_devices();
+            Ok(())
+        }
+
+        fn OnPropertyValueChanged(&self, _id: &PCWSTR, _key: &PROPERTYKEY) -> Result<()> {
+            Ok(())
+        }
+    }
+
+    pub fn start(app: AppHandle) {
+        std::thread::spawn(move || {
+            // MTA so the objects are agile and callbacks can fire on RPC threads.
+            unsafe {
+                let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+            }
+            let enumerator: IMMDeviceEnumerator =
+                match unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) } {
+                    Ok(e) => e,
+                    Err(e) => {
+                        eprintln!("[audio-watch] enumerator: {e}");
+                        return;
+                    }
+                };
+
+            let endpoints = Arc::new(Mutex::new(Endpoints {
+                enumerator: enumerator.clone(),
+                app: app.clone(),
+                render: None,
+                capture: None,
+            }));
+            if let Ok(mut ep) = endpoints.lock() {
+                ep.rebind(eRender);
+                ep.rebind(eCapture);
+            }
+
+            let client: IMMNotificationClient = DeviceNotify {
+                app,
+                endpoints: endpoints.clone(),
+            }
+            .into();
+            if let Err(e) = unsafe { enumerator.RegisterEndpointNotificationCallback(&client) } {
+                eprintln!("[audio-watch] register notify: {e}");
+            }
+
+            // Keep COM and every registration alive for the life of the process.
+            let _client = client;
+            let _endpoints = endpoints;
+            let _enumerator = enumerator;
+            loop {
+                std::thread::park();
+            }
+        });
+    }
+}
+
 // ── Tauri commands ────────────────────────────────────────────────────────────
 
 #[tauri::command]
