@@ -29,7 +29,7 @@ tauri-plugin-updater = "2"
 tauri-plugin-window-state = "2"
 thiserror = "2"
 tokio = { version = "1", features = ["time"] }
-winreg = "0.52"
+winreg = "0.55"
 xcap = "0.0.14"
 windows = { version = "0.60", features = ["Devices_Enumeration", "Devices_Lights", "Devices_Lights_Effects", "Foundation", "Foundation_Collections", "UI", "Win32_Foundation", "Win32_System_Power", "Win32_UI_WindowsAndMessaging"] }
 
