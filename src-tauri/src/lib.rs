@@ -1,3 +1,4 @@
+mod brightness_keys;
 mod commands;
 mod power_notify;
 mod tray;
@@ -34,6 +35,7 @@ pub fn run() {
             if let Err(e) = power_notify::register() {
                 eprintln!("Failed to register power notification: {e}");
             }
+            brightness_keys::register(app.handle().clone());
             // Push persisted color/brightness back to each device so the
             // hardware matches what the UI displays. Cold-boot launches may
             // race USB enumeration, so give devices a moment to settle —
@@ -95,6 +97,18 @@ pub fn run() {
             commands::hotkeys::get_capture_hotkeys,
             commands::hotkeys::set_capture_hotkey,
             commands::hotkeys::clear_capture_hotkey,
+            commands::brightness::list_monitors,
+            commands::brightness::refresh_monitors,
+            commands::brightness::set_monitor_brightness,
+            commands::brightness::set_monitor_contrast,
+            commands::brightness::set_monitor_red_gain,
+            commands::brightness::set_monitor_green_gain,
+            commands::brightness::set_monitor_blue_gain,
+            commands::brightness::adjust_all_brightness,
+            commands::brightness::get_monitor_presets,
+            commands::brightness::save_monitor_preset,
+            commands::brightness::delete_monitor_preset,
+            commands::brightness::apply_monitor_preset,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Pane");
