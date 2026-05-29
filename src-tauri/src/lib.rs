@@ -109,6 +109,16 @@ pub fn run() {
             commands::brightness::save_monitor_preset,
             commands::brightness::delete_monitor_preset,
             commands::brightness::apply_monitor_preset,
+            commands::audio::list_output_devices,
+            commands::audio::list_input_devices,
+            commands::audio::set_default_output_device,
+            commands::audio::set_default_input_device,
+            commands::audio::get_output_volume,
+            commands::audio::set_output_volume,
+            commands::audio::set_output_mute,
+            commands::audio::get_input_volume,
+            commands::audio::set_input_volume,
+            commands::audio::set_input_mute,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Pane");

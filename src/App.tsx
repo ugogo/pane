@@ -12,6 +12,7 @@ import { CaptureCard } from "./components/features/CaptureCard";
 import { InfraCard } from "./components/features/InfraCard";
 import { LightingCard } from "./components/features/LightingCard";
 import { MetricsCard } from "./components/features/MetricsCard";
+import { SoundCard } from "./components/features/SoundCard";
 import { prepareCaptureWindows } from "./lib/commands";
 import {
   checkForUpdatesOnLaunch,
@@ -143,6 +144,7 @@ export function App() {
           <InfraCard />
           <LightingCard />
           <BrightnessCard />
+          <SoundCard />
         </div>
       </div>
     </main>

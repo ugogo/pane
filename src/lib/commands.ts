@@ -356,3 +356,58 @@ export function getLightStates() {
 export function restoreAllLights() {
   return invoke<Array<[string, string | null]>>("restore_all_lights");
 }
+
+// ── Sound ─────────────────────────────────────────────────────────────────────
+
+export interface AudioDevice {
+  /** Opaque MMDevice endpoint ID, used to set the default. */
+  id: string;
+  name: string;
+  isDefault: boolean;
+}
+
+export interface VolumeInfo {
+  /** Scalar 0.0–1.0. */
+  volume: number;
+  muted: boolean;
+}
+
+export function listOutputDevices() {
+  return invoke<AudioDevice[]>("list_output_devices");
+}
+
+export function listInputDevices() {
+  return invoke<AudioDevice[]>("list_input_devices");
+}
+
+export function setDefaultOutputDevice(deviceId: string) {
+  return invoke<void>("set_default_output_device", { deviceId });
+}
+
+export function setDefaultInputDevice(deviceId: string) {
+  return invoke<void>("set_default_input_device", { deviceId });
+}
+
+export function getOutputVolume() {
+  return invoke<VolumeInfo>("get_output_volume");
+}
+
+export function setOutputVolume(volume: number) {
+  return invoke<void>("set_output_volume", { volume });
+}
+
+export function setOutputMute(muted: boolean) {
+  return invoke<void>("set_output_mute", { muted });
+}
+
+export function getInputVolume() {
+  return invoke<VolumeInfo>("get_input_volume");
+}
+
+export function setInputVolume(volume: number) {
+  return invoke<void>("set_input_volume", { volume });
+}
+
+export function setInputMute(muted: boolean) {
+  return invoke<void>("set_input_mute", { muted });
+}
