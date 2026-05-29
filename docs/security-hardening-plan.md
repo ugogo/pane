@@ -1,4 +1,4 @@
-# Security Hardening Plan
+# Security Hardening Plan — SHIPPED (2026-05-29, commit 03c5cb6)
 
 This handoff turns the security audit into an implementation plan for Pane, a public Windows/Tauri desktop app. Treat the items below as defense-in-depth for a privileged local application: the frontend can invoke Rust commands that capture the screen, write the clipboard, register global shortcuts, modify startup behavior, control hardware lighting, install updates, and restart the app.
 
