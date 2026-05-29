@@ -30,7 +30,7 @@ tauri-plugin-window-state = "2"
 thiserror = "2"
 tokio = { version = "1", features = ["time"] }
 winreg = "0.52"
-xcap = "0.0.14"
+xcap = "0.9.6"
 windows = { version = "0.60", features = ["Devices_Enumeration", "Devices_Lights", "Devices_Lights_Effects", "Foundation", "Foundation_Collections", "UI", "Win32_Foundation", "Win32_System_Power", "Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(windows)'.dependencies]
