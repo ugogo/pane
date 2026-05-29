@@ -129,6 +129,90 @@ export function clearCaptureHotkey(action: CaptureAction) {
   return invoke<void>("clear_capture_hotkey", { action });
 }
 
+// ── Monitor controls (DDC/CI) ──────────────────────────────────────────────────
+
+/** One adjustable DDC/CI control. `supported` is false when the monitor doesn't expose the VCP code. */
+export interface Feature {
+  value: number;
+  /** Max VCP value for this monitor (often 100). */
+  max: number;
+  supported: boolean;
+}
+
+export interface MonitorInfo {
+  /** Enumeration index as a string — stable within a session. */
+  id: string;
+  name: string;
+  brightness: Feature; // VCP 0x10
+  contrast: Feature; // VCP 0x12
+  redGain: Feature; // VCP 0x16 (white-balance red gain)
+  greenGain: Feature; // VCP 0x18 (white-balance green gain)
+  blueGain: Feature; // VCP 0x1A (white-balance blue gain)
+}
+
+/** Enumerate monitors and read each control once (seeds the cache). */
+export function listMonitors() {
+  return invoke<MonitorInfo[]>("list_monitors");
+}
+
+/** Re-enumerate after a monitor is plugged/unplugged. */
+export function refreshMonitors() {
+  return invoke<MonitorInfo[]>("refresh_monitors");
+}
+
+export function setMonitorBrightness(id: string, value: number) {
+  return invoke<void>("set_monitor_brightness", { id, value });
+}
+
+export function setMonitorContrast(id: string, value: number) {
+  return invoke<void>("set_monitor_contrast", { id, value });
+}
+
+export function setMonitorRedGain(id: string, value: number) {
+  return invoke<void>("set_monitor_red_gain", { id, value });
+}
+
+export function setMonitorGreenGain(id: string, value: number) {
+  return invoke<void>("set_monitor_green_gain", { id, value });
+}
+
+export function setMonitorBlueGain(id: string, value: number) {
+  return invoke<void>("set_monitor_blue_gain", { id, value });
+}
+
+/** Step every brightness-capable monitor by `delta`; returns the new values. */
+export function adjustAllBrightness(delta: number) {
+  return invoke<MonitorInfo[]>("adjust_all_brightness", { delta });
+}
+
+/** A reusable monitor target, stored as percentages, plus a night-light flag. */
+export interface MonitorPreset {
+  name: string;
+  brightnessPct: number;
+  contrastPct: number;
+  redGainPct: number;
+  greenGainPct: number;
+  blueGainPct: number;
+}
+
+export function getMonitorPresets() {
+  return invoke<MonitorPreset[]>("get_monitor_presets");
+}
+
+/** Create or overwrite (by name) a preset; returns the updated list. */
+export function saveMonitorPreset(preset: MonitorPreset) {
+  return invoke<MonitorPreset[]>("save_monitor_preset", { preset });
+}
+
+export function deleteMonitorPreset(name: string) {
+  return invoke<MonitorPreset[]>("delete_monitor_preset", { name });
+}
+
+/** Apply a preset to every capable monitor. */
+export function applyMonitorPreset(name: string) {
+  return invoke<MonitorInfo[]>("apply_monitor_preset", { name });
+}
+
 // ── MSI Mystic Light (motherboard ARGB headers) ───────────────────────────────
 
 export interface MsiLightingPresence {

@@ -7,6 +7,7 @@ import {
   Loader2,
   RotateCcw,
 } from "lucide-react";
+import { BrightnessCard } from "./components/features/BrightnessCard";
 import { CaptureCard } from "./components/features/CaptureCard";
 import { InfraCard } from "./components/features/InfraCard";
 import { LightingCard } from "./components/features/LightingCard";
@@ -134,6 +135,7 @@ export function App() {
           <CaptureCard />
           <InfraCard />
           <LightingCard />
+          <BrightnessCard />
         </div>
       </div>
     </main>

@@ -1,3 +1,4 @@
+pub mod brightness;
 pub mod capture;
 pub mod capture_sound;
 pub mod dx_light;
