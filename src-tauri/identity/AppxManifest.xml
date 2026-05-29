@@ -17,6 +17,9 @@
     <DisplayName>Pane</DisplayName>
     <PublisherDisplayName>Pane</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
+    <!-- AllowExternalContent: required for a sparse package whose payload
+         (pane.exe) lives outside the package, at the registered external
+         location. Without it the package cannot bind to the on-disk exe. -->
     <uap10:AllowExternalContent>true</uap10:AllowExternalContent>
   </Properties>
 
@@ -29,7 +32,14 @@
   </Dependencies>
 
   <Capabilities>
+    <!-- runFullTrust: pane.exe is a full-trust Win32 app (RuntimeBehavior
+         win32App below), not a sandboxed UWP app. Required to run the existing
+         exe under package identity. -->
     <rescap:Capability Name="runFullTrust" />
+    <!-- unvirtualizedResources: lets the full-trust exe read/write the real
+         registry and filesystem (HKCU Run key, %LOCALAPPDATA%\Pane state)
+         instead of a per-package virtualized view, so packaged and unpackaged
+         runs share the same settings. -->
     <rescap:Capability Name="unvirtualizedResources" />
   </Capabilities>
 

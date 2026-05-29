@@ -62,7 +62,7 @@ if (-not (Test-Path $exe)) { Fail "pane.exe not found at $exe (run without -Skip
 # ---- build + register identity package ------------------------------------
 
 Step "building + registering identity package against build dir"
-& (Join-Path $PSScriptRoot "build-identity-package.ps1") -Register -ExternalLocation (Join-Path $root "src-tauri\target\release")
+& (Join-Path $PSScriptRoot "build-identity-package.ps1") -DevSelfSigned -Register -ExternalLocation (Join-Path $root "src-tauri\target\release")
 if ($LASTEXITCODE -ne 0) { Fail "identity package build/register failed." }
 
 Write-Host ""

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2/capability",
-  "identifier": "default",
-  "description": "Default capability set for the main window.",
-  "windows": ["main", "area-selector", "capture-preview"],
+  "identifier": "main",
+  "description": "Full permission set for the main dashboard window: updater, process restart, global shortcuts, and window-state persistence.",
+  "windows": ["main"],
   "permissions": [
     "core:default",
     "core:window:default",

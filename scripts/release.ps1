@@ -9,8 +9,16 @@
       1. Bumps the version across package.json (+lockfile), src-tauri/Cargo.toml,
          src-tauri/Cargo.lock, and src-tauri/tauri.conf.json.
       2. Builds the signed NSIS installer via `tauri build` (the build also runs
-         tsc + vite, so it doubles as the verification gate). Signing uses the
-         updater minisign key so the installer gets a `.sig`.
+         tsc + vite, so it doubles as the verification gate).
+
+    Two independent signatures are involved, do not conflate them:
+      - Updater signing: a minisign signature over the installer (the `.sig`
+         the auto-updater verifies). Uses the key in -SigningKey /
+         TAURI_SIGNING_PRIVATE_KEY.
+      - Authenticode / MSIX code signing: signs the Dynamic Lighting identity
+         package (.msix) and is what Windows trusts. Production runs require an
+         externally supplied cert (see build-identity-package.ps1); pass
+         -DevSelfSigned only for throwaway local builds.
       3. Generates latest.json (the manifest the app's updater polls at
          releases/latest/download/latest.json).
       4. Commits "chore(release): vX.Y.Z" and creates the tag.
@@ -35,6 +43,12 @@
 .PARAMETER Yes
     Skip the interactive confirmation before pushing/publishing.
 
+.PARAMETER DevSelfSigned
+    Sign the Dynamic Lighting identity package with a throwaway self-signed dev
+    certificate instead of a production cert. LOCAL/TEST ONLY — pair with
+    -NoPublish. Without this switch the identity build requires a real signing
+    cert (see build-identity-package.ps1) and fails fast otherwise.
+
 .PARAMETER SigningKey
     Path to the updater minisign private key. Defaults to
     "$HOME\.tauri\pane-updater.key". Ignored if TAURI_SIGNING_PRIVATE_KEY is
@@ -57,6 +71,7 @@ param(
     [switch]$DryRun,
     [switch]$NoPublish,
     [switch]$Yes,
+    [switch]$DevSelfSigned,
     [string]$SigningKey = "$HOME\.tauri\pane-updater.key"
 )
 
@@ -223,7 +238,14 @@ Set-FirstMatch "src-tauri/Cargo.lock" `
 # Dynamic Lighting control. Runs after the version bump so the package version
 # (read from tauri.conf.json) matches the release.
 Step "building + signing Dynamic Lighting identity package"
-& (Join-Path $PSScriptRoot "build-identity-package.ps1") -StageBundle
+# Production releases require an externally supplied signing cert: set -PfxPath
+# and PANE_SIGNING_PFX_PASSWORD (or use the env var alone with the default
+# path). Pass -DevSelfSigned only for throwaway local/test builds (e.g. with
+# -NoPublish) — it ships a self-signed cert and must never reach a published
+# release.
+$identityArgs = @('-StageBundle')
+if ($DevSelfSigned) { $identityArgs += '-DevSelfSigned' }
+& (Join-Path $PSScriptRoot "build-identity-package.ps1") @identityArgs
 if ($LASTEXITCODE -ne 0) { Fail "identity package build failed." }
 
 # ---- build + sign -----------------------------------------------------------

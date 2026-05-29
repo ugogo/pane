@@ -25,6 +25,11 @@ npm run dev
 
 WebView2 then exposes Chrome DevTools Protocol on port 9222.
 
+> **Security:** the CDP port has no authentication. Any local process can
+> attach and drive Pane's Tauri IPC — screen capture, clipboard, startup
+> registry, and hardware-lighting commands. Only enable CDP on a trusted dev
+> machine, and never in a production build.
+
 ## UI Guidelines
 
 - Icons: use `lucide-react`. Do not hand-roll inline SVGs or add other icon libraries.

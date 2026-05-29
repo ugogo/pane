@@ -273,6 +273,20 @@ pub async fn diagnose_dynamic_lighting(
 
 #[tauri::command]
 pub async fn apply_dynamic_lighting(
+    window: tauri::WebviewWindow,
+    device_id: String,
+    r: u8,
+    g: u8,
+    b: u8,
+    brightness: f64,
+) -> Result<DynamicLightingApplyResult, String> {
+    crate::commands::require_window(&window, &["main"])?;
+    apply_dynamic_lighting_inner(device_id, r, g, b, brightness, true).await
+}
+
+/// Apply + persist without a caller-window check, for internal callers like
+/// wake-restore.
+pub(crate) async fn apply_dynamic_lighting_persist(
     device_id: String,
     r: u8,
     g: u8,

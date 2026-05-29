@@ -249,12 +249,14 @@ pub async fn hide_area_selector(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn commit_region_capture(
+    caller: WebviewWindow,
     app: AppHandle,
     x: i32,
     y: i32,
     width: u32,
     height: u32,
 ) -> Result<(), String> {
+    crate::commands::require_window(&caller, &[AREA_SELECTOR_LABEL])?;
     if let Some(window) = app.get_webview_window(AREA_SELECTOR_LABEL) {
         let _ = window.hide();
     }

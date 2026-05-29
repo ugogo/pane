@@ -185,10 +185,12 @@ pub fn get_capture_hotkeys() -> CaptureHotkeys {
 
 #[tauri::command]
 pub fn set_capture_hotkey(
+    window: tauri::WebviewWindow,
     app: AppHandle,
     action: CaptureAction,
     accelerator: String,
 ) -> Result<HotkeyResult, String> {
+    crate::commands::require_window(&window, &["main"])?;
     let shortcuts = app.global_shortcut();
 
     // Drop any previous binding for this action.
@@ -225,7 +227,12 @@ pub fn set_capture_hotkey(
 }
 
 #[tauri::command]
-pub fn clear_capture_hotkey(app: AppHandle, action: CaptureAction) -> Result<(), String> {
+pub fn clear_capture_hotkey(
+    window: tauri::WebviewWindow,
+    app: AppHandle,
+    action: CaptureAction,
+) -> Result<(), String> {
+    crate::commands::require_window(&window, &["main"])?;
     let shortcuts = app.global_shortcut();
     let mut b = BINDINGS.lock().unwrap();
     if let Some(old) = b.by_action.remove(&action) {

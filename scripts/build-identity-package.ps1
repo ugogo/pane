@@ -31,8 +31,20 @@
     Certificate subject / manifest Publisher. Default "CN=Pane".
 
 .PARAMETER PfxPath
-    Path to the signing .pfx. Default "$HOME\.pane\pane-codesign.pfx". A
-    self-signed cert is generated here on first run.
+    Path to the signing .pfx. Default "$HOME\.pane\pane-codesign.pfx". With
+    -DevSelfSigned, a self-signed cert is generated here on first run.
+
+.PARAMETER CertPassword
+    Password for the signing .pfx. Falls back to the PANE_SIGNING_PFX_PASSWORD
+    environment variable. For -DevSelfSigned, defaults to the throwaway dev
+    password if unset.
+
+.PARAMETER DevSelfSigned
+    Opt in to generating/using a self-signed dev certificate. This is for LOCAL
+    identity testing only and must never be used for a published release.
+    Without this switch the script requires an externally supplied production
+    signing certificate + password and refuses the dev cert/password/default
+    path.
 
 .PARAMETER Register
     After signing, register the package via Add-AppxPackage -ExternalLocation.
@@ -47,6 +59,8 @@ param(
     [string]$Version,
     [string]$Publisher = "CN=Pane",
     [string]$PfxPath = "$HOME\.pane\pane-codesign.pfx",
+    [string]$CertPassword,
+    [switch]$DevSelfSigned,
     [switch]$Register,
     [string]$ExternalLocation,
     [switch]$StageBundle
@@ -58,6 +72,35 @@ Set-Location $root
 
 function Fail($m) { Write-Host "error: $m" -ForegroundColor Red; exit 1 }
 function Step($m) { Write-Host "==> $m" -ForegroundColor Cyan }
+
+# The self-signed dev cert path + password. These are deliberately weak and
+# must never sign a published release — the release guard below rejects them.
+$DevPfxPath = "$HOME\.pane\pane-codesign.pfx"
+$DevPassword = "pane-dev"
+
+# Resolve the effective PFX password: explicit param, then env var, then (only
+# for dev self-signed) the throwaway dev password.
+$pfxPassword = if ($CertPassword) { $CertPassword }
+    elseif ($env:PANE_SIGNING_PFX_PASSWORD) { $env:PANE_SIGNING_PFX_PASSWORD }
+    elseif ($DevSelfSigned) { $DevPassword }
+    else { $null }
+
+# Release guard: without -DevSelfSigned this is a production signing run, so
+# fail closed on any sign of the dev cert/password/default path.
+if (-not $DevSelfSigned) {
+    if (-not $pfxPassword) {
+        Fail "production signing requires a certificate password (set -CertPassword or the PANE_SIGNING_PFX_PASSWORD env var), or pass -DevSelfSigned for local identity testing only."
+    }
+    if ($pfxPassword -eq $DevPassword) {
+        Fail "refusing to sign a release with the dev password '$DevPassword'. Supply a real signing certificate + password, or pass -DevSelfSigned for local testing only."
+    }
+    if ($PfxPath -eq $DevPfxPath) {
+        Fail "refusing to use the default dev PFX path for a release. Supply -PfxPath to a production signing certificate, or pass -DevSelfSigned for local testing only."
+    }
+    if (-not (Test-Path $PfxPath)) {
+        Fail "production signing certificate not found at '$PfxPath'."
+    }
+}
 
 # ---- locate Windows SDK tools ----------------------------------------------
 
@@ -119,6 +162,9 @@ if ($LASTEXITCODE -ne 0) { Fail "makeappx failed." }
 # ---- certificate -----------------------------------------------------------
 
 if (-not (Test-Path $PfxPath)) {
+    if (-not $DevSelfSigned) {
+        Fail "signing certificate not found at '$PfxPath'. Supply a production cert, or pass -DevSelfSigned to generate a throwaway dev cert."
+    }
     Step "no signing cert at $PfxPath - generating self-signed (dev only)"
     $pfxDir = Split-Path -Parent $PfxPath
     if (-not (Test-Path $pfxDir)) { New-Item -ItemType Directory -Path $pfxDir | Out-Null }
@@ -126,7 +172,7 @@ if (-not (Test-Path $PfxPath)) {
         -KeyUsage DigitalSignature -FriendlyName "Pane Dev Code Signing" `
         -CertStoreLocation "Cert:\CurrentUser\My" `
         -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
-    $pwd = ConvertTo-SecureString -String "pane-dev" -Force -AsPlainText
+    $pwd = ConvertTo-SecureString -String $pfxPassword -Force -AsPlainText
     Export-PfxCertificate -Cert $cert -FilePath $PfxPath -Password $pwd | Out-Null
     Write-Host "  generated cert $($cert.Thumbprint)" -ForegroundColor Green
 }
@@ -134,7 +180,7 @@ if (-not (Test-Path $PfxPath)) {
 # Trust the public cert locally so Add-AppxPackage accepts the self-signed pkg.
 # Load with the password explicitly; Get-PfxCertificate prompts interactively
 # in Windows PowerShell 5.1 and would hang under -NonInteractive.
-$pfx = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($PfxPath, "pane-dev")
+$pfx = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($PfxPath, $pfxPassword)
 $cerPath = [System.IO.Path]::ChangeExtension($PfxPath, ".cer")
 Export-Certificate -Cert $pfx -FilePath $cerPath | Out-Null
 $alreadyTrusted = Get-ChildItem Cert:\CurrentUser\TrustedPeople |
@@ -145,7 +191,7 @@ if (-not $alreadyTrusted) {
 }
 
 Step "signing package"
-& $signtool sign /fd SHA256 /f $PfxPath /p "pane-dev" $msix
+& $signtool sign /fd SHA256 /f $PfxPath /p $pfxPassword $msix
 if ($LASTEXITCODE -ne 0) { Fail "signtool failed (does the cert subject match the manifest Publisher '$Publisher'?)." }
 
 Write-Host ""

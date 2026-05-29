@@ -220,7 +220,11 @@ pub fn take_latest_capture(latest: State<'_, LatestCapture>) -> Option<CaptureRe
 }
 
 #[tauri::command]
-pub fn copy_latest_capture_to_clipboard(latest: State<'_, LatestCapture>) -> Result<(), String> {
+pub fn copy_latest_capture_to_clipboard(
+    window: tauri::WebviewWindow,
+    latest: State<'_, LatestCapture>,
+) -> Result<(), String> {
+    crate::commands::require_window(&window, &["capture-preview", "main"])?;
     let capture = latest_capture(latest)?;
     let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
     clipboard
@@ -234,9 +238,11 @@ pub fn copy_latest_capture_to_clipboard(latest: State<'_, LatestCapture>) -> Res
 
 #[tauri::command]
 pub fn save_latest_capture_to_desktop(
+    window: tauri::WebviewWindow,
     app: AppHandle,
     latest: State<'_, LatestCapture>,
 ) -> Result<String, String> {
+    crate::commands::require_window(&window, &["capture-preview", "main"])?;
     let capture = latest_capture(latest)?;
     let bytes = encode_png_bytes(&capture)?;
     let desktop = app.path().desktop_dir().map_err(|e| e.to_string())?;

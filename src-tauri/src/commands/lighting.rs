@@ -33,7 +33,20 @@ pub fn detect_msi_lighting() -> Result<MsiLightingPresence, String> {
 /// Brightness is applied by pre-scaling the RGB values (MSI's direct-mode
 /// firmware has no separate brightness register).
 #[tauri::command]
-pub fn apply_msi_lighting(r: u8, g: u8, b: u8, brightness: f64) -> Result<(), String> {
+pub fn apply_msi_lighting(
+    window: tauri::WebviewWindow,
+    r: u8,
+    g: u8,
+    b: u8,
+    brightness: f64,
+) -> Result<(), String> {
+    crate::commands::require_window(&window, &["main"])?;
+    apply_msi_lighting_inner(r, g, b, brightness)
+}
+
+/// Hardware write + state record, callable internally (e.g. wake-restore)
+/// without a caller-window check.
+pub(crate) fn apply_msi_lighting_inner(r: u8, g: u8, b: u8, brightness: f64) -> Result<(), String> {
     write_msi_lighting(r, g, b, brightness)?;
     // Treat brightness 0 as an explicit off so wake-restore matches intent.
     if brightness <= f64::EPSILON {
