@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability",
+  "identifier": "capture-preview",
+  "description": "Capture preview card. Baseline core/window/event access only — no updater, process restart, global shortcuts, or window-state persistence.",
+  "windows": ["capture-preview"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-close",
+    "core:window:allow-hide",
+    "core:webview:default",
+    "core:event:default"
+  ]
+}

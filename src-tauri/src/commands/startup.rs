@@ -10,8 +10,18 @@ pub struct StartupResult {
     pub detail: String,
 }
 
+/// Quote the executable path so a path containing spaces is parsed as a single
+/// program (and stays correct if launch arguments are ever appended).
+fn format_run_value(exe: &std::path::Path) -> String {
+    format!("\"{}\"", exe.display())
+}
+
 #[tauri::command]
-pub fn set_run_at_startup(enabled: bool) -> Result<StartupResult, String> {
+pub fn set_run_at_startup(
+    window: tauri::WebviewWindow,
+    enabled: bool,
+) -> Result<StartupResult, String> {
+    crate::commands::require_window(&window, &["main"])?;
     apply(enabled)?;
     Ok(StartupResult {
         enabled,
@@ -37,7 +47,7 @@ fn apply(enabled: bool) -> Result<(), String> {
 
     if enabled {
         let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-        key.set_value(RUN_VALUE_NAME, &exe.to_string_lossy().to_string())
+        key.set_value(RUN_VALUE_NAME, &format_run_value(&exe))
             .map_err(|e| e.to_string())?;
     } else {
         // Ignore "not found" — deleting a non-existent value is a no-op.
@@ -64,4 +74,22 @@ fn apply(_enabled: bool) -> Result<(), String> {
 #[cfg(not(windows))]
 fn is_enabled() -> Result<bool, String> {
     Err("Startup registry probe is only implemented on Windows.".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_run_value;
+    use std::path::Path;
+
+    #[test]
+    fn quotes_path_with_spaces() {
+        let value = format_run_value(Path::new(r"C:\Program Files\Pane\pane.exe"));
+        assert_eq!(value, r#""C:\Program Files\Pane\pane.exe""#);
+    }
+
+    #[test]
+    fn quotes_path_without_spaces() {
+        let value = format_run_value(Path::new(r"C:\Pane\pane.exe"));
+        assert_eq!(value, r#""C:\Pane\pane.exe""#);
+    }
 }

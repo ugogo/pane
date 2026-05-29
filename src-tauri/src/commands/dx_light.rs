@@ -161,7 +161,20 @@ pub fn detect_dx_light() -> Result<DxLightPresence, String> {
 /// Brightness is sent as a separate `SetBrightness` packet (Robobloq has a
 /// real brightness register), then color goes via `SetSectionLed`.
 #[tauri::command]
-pub fn apply_dx_light(r: u8, g: u8, b: u8, brightness: f64) -> Result<(), String> {
+pub fn apply_dx_light(
+    window: tauri::WebviewWindow,
+    r: u8,
+    g: u8,
+    b: u8,
+    brightness: f64,
+) -> Result<(), String> {
+    crate::commands::require_window(&window, &["main"])?;
+    apply_dx_light_inner(r, g, b, brightness)
+}
+
+/// Hardware write + state record, callable internally (e.g. wake-restore)
+/// without a caller-window check.
+pub(crate) fn apply_dx_light_inner(r: u8, g: u8, b: u8, brightness: f64) -> Result<(), String> {
     write_dx_light(r, g, b, brightness)?;
     crate::commands::light_state::record(
         "dxlight",
@@ -202,7 +215,12 @@ pub(crate) fn write_dx_light(r: u8, g: u8, b: u8, brightness: f64) -> Result<(),
 }
 
 #[tauri::command]
-pub fn dx_light_off() -> Result<(), String> {
+pub fn dx_light_off(window: tauri::WebviewWindow) -> Result<(), String> {
+    crate::commands::require_window(&window, &["main"])?;
+    dx_light_off_inner()
+}
+
+pub(crate) fn dx_light_off_inner() -> Result<(), String> {
     write_dx_light_off()?;
     crate::commands::light_state::record_off("dxlight");
     Ok(())

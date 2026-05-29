@@ -35,6 +35,11 @@ $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222"
 npm run dev
 ```
 
+> **Security:** the remote-debugging port has no authentication. Any local
+> process can attach and drive Pane's Tauri IPC — including screen capture,
+> clipboard, startup-registry, and hardware-lighting commands. Only enable CDP
+> on a trusted dev machine, and never in a production build.
+
 ## Project layout
 
 ```
@@ -63,5 +68,12 @@ Pane builds a signed NSIS installer with Tauri. The updater checks:
 https://github.com/ugogo/pane/releases/latest/download/latest.json
 ```
 
-Release signing uses the local/upstream updater key configured by
-`scripts/release.ps1`.
+Two independent signatures are involved, and they must not be conflated:
+
+- **Updater signing** (minisign): signs `latest.json` / the installer artifact
+  so the Tauri updater accepts it. Configured by `scripts/release.ps1`.
+- **Authenticode / code signing** (Windows cert): signs the sparse identity
+  MSIX so Windows registers package identity. Configured by
+  `scripts/build-identity-package.ps1`. Pass `-DevSelfSigned` for local
+  testing only; release builds require an externally supplied production
+  certificate (the script fails closed on the dev cert/password/path).

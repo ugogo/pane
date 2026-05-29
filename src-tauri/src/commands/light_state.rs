@@ -124,7 +124,7 @@ pub async fn restore_all() -> Vec<(String, Result<(), String>)> {
 
     for (key, st) in states {
         let outcome = if let Some(device_id) = key.strip_prefix("dynamic:") {
-            dynamic_lighting::apply_dynamic_lighting(
+            dynamic_lighting::apply_dynamic_lighting_persist(
                 device_id.to_string(),
                 st.r,
                 st.g,
@@ -134,12 +134,12 @@ pub async fn restore_all() -> Vec<(String, Result<(), String>)> {
             .await
             .map(|_| ())
         } else if key == "msi" {
-            lighting::apply_msi_lighting(st.r, st.g, st.b, st.brightness)
+            lighting::apply_msi_lighting_inner(st.r, st.g, st.b, st.brightness)
         } else if key == "dxlight" {
             if st.on {
-                dx_light::apply_dx_light(st.r, st.g, st.b, st.brightness)
+                dx_light::apply_dx_light_inner(st.r, st.g, st.b, st.brightness)
             } else {
-                dx_light::dx_light_off()
+                dx_light::dx_light_off_inner()
             }
         } else {
             Err(format!("Unknown light kind for key '{key}'"))
@@ -218,20 +218,26 @@ pub fn get_light_states() -> HashMap<String, LightState> {
 /// Manual restore — useful for a "Restore" button or for debugging the
 /// wake-from-sleep path without actually sleeping the machine.
 #[tauri::command]
-pub async fn restore_all_lights() -> Vec<(String, Option<String>)> {
-    restore_all()
+pub async fn restore_all_lights(
+    window: tauri::WebviewWindow,
+) -> Result<Vec<(String, Option<String>)>, String> {
+    crate::commands::require_window(&window, &["main"])?;
+    Ok(restore_all()
         .await
         .into_iter()
         .map(|(k, r)| (k, r.err()))
-        .collect()
+        .collect())
 }
 
 /// Manual probe for the suspend path without putting the machine to sleep.
 #[tauri::command]
-pub async fn turn_all_lights_off_for_sleep() -> Vec<(String, Option<String>)> {
-    turn_all_off_for_sleep()
+pub async fn turn_all_lights_off_for_sleep(
+    window: tauri::WebviewWindow,
+) -> Result<Vec<(String, Option<String>)>, String> {
+    crate::commands::require_window(&window, &["main"])?;
+    Ok(turn_all_off_for_sleep()
         .await
         .into_iter()
         .map(|(k, r)| (k, r.err()))
-        .collect()
+        .collect())
 }
