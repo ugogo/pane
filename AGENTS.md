@@ -33,7 +33,7 @@ WebView2 then exposes Chrome DevTools Protocol on port 9222.
 ## UI Guidelines
 
 - Icons: use `lucide-react`. Do not hand-roll inline SVGs or add other icon libraries.
-- Styling: Tailwind utility classes. Check `tailwind.config.ts` for custom tokens before reaching for raw values.
+- Styling: Tailwind utility classes (Tailwind v4, CSS-first config). Check the `@theme` block in `src/styles.css` for custom tokens before reaching for raw values.
 
 ## Rust / Tauri guidelines
 

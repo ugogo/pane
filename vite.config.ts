@@ -11,8 +11,8 @@ export default defineConfig({
   },
   envPrefix: ["VITE_", "TAURI_"],
   build: {
-    // Tauri supports es2021
-    target: ["es2021", "chrome105", "safari13"],
+    // Pane targets the Windows WebView2 runtime (modern Chromium) only.
+    target: "chrome105",
     minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
     sourcemap: !!process.env.TAURI_DEBUG,
   },

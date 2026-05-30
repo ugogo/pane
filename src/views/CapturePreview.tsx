@@ -28,7 +28,7 @@ export function CapturePreview() {
   const [phase, setPhase] = useState<Phase>("hidden");
   const [copyState, setCopyState] = useState<"idle" | "busy" | "success">("idle");
   const [saveState, setSaveState] = useState<"idle" | "busy" | "success">("idle");
-  const closeTimer = useRef<number>();
+  const closeTimer = useRef<number | undefined>(undefined);
   const lastFetchAt = useRef(0);
   const phaseRef = useRef<Phase>("hidden");
   const captureRef = useRef<CaptureResult | null>(null);

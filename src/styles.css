@@ -1,6 +1,13 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Custom theme colors (migrated from tailwind.config.ts for Tailwind v4
+   CSS-first config). Generates bg-/text-/border-/ring-* utilities. */
+@theme {
+  --color-ink: #0f172a;
+  --color-accent: #0d7a5f;
+  --color-panel: #f5f5f4;
+  --color-line: #e5e7eb;
+}
 
 * {
   box-sizing: border-box;
