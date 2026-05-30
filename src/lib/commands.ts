@@ -411,3 +411,13 @@ export function setInputVolume(volume: number) {
 export function setInputMute(muted: boolean) {
   return invoke<void>("set_input_mute", { muted });
 }
+
+// ── Accent popup ──────────────────────────────────────────────────────────────
+
+export function accentSelect(ch: string) {
+  return invoke<void>("accent_select", { ch });
+}
+
+export function accentDismiss() {
+  return invoke<void>("accent_dismiss");
+}

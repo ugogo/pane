@@ -1,3 +1,4 @@
+mod accent_popup;
 mod brightness_keys;
 mod commands;
 mod power_notify;
@@ -17,7 +18,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
             tauri_plugin_window_state::Builder::default()
-                .with_denylist(&["capture-preview", "area-selector"])
+                .with_denylist(&["capture-preview", "area-selector", "accent-popup"])
                 .build(),
         )
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -36,6 +37,7 @@ pub fn run() {
                 eprintln!("Failed to register power notification: {e}");
             }
             brightness_keys::register(app.handle().clone());
+            accent_popup::register(app.handle().clone());
             commands::audio::start_watch(app.handle().clone());
             // Push persisted color/brightness back to each device so the
             // hardware matches what the UI displays. Cold-boot launches may
@@ -120,6 +122,8 @@ pub fn run() {
             commands::audio::get_input_volume,
             commands::audio::set_input_volume,
             commands::audio::set_input_mute,
+            commands::accent::accent_select,
+            commands::accent::accent_dismiss,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Pane");
