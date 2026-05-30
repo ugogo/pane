@@ -1,3 +1,4 @@
+pub mod accent;
 pub mod audio;
 pub mod brightness;
 pub mod capture;
