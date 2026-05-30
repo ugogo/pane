@@ -36,15 +36,14 @@ mod imp {
     use windows::Win32::Foundation::{HINSTANCE, LPARAM, LRESULT, POINT, WPARAM};
     use windows::Win32::Graphics::Gdi::ClientToScreen;
     use windows::Win32::System::LibraryLoader::GetModuleHandleW;
-    use windows::Win32::System::Threading::GetWindowThreadProcessId;
     use windows::Win32::UI::Input::KeyboardAndMouse::{
         GetKeyState, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP,
         KEYEVENTF_SCANCODE, KEYEVENTF_UNICODE, VIRTUAL_KEY, VK_SHIFT,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
         CallNextHookEx, DispatchMessageW, GetCursorPos, GetForegroundWindow, GetGUIThreadInfo,
-        GetMessageW, MSG, SetWindowsHookExW, GUITHREADINFO, KBDLLHOOKSTRUCT, WH_KEYBOARD_LL,
-        WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
+        GetMessageW, GetWindowThreadProcessId, MSG, SetWindowsHookExW, GUITHREADINFO,
+        KBDLLHOOKSTRUCT, WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
     };
 
     const POPUP_LABEL: &str = "accent-popup";
