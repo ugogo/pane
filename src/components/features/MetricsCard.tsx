@@ -62,7 +62,7 @@ export function MetricsCard() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   // Rolling window of the last 30 working-set samples (MB)
   const [history, setHistory] = useState<number[]>([]);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   const refresh = useCallback(async () => {
     try {
