@@ -124,6 +124,8 @@ pub fn run() {
             commands::audio::set_input_mute,
             commands::accent::accent_select,
             commands::accent::accent_dismiss,
+            commands::accent::get_accent_popup_enabled,
+            commands::accent::set_accent_popup_enabled,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Pane");

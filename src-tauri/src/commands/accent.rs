@@ -1,16 +1,26 @@
 #[tauri::command]
-pub async fn accent_select(ch: String) -> Result<(), String> {
+pub fn accent_select(ch: String) -> Result<(), String> {
     let ch = ch.chars().next().ok_or("empty character")?;
-    // Clears state and hides the popup; focus returns to the previous app.
-    crate::accent_popup::select_accent();
-    // Wait for the OS to restore focus before injecting.
-    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-    crate::accent_popup::inject_unicode(ch);
+    // Hides the popup, deletes the base letter that was typed on key-down, and
+    // injects the chosen accent in its place. The popup never took focus, so the
+    // original app is still frontmost and receives the injection.
+    crate::accent_popup::commit_char(ch);
     Ok(())
 }
 
 #[tauri::command]
 pub fn accent_dismiss() -> Result<(), String> {
     crate::accent_popup::dismiss();
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_accent_popup_enabled() -> bool {
+    crate::accent_popup::is_enabled()
+}
+
+#[tauri::command]
+pub fn set_accent_popup_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+    crate::accent_popup::set_enabled(&app, enabled);
     Ok(())
 }

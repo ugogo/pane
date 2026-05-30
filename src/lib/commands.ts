@@ -421,3 +421,11 @@ export function accentSelect(ch: string) {
 export function accentDismiss() {
   return invoke<void>("accent_dismiss");
 }
+
+export function getAccentPopupEnabled() {
+  return invoke<boolean>("get_accent_popup_enabled");
+}
+
+export function setAccentPopupEnabled(enabled: boolean) {
+  return invoke<void>("set_accent_popup_enabled", { enabled });
+}

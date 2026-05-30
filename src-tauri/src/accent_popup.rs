@@ -8,48 +8,63 @@
 //! unaffected.
 
 #[cfg(windows)]
-pub use imp::{dismiss, inject_unicode, register, select_accent};
+pub use imp::{commit_char, dismiss, is_enabled, register, set_enabled};
 
 #[cfg(not(windows))]
 pub fn register(_app: tauri::AppHandle) {}
 
 #[cfg(not(windows))]
-pub fn inject_unicode(_ch: char) {}
-
-#[cfg(not(windows))]
-pub fn select_accent() {}
+pub fn commit_char(_ch: char) {}
 
 #[cfg(not(windows))]
 pub fn dismiss() {}
 
+#[cfg(not(windows))]
+pub fn is_enabled() -> bool {
+    false
+}
+
+#[cfg(not(windows))]
+pub fn set_enabled(_app: &tauri::AppHandle, _enabled: bool) {}
+
 #[cfg(windows)]
 mod imp {
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
     use std::sync::Mutex;
     use std::time::Instant;
 
     use once_cell::sync::Lazy;
     use once_cell::sync::OnceCell;
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
     use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindowBuilder};
 
-    use windows::Win32::Foundation::{HINSTANCE, LPARAM, LRESULT, POINT, WPARAM};
+    use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, WPARAM};
     use windows::Win32::Graphics::Gdi::ClientToScreen;
     use windows::Win32::System::LibraryLoader::GetModuleHandleW;
     use windows::Win32::UI::Input::KeyboardAndMouse::{
-        GetKeyState, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP,
-        KEYEVENTF_SCANCODE, KEYEVENTF_UNICODE, VIRTUAL_KEY, VK_SHIFT,
+        GetAsyncKeyState, GetKeyState, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT,
+        KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, KEYEVENTF_UNICODE, VIRTUAL_KEY, VK_BACK, VK_ESCAPE,
+        VK_LEFT, VK_RETURN, VK_RIGHT, VK_SHIFT,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
-        CallNextHookEx, DispatchMessageW, GetCursorPos, GetForegroundWindow, GetGUIThreadInfo,
-        GetMessageW, GetWindowThreadProcessId, MSG, SetWindowsHookExW, GUITHREADINFO,
-        KBDLLHOOKSTRUCT, WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
+        CallNextHookEx, DispatchMessageW, GetClassNameW, GetCursorPos, GetForegroundWindow,
+        GetGUIThreadInfo, GetMessageW, GetWindowLongPtrW, GetWindowThreadProcessId, MSG,
+        SetWindowLongPtrW, SetWindowsHookExW, GUITHREADINFO, GWL_EXSTYLE, KBDLLHOOKSTRUCT,
+        WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WS_EX_NOACTIVATE,
     };
 
     const POPUP_LABEL: &str = "accent-popup";
-    const POPUP_W: f64 = 400.0;
-    const POPUP_H: f64 = 68.0;
+    // The window is sized to the variant count: each cell is BTN_W wide and the
+    // pill content fills the whole window (see the AccentPopup view).
+    const BTN_W: f64 = 44.0;
+    const POPUP_PAD: f64 = 12.0;
+    const POPUP_H: f64 = 52.0;
     const HOLD_MS: u64 = 500;
+
+    fn popup_width(count: usize) -> f64 {
+        (count.max(1) as f64) * BTN_W + POPUP_PAD
+    }
     // Synthetic events injected by this module carry this magic so the hook
     // recognises and ignores them, preventing re-entrant interception.
     const REINJECT_MAGIC: usize = 0x504E_4143; // "PNAC"
@@ -57,11 +72,21 @@ mod imp {
     static APP: OnceCell<AppHandle> = OnceCell::new();
     // true while the popup window is visible
     static POPUP_VISIBLE: AtomicBool = AtomicBool::new(false);
+    // Master on/off switch, persisted to disk and toggled from the main UI.
+    static ENABLED: AtomicBool = AtomicBool::new(true);
+    // After a selection/dismissal, the originating letter key is often still
+    // physically held. We swallow its auto-repeat (and final key-up) so it can't
+    // restart the long-press timer and re-open the popup. 0 = nothing suppressed.
+    static SUPPRESS_VK: AtomicU32 = AtomicU32::new(0);
+    // Accent variants currently shown in the popup, in display order. The
+    // keyboard hook maps number keys 1-9 onto this list to pick a variant.
+    static CURRENT_ACCENTS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
+    // Index highlighted for keyboard navigation (arrow keys + Enter).
+    static SELECTED_INDEX: AtomicUsize = AtomicUsize::new(0);
 
     #[derive(Clone)]
     struct PendingKey {
         vk: u32,
-        scan: u32,
         shift: bool,
         since: Instant,
         popup_shown: bool,
@@ -103,6 +128,7 @@ mod imp {
         if APP.set(app.clone()).is_err() {
             return;
         }
+        ENABLED.store(load_enabled(&app), Ordering::Relaxed);
         std::thread::spawn(|| {
             if let Err(e) = install_hook() {
                 eprintln!("[accent-popup] keyboard hook failed: {e}");
@@ -116,22 +142,118 @@ mod imp {
         });
     }
 
-    /// Called by the `accent_select` Tauri command after it hides the popup and
-    /// before it injects the chosen character.
-    pub fn select_accent() {
-        let mut guard = PENDING.lock().unwrap();
-        *guard = None;
-        drop(guard);
-        POPUP_VISIBLE.store(false, Ordering::Relaxed);
-        hide_popup();
+    pub fn is_enabled() -> bool {
+        ENABLED.load(Ordering::Relaxed)
     }
 
-    /// Called by the `accent_dismiss` Tauri command (Escape / click-away).
+    /// Toggles the feature and persists the choice. Disabling also tears down any
+    /// popup that happens to be open so the change takes effect immediately.
+    pub fn set_enabled(app: &AppHandle, enabled: bool) {
+        ENABLED.store(enabled, Ordering::Relaxed);
+        save_enabled(app, enabled);
+        if !enabled {
+            dismiss();
+        }
+    }
+
+    // ── Settings persistence ──────────────────────────────────────────────────
+
+    #[derive(Serialize, Deserialize)]
+    struct Settings {
+        enabled: bool,
+    }
+
+    impl Default for Settings {
+        fn default() -> Self {
+            Self { enabled: true }
+        }
+    }
+
+    fn settings_path(app: &AppHandle) -> Option<PathBuf> {
+        let dir = app.path().app_config_dir().ok()?;
+        let _ = std::fs::create_dir_all(&dir);
+        Some(dir.join("accent-popup.json"))
+    }
+
+    fn load_enabled(app: &AppHandle) -> bool {
+        settings_path(app)
+            .and_then(|p| std::fs::read_to_string(p).ok())
+            .and_then(|t| serde_json::from_str::<Settings>(&t).ok())
+            .map(|s| s.enabled)
+            .unwrap_or(true)
+    }
+
+    fn save_enabled(app: &AppHandle, enabled: bool) {
+        let Some(path) = settings_path(app) else { return };
+        if let Ok(text) = serde_json::to_string_pretty(&Settings { enabled }) {
+            let _ = std::fs::write(path, text);
+        }
+    }
+
+    /// Commits the variant the user picked: tears down the popup, deletes the
+    /// base letter that was typed when the key was first pressed, then injects
+    /// the accented character in its place. Used by the click handler (via the
+    /// `accent_select` command) and by the keyboard hook.
+    pub fn commit_char(ch: char) {
+        close_popup();
+        send_backspace();
+        inject_unicode(ch);
+    }
+
+    /// Commits the variant at `index` in the currently shown list.
+    fn commit_index(index: usize) {
+        let chosen = CURRENT_ACCENTS.lock().unwrap().get(index).cloned();
+        if let Some(s) = chosen {
+            if let Some(c) = s.chars().next() {
+                commit_char(c);
+            }
+        }
+    }
+
+    /// Moves the keyboard-navigation highlight by `delta` and tells the webview
+    /// to redraw it.
+    fn move_selection(delta: i32) {
+        let len = CURRENT_ACCENTS.lock().unwrap().len();
+        if len == 0 {
+            return;
+        }
+        let cur = SELECTED_INDEX.load(Ordering::Relaxed) as i32;
+        let next = (cur + delta).clamp(0, len as i32 - 1) as usize;
+        SELECTED_INDEX.store(next, Ordering::Relaxed);
+        // Push the highlight straight into the webview. The popup is never
+        // focused, so the Tauri event bus throttles delivery (which is why the
+        // variants themselves travel in the URL); `eval` runs immediately.
+        if let Some(app) = APP.get() {
+            if let Some(w) = app.get_webview_window(POPUP_LABEL) {
+                let _ = w.eval(&format!("window.__accentSel&&window.__accentSel({next})"));
+            }
+        }
+    }
+
+    /// Called by the `accent_dismiss` Tauri command (click-away).
     pub fn dismiss() {
-        let mut guard = PENDING.lock().unwrap();
-        *guard = None;
-        drop(guard);
+        close_popup();
+    }
+
+    /// Shared teardown: clears pending state, hides the popup, and — only if the
+    /// originating letter key is still physically held — arms suppression so its
+    /// auto-repeat can't retype the letter or reopen the popup.
+    fn close_popup() {
+        let held_vk = {
+            let mut guard = PENDING.lock().unwrap();
+            let vk = guard.as_ref().map(|p| p.vk);
+            *guard = None;
+            vk
+        };
+        if let Some(vk) = held_vk {
+            let still_down = unsafe { (GetAsyncKeyState(vk as i32) as u16 & 0x8000) != 0 };
+            if still_down {
+                SUPPRESS_VK.store(vk, Ordering::Relaxed);
+            }
+        }
+
         POPUP_VISIBLE.store(false, Ordering::Relaxed);
+        CURRENT_ACCENTS.lock().unwrap().clear();
         hide_popup();
     }
 
@@ -189,35 +311,31 @@ mod imp {
         }
     }
 
-    fn reinject_vk(vk: u32, scan: u32) {
-        let inputs = [
-            INPUT {
-                r#type: INPUT_KEYBOARD,
-                Anonymous: INPUT_0 {
-                    ki: KEYBDINPUT {
-                        wVk: VIRTUAL_KEY(vk as u16),
-                        wScan: scan as u16,
-                        dwFlags: KEYEVENTF_SCANCODE,
-                        time: 0,
-                        dwExtraInfo: REINJECT_MAGIC,
-                    },
-                },
-            },
-            INPUT {
-                r#type: INPUT_KEYBOARD,
-                Anonymous: INPUT_0 {
-                    ki: KEYBDINPUT {
-                        wVk: VIRTUAL_KEY(vk as u16),
-                        wScan: scan as u16,
-                        dwFlags: KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP,
-                        time: 0,
-                        dwExtraInfo: REINJECT_MAGIC,
-                    },
-                },
-            },
-        ];
+    /// Sends a single Backspace to delete the base letter that was typed when
+    /// the accent key was first pressed, so the chosen variant replaces it.
+    fn send_backspace() {
+        let inputs = [vk_input(VK_BACK.0, false), vk_input(VK_BACK.0, true)];
         unsafe {
             SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
+        }
+    }
+
+    fn vk_input(vk: u16, keyup: bool) -> INPUT {
+        INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: VIRTUAL_KEY(vk),
+                    wScan: 0,
+                    dwFlags: if keyup {
+                        KEYEVENTF_KEYUP
+                    } else {
+                        KEYBD_EVENT_FLAGS(0)
+                    },
+                    time: 0,
+                    dwExtraInfo: REINJECT_MAGIC,
+                },
+            },
         }
     }
 
@@ -283,10 +401,23 @@ mod imp {
     // ── Popup window ──────────────────────────────────────────────────────────
 
     fn popup_url(app: &AppHandle) -> Option<WebviewUrl> {
+        popup_target_url(app, &[]).map(WebviewUrl::External)
+    }
+
+    // Builds the popup's URL with the accent variants baked into the query
+    // string. The page reads them synchronously on load, so the data is present
+    // before React mounts — no event-delivery race against a window whose
+    // webview may not have finished warming up.
+    fn popup_target_url(app: &AppHandle, accents: &[String]) -> Option<tauri::Url> {
         let main = app.get_webview_window("main")?;
         let mut url = main.url().ok()?;
-        url.set_query(Some("view=accent-popup"));
-        Some(WebviewUrl::External(url))
+        {
+            let mut q = url.query_pairs_mut();
+            q.clear();
+            q.append_pair("view", "accent-popup");
+            q.append_pair("chars", &accents.join(","));
+        }
+        Some(url)
     }
 
     fn warmup_popup(app: &AppHandle) {
@@ -294,9 +425,9 @@ mod imp {
             return;
         }
         let Some(url) = popup_url(app) else { return };
-        if let Err(e) = WebviewWindowBuilder::new(app, POPUP_LABEL, url)
+        match WebviewWindowBuilder::new(app, POPUP_LABEL, url)
             .title("Accent Popup")
-            .inner_size(POPUP_W, POPUP_H)
+            .inner_size(popup_width(7), POPUP_H)
             .position(0.0, -1000.0)
             .decorations(false)
             .transparent(true)
@@ -307,7 +438,8 @@ mod imp {
             .visible(false)
             .build()
         {
-            eprintln!("[accent-popup] warmup failed: {e}");
+            Ok(w) => set_no_activate(&w),
+            Err(e) => eprintln!("[accent-popup] warmup failed: {e}"),
         }
     }
 
@@ -320,32 +452,50 @@ mod imp {
             }
         }
 
-        let scale = app
+        let monitor = app
             .get_webview_window("main")
-            .and_then(|w| w.primary_monitor().ok().flatten())
-            .map(|m| m.scale_factor())
-            .unwrap_or(1.0);
+            .and_then(|w| w.primary_monitor().ok().flatten());
+        let scale = monitor.as_ref().map(|m| m.scale_factor()).unwrap_or(1.0);
+        let monitor_w = monitor
+            .as_ref()
+            .map(|m| m.size().width as f64 / scale)
+            .unwrap_or(f64::INFINITY);
 
-        // Centre the popup above the caret (logical pixels).
+        // Size the window to the number of variants so the pill fills it edge
+        // to edge with no transparent dead space.
+        let popup_w = popup_width(accents.len());
+
+        // Centre the popup above the caret (logical pixels), kept on-screen.
         let logical_caret_x = caret_x as f64 / scale;
         let logical_caret_y = caret_y as f64 / scale;
-        let pos_x = logical_caret_x - POPUP_W / 2.0;
+        let pos_x = (logical_caret_x - popup_w / 2.0)
+            .max(0.0)
+            .min((monitor_w - popup_w).max(0.0));
         let pos_y = (logical_caret_y - POPUP_H - 12.0).max(0.0);
 
+        let Some(target) = popup_target_url(app, &accents) else {
+            return;
+        };
+
         let window = match app.get_webview_window(POPUP_LABEL) {
-            Some(w) => w,
+            Some(w) => {
+                // Reload the page with the accents baked into the query string so
+                // the variants are present synchronously on load — no event-
+                // delivery race against a webview that may not have warmed up.
+                let _ = w.navigate(target.clone());
+                w
+            }
             None => {
-                let Some(url) = popup_url(app) else { return };
-                match WebviewWindowBuilder::new(app, POPUP_LABEL, url)
+                match WebviewWindowBuilder::new(app, POPUP_LABEL, WebviewUrl::External(target.clone()))
                     .title("Accent Popup")
-                    .inner_size(POPUP_W, POPUP_H)
+                    .inner_size(popup_w, POPUP_H)
                     .position(pos_x, pos_y)
                     .decorations(false)
                     .transparent(true)
                     .always_on_top(true)
                     .skip_taskbar(true)
                     .resizable(false)
-                    .focused(true)
+                    .focused(false)
                     .visible(false)
                     .build()
                 {
@@ -358,13 +508,39 @@ mod imp {
             }
         };
 
-        let _ = window.set_size(LogicalSize::new(POPUP_W, POPUP_H));
+        let _ = window.set_size(LogicalSize::new(popup_w, POPUP_H));
         let _ = window.set_position(LogicalPosition::new(pos_x, pos_y));
 
+        // The popup must never steal foreground focus: the user stays "typing"
+        // in their original app, so the chosen character injects straight into
+        // it and the global hook keeps receiving the number-key selection.
+        set_no_activate(&window);
+
+        // Publish the variants so the keyboard hook can resolve a number key to
+        // a character without round-tripping through the webview. Start the
+        // keyboard-navigation highlight on the first variant.
+        *CURRENT_ACCENTS.lock().unwrap() = accents.clone();
+        SELECTED_INDEX.store(0, Ordering::Relaxed);
+
         POPUP_VISIBLE.store(true, Ordering::Relaxed);
-        let _ = app.emit_to(POPUP_LABEL, "show-accent-popup", AccentPayload { accents });
+        // Show without activating (WebView2 still renders visible, non-focused
+        // windows fine). Selection and dismissal are driven by the hook, not by
+        // webview key events, so the popup never needs keyboard focus.
         let _ = window.show();
-        let _ = window.set_focus();
+        let _ = app.emit_to(POPUP_LABEL, "show-accent-popup", AccentPayload { accents });
+    }
+
+    /// Adds `WS_EX_NOACTIVATE` to the popup so showing it does not pull
+    /// foreground focus away from the app the user is typing in. The HWND is
+    /// taken from Tauri (whose `windows` crate version may differ from ours), so
+    /// we round-trip through the raw pointer value to stay version-agnostic.
+    fn set_no_activate(window: &tauri::WebviewWindow) {
+        let Ok(h) = window.hwnd() else { return };
+        let hwnd = HWND(h.0 as *mut _);
+        unsafe {
+            let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | WS_EX_NOACTIVATE.0 as isize);
+        }
     }
 
     fn hide_popup() {
@@ -408,11 +584,40 @@ mod imp {
 
     // ── Text-field detection ──────────────────────────────────────────────────
 
-    // Returns true only when the foreground window has an active text caret,
-    // meaning a text input (input, textarea, contenteditable, etc.) has focus.
-    // Games and non-text contexts don't create a caret, so this reliably gates
-    // the long-press feature to typing contexts only.
-    fn has_active_caret() -> bool {
+    // Window classes whose focus reliably means "the user can type text", even
+    // though they expose no classic Win32 caret. Chromium/Electron (Claude, VS
+    // Code, Discord, browsers) and console/terminal hosts (PowerShell, cmd,
+    // Windows Terminal) all fall here.
+    const TEXT_WINDOW_CLASSES: &[&str] = &[
+        "Chrome_RenderWidgetHostHWND", // Chromium/Electron content surface
+        "Chrome_WidgetWin_1",          // Chromium/Electron top-level window
+        "ConsoleWindowClass",          // classic conhost (PowerShell, cmd)
+        "CASCADIA_HOSTING_WINDOW_CLASS", // Windows Terminal
+        "Windows.UI.Core.CoreWindow",  // UWP apps
+    ];
+
+    fn class_name_of(hwnd: windows::Win32::Foundation::HWND) -> String {
+        let mut buf = [0u16; 256];
+        let len = unsafe { GetClassNameW(hwnd, &mut buf) };
+        if len <= 0 {
+            return String::new();
+        }
+        String::from_utf16_lossy(&buf[..len as usize])
+    }
+
+    fn class_is_text_capable(hwnd: windows::Win32::Foundation::HWND) -> bool {
+        if hwnd.is_invalid() {
+            return false;
+        }
+        let class = class_name_of(hwnd);
+        TEXT_WINDOW_CLASSES.iter().any(|c| *c == class)
+    }
+
+    // Gates the long-press feature to typing contexts. A live Win32 caret is the
+    // strongest signal (native edit controls); failing that we fall back to the
+    // focused/foreground window class so apps that render their own caret
+    // (Electron, terminals) still qualify. Games generally satisfy neither.
+    fn is_text_context() -> bool {
         unsafe {
             let hwnd = GetForegroundWindow();
             if hwnd.is_invalid() {
@@ -423,7 +628,15 @@ mod imp {
                 cbSize: std::mem::size_of::<GUITHREADINFO>() as u32,
                 ..Default::default()
             };
-            GetGUIThreadInfo(thread_id, &mut gti).is_ok() && !gti.hwndCaret.is_invalid()
+            if GetGUIThreadInfo(thread_id, &mut gti).is_ok() {
+                if !gti.hwndCaret.is_invalid() {
+                    return true;
+                }
+                if class_is_text_capable(gti.hwndFocus) {
+                    return true;
+                }
+            }
+            class_is_text_capable(hwnd)
         }
     }
 
@@ -438,6 +651,11 @@ mod imp {
             return CallNextHookEx(None, code, wparam, lparam);
         }
 
+        // Feature disabled: behave as if the hook weren't installed.
+        if !ENABLED.load(Ordering::Relaxed) {
+            return CallNextHookEx(None, code, wparam, lparam);
+        }
+
         let info = &*(lparam.0 as *const KBDLLHOOKSTRUCT);
 
         // Pass synthetic events from this module straight through.
@@ -445,48 +663,93 @@ mod imp {
             return CallNextHookEx(None, code, wparam, lparam);
         }
 
-        // Don't intercept while the popup itself is focused (let JS handle keys).
-        if POPUP_VISIBLE.load(Ordering::Relaxed) {
-            return CallNextHookEx(None, code, wparam, lparam);
-        }
-
         let msg = wparam.0 as u32;
         let vk = info.vkCode;
 
+        // 1. After a selection, swallow the still-held trigger letter's auto-
+        //    repeat so it can't retype the letter or reopen the popup. Pass its
+        //    final key-up through to balance the key-down we delivered earlier.
+        let suppressed = SUPPRESS_VK.load(Ordering::Relaxed);
+        if suppressed != 0 && vk == suppressed {
+            if matches!(msg, WM_KEYUP | WM_SYSKEYUP) {
+                SUPPRESS_VK.store(0, Ordering::Relaxed);
+                return CallNextHookEx(None, code, wparam, lparam);
+            }
+            return LRESULT(1);
+        }
+
+        // 2. While the popup is up we own the keyboard: arrows move the
+        //    highlight, Enter / a number key picks a variant, Escape dismisses,
+        //    and anything else closes the popup and falls through.
+        if POPUP_VISIBLE.load(Ordering::Relaxed) {
+            let trigger_vk = PENDING.lock().unwrap().as_ref().map(|p| p.vk);
+            if trigger_vk == Some(vk) {
+                // The originating letter is still held: block its auto-repeat,
+                // but pass its key-up so the app's key state stays balanced. The
+                // popup stays open regardless (it's driven by POPUP_VISIBLE).
+                if matches!(msg, WM_KEYUP | WM_SYSKEYUP) {
+                    return CallNextHookEx(None, code, wparam, lparam);
+                }
+                return LRESULT(1);
+            }
+            if matches!(msg, WM_KEYDOWN | WM_SYSKEYDOWN) {
+                if vk == VK_ESCAPE.0 as u32 {
+                    close_popup();
+                    return LRESULT(1);
+                }
+                if vk == VK_RETURN.0 as u32 {
+                    commit_index(SELECTED_INDEX.load(Ordering::Relaxed));
+                    return LRESULT(1);
+                }
+                if vk == VK_LEFT.0 as u32 {
+                    move_selection(-1);
+                    return LRESULT(1);
+                }
+                if vk == VK_RIGHT.0 as u32 {
+                    move_selection(1);
+                    return LRESULT(1);
+                }
+                if (0x31..=0x39).contains(&vk) {
+                    commit_index((vk - 0x31) as usize);
+                    return LRESULT(1);
+                }
+                // Any other key dismisses, then is allowed through so the
+                // keystroke itself isn't lost.
+                close_popup();
+                return CallNextHookEx(None, code, wparam, lparam);
+            }
+            // Stray key-up while the popup is open: swallow it.
+            return LRESULT(1);
+        }
+
+        // 3. Idle: track an accent-capable key. The first press is delivered so
+        //    the base letter types immediately (and stays in order with fast
+        //    subsequent keys); only auto-repeat is blocked. Holding past the
+        //    timer opens the popup, which then replaces that base letter.
         match msg {
             WM_KEYDOWN | WM_SYSKEYDOWN => {
                 let shift = GetKeyState(VK_SHIFT.0 as i32) < 0;
-                if accents_for(vk, shift).is_some() && has_active_caret() {
+                if accents_for(vk, shift).is_some() && is_text_context() {
                     let mut guard = PENDING.lock().unwrap();
-                    // New press: start timing and block.
-                    if guard.is_none() {
-                        *guard = Some(PendingKey {
-                            vk,
-                            scan: info.scanCode,
-                            shift,
-                            since: Instant::now(),
-                            popup_shown: false,
-                        });
-                        return LRESULT(1);
-                    }
-                    // Key-repeat for the same pending key: keep blocking.
                     if guard.as_ref().map_or(false, |p| p.vk == vk) {
+                        // Auto-repeat of the tracked key: block it.
                         return LRESULT(1);
                     }
+                    *guard = Some(PendingKey {
+                        vk,
+                        shift,
+                        since: Instant::now(),
+                        popup_shown: false,
+                    });
+                    // Fall through: deliver this first press so it types now.
                 }
             }
             WM_KEYUP | WM_SYSKEYUP => {
                 let mut guard = PENDING.lock().unwrap();
                 if guard.as_ref().map_or(false, |p| p.vk == vk) {
-                    let pk = guard.take().unwrap();
-                    drop(guard);
-                    if !pk.popup_shown {
-                        // Quick tap: restore the original keystroke.
-                        reinject_vk(pk.vk, pk.scan);
-                    }
-                    // If popup was shown, JS will call accent_dismiss or
-                    // accent_select; either hides the popup without re-injecting.
-                    return LRESULT(1);
+                    // Released before the popup fired; the base letter already
+                    // typed, so stop tracking and let the key-up through.
+                    *guard = None;
                 }
             }
             _ => {}
