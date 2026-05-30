@@ -22,11 +22,16 @@ with more modules intended to fit into the same dashboard over time.
 ## Commands
 
 ```powershell
-npm run dev          # full Tauri dev (Vite frontend + Rust backend)
+npm run dev          # stop any existing dev session, then start fresh (Tauri + Vite)
 npm run build        # production build
 npm run typecheck    # TypeScript check
-npm run stop         # kill stuck dev instances
+npm run stop         # kill dev without restarting
 ```
+
+`npm run dev` always restarts: it stops leftover `pane.exe`, `cargo`, and Vite
+processes for this repo before launching. Concurrent calls serialize via a
+repo-scoped lock — the later call wins. Prefer `npm run dev` over raw
+`tauri dev` or `npx vite`.
 
 For CDP-driven WebView2 testing:
 

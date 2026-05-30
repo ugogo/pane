@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Pane — Windows desktop utility suite (Tauri 2 + React + Rust)",
   "scripts": {
-    "dev": "tauri dev",
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev.ps1",
+    "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/stop.ps1",
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
     "release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release.ps1",
