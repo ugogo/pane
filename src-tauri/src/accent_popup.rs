@@ -407,6 +407,27 @@ mod imp {
         }
     }
 
+    // ── Text-field detection ──────────────────────────────────────────────────
+
+    // Returns true only when the foreground window has an active text caret,
+    // meaning a text input (input, textarea, contenteditable, etc.) has focus.
+    // Games and non-text contexts don't create a caret, so this reliably gates
+    // the long-press feature to typing contexts only.
+    fn has_active_caret() -> bool {
+        unsafe {
+            let hwnd = GetForegroundWindow();
+            if hwnd.is_invalid() {
+                return false;
+            }
+            let thread_id = GetWindowThreadProcessId(hwnd, None);
+            let mut gti = GUITHREADINFO {
+                cbSize: std::mem::size_of::<GUITHREADINFO>() as u32,
+                ..Default::default()
+            };
+            GetGUIThreadInfo(thread_id, &mut gti).is_ok() && !gti.hwndCaret.is_invalid()
+        }
+    }
+
     // ── Hook callback ─────────────────────────────────────────────────────────
 
     unsafe extern "system" fn hook_callback(
@@ -436,7 +457,7 @@ mod imp {
         match msg {
             WM_KEYDOWN | WM_SYSKEYDOWN => {
                 let shift = GetKeyState(VK_SHIFT.0 as i32) < 0;
-                if accents_for(vk, shift).is_some() {
+                if accents_for(vk, shift).is_some() && has_active_caret() {
                     let mut guard = PENDING.lock().unwrap();
                     // New press: start timing and block.
                     if guard.is_none() {
