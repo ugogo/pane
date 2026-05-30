@@ -225,7 +225,7 @@ mod imp {
         // variants themselves travel in the URL); `eval` runs immediately.
         if let Some(app) = APP.get() {
             if let Some(w) = app.get_webview_window(POPUP_LABEL) {
-                let _ = w.eval(&format!("window.__accentSel&&window.__accentSel({next})"));
+                let _ = w.eval(format!("window.__accentSel&&window.__accentSel({next})"));
             }
         }
     }
@@ -447,7 +447,7 @@ mod imp {
         // Abort if the pending key was released before we got here.
         {
             let guard = PENDING.lock().unwrap();
-            if guard.as_ref().map_or(true, |p| !p.popup_shown) {
+            if guard.as_ref().is_none_or(|p| !p.popup_shown) {
                 return;
             }
         }
@@ -731,7 +731,7 @@ mod imp {
                 let shift = GetKeyState(VK_SHIFT.0 as i32) < 0;
                 if accents_for(vk, shift).is_some() && is_text_context() {
                     let mut guard = PENDING.lock().unwrap();
-                    if guard.as_ref().map_or(false, |p| p.vk == vk) {
+                    if guard.as_ref().is_some_and(|p| p.vk == vk) {
                         // Auto-repeat of the tracked key: block it.
                         return LRESULT(1);
                     }
@@ -746,7 +746,7 @@ mod imp {
             }
             WM_KEYUP | WM_SYSKEYUP => {
                 let mut guard = PENDING.lock().unwrap();
-                if guard.as_ref().map_or(false, |p| p.vk == vk) {
+                if guard.as_ref().is_some_and(|p| p.vk == vk) {
                     // Released before the popup fired; the base letter already
                     // typed, so stop tracking and let the key-up through.
                     *guard = None;

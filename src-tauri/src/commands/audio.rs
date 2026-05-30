@@ -419,6 +419,11 @@ mod watch {
                     }
                 };
 
+            // Endpoints holds COM interfaces (!Send + !Sync), but the Arc is
+            // shared into the IMMNotificationClient callback, which COM invokes
+            // from its own threads — Rc would be unsound here. Cross-thread
+            // access is managed by the COM apartment model, so the lint is moot.
+            #[allow(clippy::arc_with_non_send_sync)]
             let endpoints = Arc::new(Mutex::new(Endpoints {
                 enumerator: enumerator.clone(),
                 app: app.clone(),
