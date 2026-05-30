@@ -2,6 +2,8 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
+import youMightNotNeedAnEffect from 'eslint-plugin-react-you-might-not-need-an-effect';
+import reactDoctor from 'eslint-plugin-react-doctor';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
@@ -14,7 +16,7 @@ export default tseslint.config(
       'src-tauri/',
       'assets/',
       '.claude/',
-      '*.config.js',
+      '*.config.{js,ts}',
     ],
   },
 
@@ -35,14 +37,12 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      // Correctness rules stay as errors.
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'error',
-      // React-Compiler heuristics surface as warnings rather than hard errors:
-      // they flag valid existing patterns (e.g. a mount-time fetch in an effect)
-      // and shouldn't block commits. Tighten to 'error' as components are migrated.
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/static-components': 'warn',
+      // React-Compiler heuristics: enforced as errors now that the codebase
+      // has been migrated off the patterns they flag.
+      'react-hooks/set-state-in-effect': 'error',
+      'react-hooks/static-components': 'error',
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
@@ -50,9 +50,19 @@ export default tseslint.config(
     },
   },
 
+  // "You might not need an effect" — flags effects that should be derived
+  // values, event handlers, or external-store subscriptions instead.
+  youMightNotNeedAnEffect.configs.recommended,
+
+  // React Doctor — correctness/performance/a11y/security rule set (oxc-based).
+  {
+    ...reactDoctor.configs.recommended,
+    files: ['src/**/*.{ts,tsx}'],
+  },
+
   // Node-side tooling scripts (build/format helpers).
   {
-    files: ['scripts/**/*.{js,mjs,cjs}'],
+    files: ['scripts/**/*.{js,mjs,cjs,ts}'],
     languageOptions: {
       globals: globals.node,
     },

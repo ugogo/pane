@@ -9,22 +9,29 @@
  * Reads the hook payload as JSON on stdin, formats the touched file with
  * Prettier (web assets) or rustfmt (.rs), and always exits 0 so a formatting
  * hiccup never blocks the agent.
+ *
+ * Run directly with `node scripts/format-file.ts` — Node strips the TypeScript
+ * types natively (no build step).
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
-async function main() {
-  let payload;
+interface HookPayload {
+  tool_input?: { file_path?: string };
+}
+
+async function main(): Promise<void> {
+  let payload: string;
   try {
     payload = readFileSync(0, 'utf8');
   } catch {
     return; // no stdin — nothing to do
   }
 
-  let filePath;
+  let filePath: string | undefined;
   try {
-    filePath = JSON.parse(payload)?.tool_input?.file_path;
+    filePath = (JSON.parse(payload) as HookPayload).tool_input?.file_path;
   } catch {
     return;
   }
@@ -33,14 +40,12 @@ async function main() {
   const ext = path.extname(filePath).toLowerCase();
 
   if (ext === '.rs') {
-    spawnSync('rustfmt', ['--edition', '2021', filePath], {
-      stdio: 'ignore',
-    });
+    spawnSync('rustfmt', ['--edition', '2021', filePath], { stdio: 'ignore' });
     return;
   }
 
   // Everything Prettier understands; it consults .prettierignore for us.
-  const prettier = await import('prettier').then((m) => m.default ?? m);
+  const prettier = await import('prettier');
   const info = await prettier.getFileInfo(filePath, {
     ignorePath: path.join(process.cwd(), '.prettierignore'),
     resolveConfig: true,
@@ -54,7 +59,6 @@ async function main() {
     filepath: filePath,
   });
   if (formatted !== source) {
-    const { writeFileSync } = await import('node:fs');
     writeFileSync(filePath, formatted);
   }
 }

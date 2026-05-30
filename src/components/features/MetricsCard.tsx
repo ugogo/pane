@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import { getProcessMetrics, type ProcessMetrics } from '../../lib/commands';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -62,35 +62,29 @@ export function MetricsCard() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   // Rolling window of the last 30 working-set samples (MB)
   const [history, setHistory] = useState<number[]>([]);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(
-    undefined,
-  );
 
-  const refresh = useCallback(async () => {
-    try {
-      const m = await getProcessMetrics();
-      setMetrics(m);
-      setError(undefined);
-      setHistory((prev) => [...prev.slice(-29), m.workingSetMb]);
-    } catch (err) {
-      setError(String(err));
-    }
-  }, []);
+  // State updates live in the deferred `.then`/`.catch` callbacks, not the
+  // synchronous body, so this is safe to call from an effect.
+  function refresh() {
+    return getProcessMetrics()
+      .then((m) => {
+        setMetrics(m);
+        setError(undefined);
+        setHistory((prev) => [...prev.slice(-29), m.workingSetMb]);
+      })
+      .catch((err: unknown) => setError(String(err)));
+  }
 
-  // First fetch on mount
+  // Effect Event: always sees the latest state, never a dependency.
+  const onTick = useEffectEvent(() => void refresh());
+
+  // First fetch on mount, then poll every 2 s while auto-refresh is on.
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  // Auto-refresh every 2 s
-  useEffect(() => {
-    if (autoRefresh) {
-      intervalRef.current = setInterval(() => void refresh(), 2000);
-    } else {
-      clearInterval(intervalRef.current);
-    }
-    return () => clearInterval(intervalRef.current);
-  }, [autoRefresh, refresh]);
+    onTick();
+    if (!autoRefresh) return;
+    const id = setInterval(onTick, 2000);
+    return () => clearInterval(id);
+  }, [autoRefresh]);
 
   const status = error
     ? 'fail'
@@ -105,7 +99,7 @@ export function MetricsCard() {
         <div>
           <h2 className="text-ink text-base font-semibold">Process metrics</h2>
           <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Live RAM and startup time — benchmark against the WinUI 3 baseline
+            Live RAM and startup time. Benchmark against the WinUI 3 baseline
             before validating any other checklist item.
           </p>
         </div>
@@ -137,7 +131,7 @@ export function MetricsCard() {
           {history.length > 1 && (
             <div className="mt-4">
               <p className="mb-1 text-xs text-neutral-400">
-                Working set — last {history.length} samples
+                Working set · last {history.length} samples
               </p>
               <Sparkline history={history} />
             </div>

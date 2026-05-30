@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node scripts/format-file.mjs"
+            "command": "node scripts/format-file.ts"
           }
         ]
       }

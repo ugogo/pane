@@ -47,7 +47,7 @@ export function AccentCard() {
         <div>
           <h2 className="text-ink text-base font-semibold">Accent popup</h2>
           <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Hold a letter (a, e, c, …) to pick an accented variant — à â é ç ô …
+            Hold a letter (a, e, c, …) to pick an accented variant: à â é ç ô …
           </p>
         </div>
         <span
@@ -70,7 +70,8 @@ export function AccentCard() {
           </div>
           <input
             type="checkbox"
-            className="accent-accent h-5 w-5"
+            aria-label="Enable long-press accents"
+            className="accent-accent size-5"
             disabled={enabled === null}
             checked={enabled ?? false}
             onChange={(e) => void handleToggle(e.target.checked)}

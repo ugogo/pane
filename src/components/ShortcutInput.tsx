@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 const MOD_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta']);
 
@@ -102,75 +102,68 @@ export function ShortcutInput({
 }: ShortcutInputProps) {
   const [capturing, setCapturing] = useState(false);
   const [draft, setDraft] = useState('');
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLButtonElement>(null);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
+  function handleKeyDown(e: React.KeyboardEvent) {
+    e.preventDefault();
+    e.stopPropagation();
 
-      if (e.key === 'Escape') {
-        setCapturing(false);
-        setDraft('');
-        ref.current?.blur();
-        return;
-      }
+    if (e.key === 'Escape') {
+      setCapturing(false);
+      setDraft('');
+      ref.current?.blur();
+      return;
+    }
 
-      if (
-        (e.key === 'Backspace' || e.key === 'Delete') &&
-        !e.ctrlKey &&
-        !e.altKey &&
-        !e.shiftKey
-      ) {
-        setDraft('');
-        onClear?.();
-        return;
-      }
+    if (
+      (e.key === 'Backspace' || e.key === 'Delete') &&
+      !e.ctrlKey &&
+      !e.altKey &&
+      !e.shiftKey
+    ) {
+      setDraft('');
+      onClear?.();
+      return;
+    }
 
-      // Live preview: show modifiers even before the final key.
-      const live: string[] = [];
-      if (e.ctrlKey || e.metaKey) live.push('CmdOrCtrl');
-      if (e.altKey) live.push('Alt');
-      if (e.shiftKey) live.push('Shift');
-      if (!MOD_KEYS.has(e.key)) {
-        const token = codeToToken(e.code);
-        if (token) live.push(token);
-      }
-      setDraft(live.join('+'));
+    // Live preview: show modifiers even before the final key.
+    const live: string[] = [];
+    if (e.ctrlKey || e.metaKey) live.push('CmdOrCtrl');
+    if (e.altKey) live.push('Alt');
+    if (e.shiftKey) live.push('Shift');
+    if (!MOD_KEYS.has(e.key)) {
+      const token = codeToToken(e.code);
+      if (token) live.push(token);
+    }
+    setDraft(live.join('+'));
 
-      // Commit when the chord includes a non-modifier.
-      const accel = buildAccelerator(e);
-      if (accel) {
-        onCommit(accel);
-        setCapturing(false);
-        ref.current?.blur();
-      }
-    },
-    [onClear, onCommit],
-  );
+    // Commit when the chord includes a non-modifier.
+    const accel = buildAccelerator(e);
+    if (accel) {
+      onCommit(accel);
+      setCapturing(false);
+      ref.current?.blur();
+    }
+  }
 
-  const handleKeyUp = useCallback(
-    (e: React.KeyboardEvent) => {
-      // Reflect modifier release while still capturing.
-      if (!capturing) return;
-      const live: string[] = [];
-      if (e.ctrlKey || e.metaKey) live.push('CmdOrCtrl');
-      if (e.altKey) live.push('Alt');
-      if (e.shiftKey) live.push('Shift');
-      setDraft(live.join('+'));
-    },
-    [capturing],
-  );
+  function handleKeyUp(e: React.KeyboardEvent) {
+    // Reflect modifier release while still capturing.
+    if (!capturing) return;
+    const live: string[] = [];
+    if (e.ctrlKey || e.metaKey) live.push('CmdOrCtrl');
+    if (e.altKey) live.push('Alt');
+    if (e.shiftKey) live.push('Shift');
+    setDraft(live.join('+'));
+  }
 
   const display = capturing
     ? draft || 'Press a chord…'
     : value || placeholder || 'Not set';
 
   return (
-    <div
+    <button
       ref={ref}
-      tabIndex={0}
-      role="textbox"
+      type="button"
       aria-label="Shortcut input"
       onFocus={() => {
         setCapturing(true);
@@ -182,7 +175,7 @@ export function ShortcutInput({
       }}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
-      className={`flex min-h-[2.25rem] cursor-text items-center rounded-md border px-3 font-mono text-sm transition outline-none ${
+      className={`flex min-h-[2.25rem] w-full cursor-text items-center rounded-md border px-3 text-left font-mono text-sm transition outline-none ${
         capturing
           ? 'border-accent bg-accent/5 text-ink ring-accent/30 ring-2'
           : 'border-line text-ink bg-white hover:border-neutral-300'
@@ -191,6 +184,6 @@ export function ShortcutInput({
       <span className={value || capturing ? '' : 'text-neutral-400'}>
         {display}
       </span>
-    </div>
+    </button>
   );
 }

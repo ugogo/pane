@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Cpu, Lightbulb, Monitor, Mouse, type LucideIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Cpu, Lightbulb, Monitor, Mouse } from 'lucide-react';
 import {
   applyDxLight,
   applyDynamicLighting,
@@ -59,14 +59,16 @@ function lightSubtitle(l: Light) {
   }
 }
 
-function lightIcon(l: Light): LucideIcon {
-  switch (l.kind) {
+// Static component (not a value computed during render) so the compiler can
+// track it.
+function LightIcon({ light }: { light: Light }) {
+  switch (light.kind) {
     case 'dynamic':
-      return Mouse;
+      return <Mouse size={16} aria-hidden />;
     case 'msi':
-      return Cpu;
+      return <Cpu size={16} aria-hidden />;
     case 'dxlight':
-      return Monitor;
+      return <Monitor size={16} aria-hidden />;
   }
 }
 
@@ -88,6 +90,11 @@ function rgbToHex(r: number, g: number, b: number) {
   return `#${h(r)}${h(g)}${h(b)}`;
 }
 
+interface Result {
+  status: ProbeStatus;
+  message: string;
+}
+
 interface LightRowProps {
   light: Light;
   initialState?: LightState;
@@ -95,7 +102,6 @@ interface LightRowProps {
 }
 
 function LightRow({ light, initialState, disabledReason }: LightRowProps) {
-  const Icon = lightIcon(light);
   // Lazy initializers so the persisted state seeds the controls once, on
   // first mount. Subsequent refreshes don't clobber user input.
   const [color, setColor] = useState<string>(() =>
@@ -112,22 +118,23 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
       : 0.75;
   });
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string>('');
-  const [status, setStatus] = useState<ProbeStatus>('idle');
+  const [result, setResult] = useState<Result>({ status: 'idle', message: '' });
   const disabled = Boolean(disabledReason);
-  const visibleStatus = disabled ? 'disabled' : status;
+  const visibleStatus = disabled ? 'disabled' : result.status;
 
   async function apply() {
     if (disabled) return;
     const rgb = hexToRgb(color);
     if (!rgb) {
-      setStatus('fail');
-      setMessage('Invalid color (expected #RRGGBB).');
+      setResult({
+        status: 'fail',
+        message: 'Invalid color (expected #RRGGBB).',
+      });
       return;
     }
     setBusy(true);
-    setStatus('idle');
     try {
+      let message = '';
       switch (light.kind) {
         case 'dynamic': {
           const res = await applyDynamicLighting(
@@ -137,28 +144,23 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
             rgb.b,
             brightness,
           );
-          setMessage(res.detail);
+          message = res.detail;
           break;
         }
         case 'msi': {
           await applyMsiLighting(rgb.r, rgb.g, rgb.b, brightness);
-          setMessage(
-            `MSI: rgb(${rgb.r},${rgb.g},${rgb.b}) at ${Math.round(brightness * 100)}%.`,
-          );
+          message = `MSI: rgb(${rgb.r},${rgb.g},${rgb.b}) at ${Math.round(brightness * 100)}%.`;
           break;
         }
         case 'dxlight': {
           await applyDxLight(rgb.r, rgb.g, rgb.b, brightness);
-          setMessage(
-            `DX Light: rgb(${rgb.r},${rgb.g},${rgb.b}) at ${Math.round(brightness * 100)}%.`,
-          );
+          message = `DX Light: rgb(${rgb.r},${rgb.g},${rgb.b}) at ${Math.round(brightness * 100)}%.`;
           break;
         }
       }
-      setStatus('pass');
+      setResult({ status: 'pass', message });
     } catch (e) {
-      setStatus('fail');
-      setMessage(String(e));
+      setResult({ status: 'fail', message: String(e) });
     } finally {
       setBusy(false);
     }
@@ -167,7 +169,6 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
   async function turnOff() {
     if (disabled) return;
     setBusy(true);
-    setStatus('idle');
     try {
       switch (light.kind) {
         case 'dynamic':
@@ -181,11 +182,9 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
           await dxLightOff();
           break;
       }
-      setMessage('Off.');
-      setStatus('pass');
+      setResult({ status: 'pass', message: 'Off.' });
     } catch (e) {
-      setStatus('fail');
-      setMessage(String(e));
+      setResult({ status: 'fail', message: String(e) });
     } finally {
       setBusy(false);
     }
@@ -194,8 +193,8 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
   return (
     <div className="border-line rounded-md border p-3">
       <div className="flex items-start gap-3">
-        <div className="border-line mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-neutral-50 text-neutral-600">
-          <Icon size={16} aria-hidden />
+        <div className="border-line mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border bg-neutral-50 text-neutral-600">
+          <LightIcon light={light} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-ink truncate text-sm font-medium">
@@ -262,15 +261,21 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
         </p>
       )}
 
-      {message && (
+      {result.message && (
         <p
-          className={`mt-2 text-[11px] ${status === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
+          className={`mt-2 text-[11px] ${result.status === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
         >
-          {message}
+          {result.message}
         </p>
       )}
     </div>
   );
+}
+
+interface Scan {
+  status: ProbeStatus;
+  message: string;
+  disabledReason: string;
 }
 
 export function LightingCard() {
@@ -278,69 +283,80 @@ export function LightingCard() {
   const [savedStates, setSavedStates] = useState<Record<string, LightState>>(
     {},
   );
-  const [scanStatus, setScanStatus] = useState<ProbeStatus>('idle');
-  const [scanMessage, setScanMessage] = useState<string>('');
-  const [dynamicLightingDisabledReason, setDynamicLightingDisabledReason] =
-    useState<string>('');
-  const [busy, setBusy] = useState(false);
+  const [scan, setScan] = useState<Scan>({
+    status: 'idle',
+    message: '',
+    disabledReason: '',
+  });
+  // Starts true because we scan for lights on mount.
+  const [busy, setBusy] = useState(true);
 
-  async function refresh() {
+  // All state updates live in deferred promise callbacks, so this is safe to
+  // call straight from an effect without tripping set-state-in-effect.
+  function refresh() {
+    return Promise.all([
+      Promise.all([
+        getDynamicLightingStatus(),
+        listDynamicLightingDevices().catch(() => []),
+      ])
+        .then(([status, devices]) => {
+          const reason = status.canControl ? '' : (status.reason ?? '');
+          setScan((s) => ({ ...s, disabledReason: reason }));
+          return devices;
+        })
+        .catch((e: unknown) => {
+          setScan((s) => ({
+            ...s,
+            disabledReason: '',
+            status: 'warn',
+            message: String(e),
+          }));
+          return [];
+        }),
+      detectMsiLighting().catch(() => ({
+        present: false,
+        vendorId: 0,
+        productId: 0,
+      })),
+      detectDxLight().catch(() => ({
+        present: false,
+        vendorId: 0,
+        productId: 0,
+      })),
+      getLightStates().catch(() => ({}) as Record<string, LightState>),
+    ])
+      .then(([dynamic, msi, dxlight, states]) => {
+        const collected: Light[] = [
+          ...dynamic.map((d) => ({
+            kind: 'dynamic' as const,
+            id: d.id,
+            device: d,
+          })),
+          ...(msi.present ? [{ kind: 'msi' as const }] : []),
+          ...(dxlight.present ? [{ kind: 'dxlight' as const }] : []),
+        ];
+
+        setSavedStates(states);
+        setLights(collected);
+        setScan((s) => ({
+          ...s,
+          status: collected.length > 0 ? 'pass' : 'warn',
+          message:
+            collected.length === 0
+              ? 'No controllable lights detected.'
+              : `${collected.length} light${collected.length === 1 ? '' : 's'} detected.`,
+        }));
+      })
+      .catch((e: unknown) =>
+        setScan((s) => ({ ...s, status: 'fail', message: String(e) })),
+      )
+      .finally(() => setBusy(false));
+  }
+
+  // Entering the loading state from a user action (handler context).
+  function beginRefresh() {
     setBusy(true);
-    setScanStatus('idle');
-    try {
-      const [dynamic, msi, dxlight, states] = await Promise.all([
-        Promise.all([
-          getDynamicLightingStatus(),
-          listDynamicLightingDevices().catch(() => []),
-        ])
-          .then(([status, devices]) => {
-            const reason = status.canControl ? '' : (status.reason ?? '');
-            setDynamicLightingDisabledReason(reason);
-            return devices;
-          })
-          .catch((e) => {
-            setDynamicLightingDisabledReason('');
-            setScanStatus('warn');
-            setScanMessage(String(e));
-            return [];
-          }),
-        detectMsiLighting().catch(() => ({
-          present: false,
-          vendorId: 0,
-          productId: 0,
-        })),
-        detectDxLight().catch(() => ({
-          present: false,
-          vendorId: 0,
-          productId: 0,
-        })),
-        getLightStates().catch(() => ({}) as Record<string, LightState>),
-      ]);
-
-      const collected: Light[] = [
-        ...dynamic.map((d) => ({
-          kind: 'dynamic' as const,
-          id: d.id,
-          device: d,
-        })),
-        ...(msi.present ? [{ kind: 'msi' as const }] : []),
-        ...(dxlight.present ? [{ kind: 'dxlight' as const }] : []),
-      ];
-
-      setSavedStates(states);
-      setLights(collected);
-      setScanStatus(collected.length > 0 ? 'pass' : 'warn');
-      setScanMessage(
-        collected.length === 0
-          ? 'No controllable lights detected.'
-          : `${collected.length} light${collected.length === 1 ? '' : 's'} detected.`,
-      );
-    } catch (e) {
-      setScanStatus('fail');
-      setScanMessage(String(e));
-    } finally {
-      setBusy(false);
-    }
+    setScan((s) => ({ ...s, status: 'idle' }));
   }
 
   async function restore() {
@@ -349,21 +365,22 @@ export function LightingCard() {
       const results = await restoreAllLights();
       const errors = results.filter(([, err]) => err !== null);
       if (errors.length === 0) {
-        setScanStatus('pass');
-        setScanMessage(
-          `Restored ${results.length} light${results.length === 1 ? '' : 's'}.`,
-        );
+        setScan((s) => ({
+          ...s,
+          status: 'pass',
+          message: `Restored ${results.length} light${results.length === 1 ? '' : 's'}.`,
+        }));
       } else {
-        setScanStatus('warn');
-        setScanMessage(
-          `Restored ${results.length - errors.length}/${results.length}; failed: ${errors
+        setScan((s) => ({
+          ...s,
+          status: 'warn',
+          message: `Restored ${results.length - errors.length}/${results.length}; failed: ${errors
             .map(([k, e]) => `${k} (${e})`)
             .join(', ')}`,
-        );
+        }));
       }
     } catch (e) {
-      setScanStatus('fail');
-      setScanMessage(String(e));
+      setScan((s) => ({ ...s, status: 'fail', message: String(e) }));
     } finally {
       setBusy(false);
     }
@@ -374,10 +391,7 @@ export function LightingCard() {
   }, []);
 
   // Stable key list so React doesn't re-mount rows on every refresh.
-  const keyedLights = useMemo(
-    () => lights.map((l) => ({ key: lightKey(l), light: l })),
-    [lights],
-  );
+  const keyedLights = lights.map((l) => ({ key: lightKey(l), light: l }));
 
   return (
     <div className="border-line col-span-2 rounded-lg border bg-white/80 p-5 shadow-sm">
@@ -393,9 +407,9 @@ export function LightingCard() {
           </p>
         </div>
         <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[scanStatus]}`}
+          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[scan.status]}`}
         >
-          {scanStatus}
+          {scan.status}
         </span>
       </div>
 
@@ -404,7 +418,10 @@ export function LightingCard() {
           type="button"
           disabled={busy}
           className="border-line rounded-md border bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
-          onClick={() => void refresh()}
+          onClick={() => {
+            beginRefresh();
+            void refresh();
+          }}
         >
           Refresh
         </button>
@@ -417,11 +434,11 @@ export function LightingCard() {
         >
           Restore
         </button>
-        {scanMessage && (
+        {scan.message && (
           <p
-            className={`text-xs ${scanStatus === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
+            className={`text-xs ${scan.status === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
           >
-            {scanMessage}
+            {scan.message}
           </p>
         )}
       </div>
@@ -432,9 +449,7 @@ export function LightingCard() {
             light={light}
             initialState={savedStates[key]}
             disabledReason={
-              light.kind === 'dynamic'
-                ? dynamicLightingDisabledReason
-                : undefined
+              light.kind === 'dynamic' ? scan.disabledReason : undefined
             }
           />
         ))}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import {
   areaSelectorOrigin,
@@ -24,12 +24,17 @@ function rectFrom(
   return { x, y, w, h };
 }
 
+function pt(e: React.MouseEvent) {
+  return { x: e.clientX, y: e.clientY };
+}
+
 export function AreaSelector() {
   const [drag, setDrag] = useState<{
     start: { x: number; y: number };
     end: { x: number; y: number };
   } | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  // Read only in handlers (never in render), so a ref avoids re-renders.
+  const submitting = useRef(false);
   const [error, setError] = useState<string>();
 
   useEffect(() => {
@@ -38,11 +43,9 @@ export function AreaSelector() {
 
     function reset() {
       setDrag(null);
-      setSubmitting(false);
+      submitting.current = false;
       setError(undefined);
     }
-
-    reset();
 
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -58,16 +61,12 @@ export function AreaSelector() {
     };
   }, []);
 
-  function pt(e: React.MouseEvent) {
-    return { x: e.clientX, y: e.clientY };
-  }
-
   async function finish(rect: Rect) {
     if (rect.w < 4 || rect.h < 4) {
       await hideAreaSelector();
       return;
     }
-    setSubmitting(true);
+    submitting.current = true;
     try {
       const [originX, originY] = await areaSelectorOrigin();
       const dpr = window.devicePixelRatio || 1;
@@ -79,7 +78,7 @@ export function AreaSelector() {
       await commitRegionCapture(sx, sy, sw, sh);
     } catch (err) {
       setError(String(err));
-      setSubmitting(false);
+      submitting.current = false;
     }
   }
 
@@ -87,13 +86,15 @@ export function AreaSelector() {
 
   return (
     <div
+      role="application"
+      aria-label="Drag to select a capture region"
       className="fixed inset-0 select-none"
       style={{
         background: 'transparent',
         cursor: 'crosshair',
       }}
       onMouseDown={(e) => {
-        if (submitting) return;
+        if (submitting.current) return;
         const p = pt(e);
         setDrag({ start: p, end: p });
       }}

@@ -76,14 +76,15 @@ export function InfraCard() {
                 </code>
                 {import.meta.env.DEV && (
                   <span className="ml-1 text-amber-600">
-                    (disabled in dev — would register the debug binary)
+                    (disabled in dev; would register the debug binary)
                   </span>
                 )}
               </p>
             </div>
             <input
               type="checkbox"
-              className="accent-accent h-5 w-5"
+              aria-label="Run at startup"
+              className="accent-accent size-5"
               disabled={runAtStartup === null || import.meta.env.DEV}
               checked={runAtStartup ?? false}
               onChange={(e) => void handleStartupToggle(e.target.checked)}
@@ -103,7 +104,7 @@ export function InfraCard() {
         <div className="border-line rounded-md border p-3">
           <p className="text-ink text-sm font-medium">Hide to tray</p>
           <p className="mt-1 text-xs text-neutral-500">
-            Close this window — it should disappear to the system tray without
+            Close this window; it should disappear to the system tray without
             exiting. Left-click the tray icon or choose <em>Show Pane</em> to
             restore it.
           </p>
@@ -115,7 +116,7 @@ export function InfraCard() {
           <p className="mt-1 text-xs text-neutral-500">
             Launch a second copy of{' '}
             <code className="rounded bg-neutral-100 px-1">pane.exe</code> while
-            this window is open — the second process should exit immediately and
+            this window is open; the second process should exit immediately and
             this window should come to the foreground.
           </p>
         </div>

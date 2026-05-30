@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import {
   AlertTriangle,
@@ -76,7 +76,7 @@ export function App() {
     return () => cancelAnimationFrame(firstFrame);
   }, []);
 
-  const handleInstallUpdate = useCallback(async () => {
+  const handleInstallUpdate = async () => {
     if (updateNotice.status !== 'available') return;
 
     const { update, version } = updateNotice;
@@ -114,11 +114,11 @@ export function App() {
     }
 
     setUpdateNotice({ status: 'installed', version });
-  }, [updateNotice]);
+  };
 
   return (
     <main className="bg-panel min-h-screen">
-      <div className="mx-auto max-w-5xl px-6 py-6">
+      <div className="mx-auto max-w-5xl p-6">
         <header className="border-line mb-6 border-b pb-6">
           <div className="flex items-center gap-2">
             <h1 className="text-ink text-2xl font-semibold">Pane</h1>
@@ -172,7 +172,7 @@ function UpdateNotice({
       >
         <AlertTriangle
           aria-hidden="true"
-          className="mt-0.5 h-4 w-4 shrink-0 text-red-600"
+          className="mt-0.5 size-4 shrink-0 text-red-600"
         />
         <div>
           <p className="font-medium">Update failed</p>
@@ -188,7 +188,7 @@ function UpdateNotice({
         <div className="flex min-w-0 items-start gap-3">
           <CheckCircle2
             aria-hidden="true"
-            className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700"
+            className="mt-0.5 size-4 shrink-0 text-emerald-700"
           />
           <div className="min-w-0">
             <p className="font-medium">Pane {state.version} is installed</p>
@@ -200,7 +200,7 @@ function UpdateNotice({
           className="inline-flex shrink-0 items-center gap-2 rounded-md border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-950 hover:bg-emerald-100"
           onClick={onRestart}
         >
-          <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+          <RotateCcw aria-hidden="true" className="size-3.5" />
           Restart
         </button>
       </div>
@@ -228,12 +228,12 @@ function UpdateNotice({
           {isInstalling ? (
             <Loader2
               aria-hidden="true"
-              className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-amber-700"
+              className="mt-0.5 size-4 shrink-0 animate-spin text-amber-700"
             />
           ) : (
             <Download
               aria-hidden="true"
-              className="mt-0.5 h-4 w-4 shrink-0 text-amber-700"
+              className="mt-0.5 size-4 shrink-0 text-amber-700"
             />
           )}
           <div className="min-w-0">
@@ -252,9 +252,9 @@ function UpdateNotice({
           onClick={onInstall}
         >
           {isInstalling ? (
-            <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+            <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
           ) : (
-            <Download aria-hidden="true" className="h-3.5 w-3.5" />
+            <Download aria-hidden="true" className="size-3.5" />
           )}
           {isInstalling ? 'Installing' : 'Update'}
         </button>
