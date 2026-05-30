@@ -6,7 +6,7 @@
     Terminates every dev process in the Tauri (Rust + Vite) family:
       - pane.exe  (Cargo debug binary)
       - cargo.exe / tauri.exe build/runner processes referencing this repo
-      - node.exe  processes running Vite from this repo's src/ directory
+      - node.exe  processes running Vite from this repo
 
 .EXAMPLE
     .\scripts\stop.ps1
@@ -17,35 +17,20 @@ $ErrorActionPreference = "Stop"
 $OutputEncoding = [System.Text.Encoding]::UTF8
 $root = Split-Path -Parent $PSScriptRoot
 
-# ---- helpers ----------------------------------------------------------------
-
-function Write-Killing($label, $id) {
-    Write-Host "  Killing $label (PID $id)..."
-}
-
 function Stop-ProcessById($id) {
     Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
 }
 
-$killed = 0
-
-# ---- 1. pane.exe (Tauri debug binary) ----------------------------------------
-
-$paneProcs = Get-Process -Name "pane" -ErrorAction SilentlyContinue
-foreach ($p in $paneProcs) {
+Get-Process -Name "pane" -ErrorAction SilentlyContinue | ForEach-Object {
     try {
-        $exePath = $p.MainModule.FileName
+        $exePath = $_.MainModule.FileName
     } catch {
         $exePath = ""
     }
     if ($exePath -like "*$root*" -or $exePath -eq "") {
-        Write-Killing "pane.exe (Tauri)" $p.Id
-        Stop-ProcessById $p.Id
-        $killed++
+        Stop-ProcessById $_.Id
     }
 }
-
-# ---- 2. cargo.exe / tauri dev runner ----------------------------------------
 
 Get-CimInstance Win32_Process -Filter "Name = 'cargo.exe'" -ErrorAction SilentlyContinue |
     Where-Object {
@@ -53,27 +38,8 @@ Get-CimInstance Win32_Process -Filter "Name = 'cargo.exe'" -ErrorAction Silently
         $_.CommandLine -like "*pane*tauri*" -or
         $_.CommandLine -like "*tauri*pane*"
     } |
-    ForEach-Object {
-        Write-Killing "cargo.exe (tauri dev)" $_.ProcessId
-        Stop-ProcessById $_.ProcessId
-        $killed++
-    }
-
-# ---- 3. node.exe running Vite from this repo --------------------------------
+    ForEach-Object { Stop-ProcessById $_.ProcessId }
 
 Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue |
     Where-Object { $_.CommandLine -like "*$root*" } |
-    ForEach-Object {
-        Write-Killing "node.exe (Vite)" $_.ProcessId
-        Stop-ProcessById $_.ProcessId
-        $killed++
-    }
-
-# ---- summary ----------------------------------------------------------------
-
-if ($killed -eq 0) {
-    Write-Host "No dev instances found -- nothing to kill."
-} else {
-    Write-Host ""
-    Write-Host "Stopped $killed process(es)."
-}
+    ForEach-Object { Stop-ProcessById $_.ProcessId }
