@@ -34,7 +34,7 @@ fn primary_monitor() -> Result<Monitor, String> {
     let monitors = Monitor::all().map_err(|e| e.to_string())?;
     monitors
         .into_iter()
-        .find(|m| m.is_primary())
+        .find(|m| m.is_primary().unwrap_or(false))
         .ok_or_else(|| "No primary monitor found.".into())
 }
 

@@ -153,7 +153,7 @@ pub async fn list_dynamic_lighting_devices() -> Result<Vec<DynamicLightingDevice
     let selector = LampArray::GetDeviceSelector().map_err(|e| e.to_string())?;
     let devices = DeviceInformation::FindAllAsyncAqsFilter(&selector)
         .map_err(|e| e.to_string())?
-        .get()
+        .join()
         .map_err(|e| e.to_string())?;
 
     let mut out = Vec::new();
@@ -174,7 +174,7 @@ pub async fn get_dynamic_lighting_info(
     let device_id = HSTRING::from(device_id);
     let lamp_array = LampArray::FromIdAsync(&device_id)
         .map_err(|e| e.to_string())?
-        .get()
+        .join()
         .map_err(|e| e.to_string())?;
 
     let is_available = lamp_array.IsAvailable().map_err(|e| e.to_string())?;
@@ -208,7 +208,7 @@ pub async fn diagnose_dynamic_lighting(
     let device_id = HSTRING::from(device_id);
     let lamp_array = LampArray::FromIdAsync(&device_id)
         .map_err(|e| e.to_string())?
-        .get()
+        .join()
         .map_err(|e| e.to_string())?;
 
     let is_available = lamp_array.IsAvailable().map_err(|e| e.to_string())?;
@@ -318,7 +318,7 @@ async fn apply_dynamic_lighting_inner(
     let device_id = HSTRING::from(device_id);
     let lamp_array = LampArray::FromIdAsync(&device_id)
         .map_err(|e| e.to_string())?
-        .get()
+        .join()
         .map_err(|e| e.to_string())?;
 
     if !lamp_array.IsEnabled().map_err(|e| e.to_string())? {

@@ -271,7 +271,7 @@ pub async fn commit_region_capture(
         let monitor = Monitor::all()
             .map_err(|e| e.to_string())?
             .into_iter()
-            .find(|m| m.is_primary())
+            .find(|m| m.is_primary().unwrap_or(false))
             .ok_or_else(|| "No primary monitor.".to_string())?;
         let mut full = monitor.capture_image().map_err(|e| e.to_string())?;
         force_opaque(&mut full);
