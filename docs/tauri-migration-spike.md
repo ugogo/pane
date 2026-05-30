@@ -42,13 +42,13 @@ A checklist item may only be ticked once the behaviour has been **observed at ru
 
 Pane is currently built on **.NET 10 + WinUI 3**. While this stack works, it comes with a set of long-term costs and constraints:
 
-| Pain point | Impact |
-|---|---|
-| WinUI 3 / XAML tooling is Windows-only | Blocks any future cross-platform expansion |
-| C# + XAML split means two mental models | Slower UI iteration |
-| WinUI 3 designer support is poor | Styling and layout changes are slow |
-| App packaging (MSIX) is brittle and heavyweight | Distribution friction |
-| Limited ecosystem for modern UI patterns | Hard to reuse web design systems (ShadCN, Tailwind) |
+| Pain point                                      | Impact                                              |
+| ----------------------------------------------- | --------------------------------------------------- |
+| WinUI 3 / XAML tooling is Windows-only          | Blocks any future cross-platform expansion          |
+| C# + XAML split means two mental models         | Slower UI iteration                                 |
+| WinUI 3 designer support is poor                | Styling and layout changes are slow                 |
+| App packaging (MSIX) is brittle and heavyweight | Distribution friction                               |
+| Limited ecosystem for modern UI patterns        | Hard to reuse web design systems (ShadCN, Tailwind) |
 
 **Tauri** is a compelling alternative: a **Rust** backend paired with a **web frontend** (React + TypeScript + Tailwind). Benefits:
 
@@ -58,7 +58,7 @@ Pane is currently built on **.NET 10 + WinUI 3**. While this stack works, it com
 - Cross-platform is free if we ever target macOS or Linux
 - The IPC model (`invoke`) is clean and type-safe when paired with TypeScript bindings
 
-The spike goal is **not to rewrite the app** — it is to answer: *can Tauri faithfully replicate every behaviour the current WinUI app relies on, especially the hard parts?*
+The spike goal is **not to rewrite the app** — it is to answer: _can Tauri faithfully replicate every behaviour the current WinUI app relies on, especially the hard parts?_
 
 ---
 
@@ -212,13 +212,13 @@ Performance numbers are a first-class deliverable of this spike — without them
 
 ### What to measure
 
-| Metric | Why it matters |
-|---|---|
-| **Working set (RAM)** | WebView2 embeds Chromium; primary concern is idle memory vs WinUI 3 |
-| **Virtual memory committed** | Complements working set; reveals hidden allocations |
-| **Startup elapsed (ms)** | Rust `main()` → first IPC response — includes WebView2 spin-up |
+| Metric                       | Why it matters                                                         |
+| ---------------------------- | ---------------------------------------------------------------------- |
+| **Working set (RAM)**        | WebView2 embeds Chromium; primary concern is idle memory vs WinUI 3    |
+| **Virtual memory committed** | Complements working set; reveals hidden allocations                    |
+| **Startup elapsed (ms)**     | Rust `main()` → first IPC response — includes WebView2 spin-up         |
 | **Time to interactive (ms)** | Frontend `useEffect` fires → user can interact; perceived launch speed |
-| **Bundle size (MB)** | `tauri build` output vs current MSIX |
+| **Bundle size (MB)**         | `tauri build` output vs current MSIX                                   |
 
 ### Rust side — `commands/metrics.rs`
 
@@ -319,22 +319,22 @@ At the end of the spike, answer these questions. **All "go" answers → proceed 
 
 ### Must-pass (blockers)
 
-| # | Question | Go | No-go |
-|---|---|---|---|
-| 1 | Can Tauri render a transparent always-on-top region-selector overlay with working mouse capture? | Confirmed working | Any visual glitch, Z-order issue, or cursor bleed-through |
-| 2 | Can we write a captured PNG to the Windows clipboard from Rust? | Works without a C# interop shim | Requires native clipboard DLL / unacceptable hack |
-| 3 | Can `hidapi` open exclusive HID handles to Logitech + DxLight devices (not blocked by Windows security)? | Handles open and writes succeed | Devices refuse connection or require admin |
-| 4 | Can global hotkeys fire the capture pipeline when the app window is hidden? | Hotkey → capture → tray notification works | Hotkeys die when window is hidden |
-| 5 | Is the installer produced by `tauri build` a clean self-contained `.exe`? | Silent install, no MS Store, no MSIX | Forces MSIX or MS Store |
+| #   | Question                                                                                                 | Go                                         | No-go                                                     |
+| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------- |
+| 1   | Can Tauri render a transparent always-on-top region-selector overlay with working mouse capture?         | Confirmed working                          | Any visual glitch, Z-order issue, or cursor bleed-through |
+| 2   | Can we write a captured PNG to the Windows clipboard from Rust?                                          | Works without a C# interop shim            | Requires native clipboard DLL / unacceptable hack         |
+| 3   | Can `hidapi` open exclusive HID handles to Logitech + DxLight devices (not blocked by Windows security)? | Handles open and writes succeed            | Devices refuse connection or require admin                |
+| 4   | Can global hotkeys fire the capture pipeline when the app window is hidden?                              | Hotkey → capture → tray notification works | Hotkeys die when window is hidden                         |
+| 5   | Is the installer produced by `tauri build` a clean self-contained `.exe`?                                | Silent install, no MS Store, no MSIX       | Forces MSIX or MS Store                                   |
 
 ### Should-pass (strong preferences)
 
-| # | Question | Go | No-go |
-|---|---|---|---|
-| 6 | Is cold startup time ≤ current WinUI app? | Comparable or faster | > 2× slower |
-| 7 | Is idle RAM ≤ current WinUI app? | Comparable or lower | > 2× higher (WebView2 overhead) |
-| 8 | Can the auto-updater deliver silent background updates? | Works with a simple GitHub releases endpoint | Requires a custom update server to build and maintain |
-| 9 | Is the Rust compile time on CI acceptable? | < 5 min incremental | > 10 min even incremental |
+| #   | Question                                                | Go                                           | No-go                                                 |
+| --- | ------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------- |
+| 6   | Is cold startup time ≤ current WinUI app?               | Comparable or faster                         | > 2× slower                                           |
+| 7   | Is idle RAM ≤ current WinUI app?                        | Comparable or lower                          | > 2× higher (WebView2 overhead)                       |
+| 8   | Can the auto-updater deliver silent background updates? | Works with a simple GitHub releases endpoint | Requires a custom update server to build and maintain |
+| 9   | Is the Rust compile time on CI acceptable?              | < 5 min incremental                          | > 10 min even incremental                             |
 
 ### Nice-to-have (not blockers)
 
@@ -364,8 +364,8 @@ The migration from WinUI 3 → Tauri is **done** — the WinUI stack was dropped
 3. ✅ **Lighting / HID** — done by a better route than the spike assumed: the Logitech mouse is driven through **Windows Dynamic Lighting** (no raw HID++ 2.0 needed), MSI Mystic Light via vendor HID, and DxLight via its full reverse-engineered USB protocol (`dx_light.rs`). Color round-trip + persistence + wake-restore all working.
 4. ✅ **Packaging** — `tauri build` produces a signed NSIS installer; embedded icon, no MSIX dependency. (PR #3)
 5. ✅ **Auto-updater** — `tauri-plugin-updater` wired against the GitHub Releases `latest.json` endpoint; tag-triggered release workflow signs and publishes. (PR #3)
-9. ✅ **CI** — GitHub Actions runs `npx tsc` + `npx vite build` + `cargo clippy -D warnings` on every PR (`.github/workflows/ci.yml`); a separate tag-triggered `release.yml` builds and signs.
-10. ✅ **Retire WinUI 3 app** — done in the migration commit.
+6. ✅ **CI** — GitHub Actions runs `npx tsc` + `npx vite build` + `cargo clippy -D warnings` on every PR (`.github/workflows/ci.yml`); a separate tag-triggered `release.yml` builds and signs.
+7. ✅ **Retire WinUI 3 app** — done in the migration commit.
 
 ### N/A
 
@@ -374,4 +374,4 @@ The migration from WinUI 3 → Tauri is **done** — the WinUI stack was dropped
 ### Optional backlog (polish — pick up only if it bites)
 
 7. **First-create preview slide animation** — cosmetic inconsistency on the capture preview's first show. See `.claude/handoff-preview-slide.md`.
-8. **Multi-display / DPI** — region capture + overlay on a *mixed-DPI* multi-monitor setup. Near-zero risk on single-monitor / uniform-DPI; only worth testing if such a setup is in use.
+8. **Multi-display / DPI** — region capture + overlay on a _mixed-DPI_ multi-monitor setup. Near-zero risk on single-monitor / uniform-DPI; only worth testing if such a setup is in use.

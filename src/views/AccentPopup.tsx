@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
-import { accentSelect } from "../lib/commands";
+import { useEffect, useState } from 'react';
+import { listen } from '@tauri-apps/api/event';
+import { accentSelect } from '../lib/commands';
 
 interface AccentPayload {
   accents: string[];
 }
 
 function accentsFromUrl(): string[] {
-  const chars = new URLSearchParams(window.location.search).get("chars");
-  return chars ? chars.split(",").filter(Boolean) : [];
+  const chars = new URLSearchParams(window.location.search).get('chars');
+  return chars ? chars.split(',').filter(Boolean) : [];
 }
 
 export function AccentPopup() {
@@ -20,14 +20,14 @@ export function AccentPopup() {
   useEffect(() => {
     // The global stylesheet paints #root opaque (#f5f5f4); clear it (and its
     // ancestors) so this overlay window is genuinely transparent.
-    document.documentElement.style.background = "transparent";
-    document.body.style.background = "transparent";
-    const root = document.getElementById("root");
-    if (root) root.style.background = "transparent";
+    document.documentElement.style.background = 'transparent';
+    document.body.style.background = 'transparent';
+    const root = document.getElementById('root');
+    if (root) root.style.background = 'transparent';
   }, []);
 
   useEffect(() => {
-    const unlisten = listen<AccentPayload>("show-accent-popup", (e) => {
+    const unlisten = listen<AccentPayload>('show-accent-popup', (e) => {
       setAccents(e.payload.accents);
       setSelected(0);
     });
@@ -59,14 +59,14 @@ export function AccentPopup() {
           onClick={() => void accentSelect(ch)}
           className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md transition-colors ${
             i === selected
-              ? "bg-slate-600 text-white"
-              : "text-slate-100 hover:bg-slate-700"
+              ? 'bg-slate-600 text-white'
+              : 'text-slate-100 hover:bg-slate-700'
           }`}
         >
           <span className="text-lg leading-none">{ch}</span>
           <span
             className={`text-[9px] leading-none ${
-              i === selected ? "text-slate-300" : "text-slate-500"
+              i === selected ? 'text-slate-300' : 'text-slate-500'
             }`}
           >
             {i + 1}

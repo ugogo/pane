@@ -1,31 +1,31 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { App } from "./App";
-import { AccentPopup } from "./views/AccentPopup";
-import { AreaSelector } from "./views/AreaSelector";
-import { CapturePreview } from "./views/CapturePreview";
-import "./styles.css";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { App } from './App';
+import { AccentPopup } from './views/AccentPopup';
+import { AreaSelector } from './views/AreaSelector';
+import { CapturePreview } from './views/CapturePreview';
+import './styles.css';
 
 function resolveView() {
-  const view = new URL(window.location.href).searchParams.get("view");
+  const view = new URL(window.location.href).searchParams.get('view');
   switch (view) {
-    case "accent-popup":
+    case 'accent-popup':
       return <AccentPopup />;
-    case "area-selector":
+    case 'area-selector':
       return <AreaSelector />;
-    case "preview":
+    case 'preview':
       return <CapturePreview />;
     default:
       return <App />;
   }
 }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>{resolveView()}</React.StrictMode>,
 );
 
-if (!new URL(window.location.href).searchParams.has("view")) {
+if (!new URL(window.location.href).searchParams.has('view')) {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       void getCurrentWindow().show().catch(console.error);

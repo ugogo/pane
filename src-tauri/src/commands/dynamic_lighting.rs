@@ -107,13 +107,17 @@ fn current_package_full_name() -> Result<Option<String>, String> {
         return Ok(None);
     }
     if len == 0 {
-        return Err(format!("GetCurrentPackageFullName returned {first} with empty length."));
+        return Err(format!(
+            "GetCurrentPackageFullName returned {first} with empty length."
+        ));
     }
 
     let mut buf = vec![0u16; len as usize];
     let second = unsafe { GetCurrentPackageFullName(&mut len, buf.as_mut_ptr()) };
     if second != 0 {
-        return Err(format!("GetCurrentPackageFullName failed with code {second}."));
+        return Err(format!(
+            "GetCurrentPackageFullName failed with code {second}."
+        ));
     }
 
     let text_len = buf.iter().position(|c| *c == 0).unwrap_or(buf.len());
@@ -240,10 +244,8 @@ pub async fn diagnose_dynamic_lighting(
             Ok(reference) => reference.Value().map(fmt_rgb).ok(),
             Err(_) => None,
         };
-        let nearest_supported_color_for_white = info
-            .GetNearestSupportedColor(white)
-            .map(fmt_rgb)
-            .ok();
+        let nearest_supported_color_for_white =
+            info.GetNearestSupportedColor(white).map(fmt_rgb).ok();
 
         lamps.push(DynamicLightingLampInfo {
             index: i,
@@ -419,7 +421,12 @@ async fn apply_dynamic_lighting_inner(
             g,
             b,
             brightness * 100.0,
-            steps.iter().filter(|s| s.contains("err:")).cloned().collect::<Vec<_>>().join("; ")
+            steps
+                .iter()
+                .filter(|s| s.contains("err:"))
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("; ")
         )
     } else {
         format!("rgb({},{},{}) at {:.0}%.", r, g, b, brightness * 100.0)

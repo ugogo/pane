@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
-import { Sun, Contrast, Sunset, Trash2, RotateCcw } from "lucide-react";
+import { useEffect, useRef, useState } from 'react';
+import { listen } from '@tauri-apps/api/event';
+import { Sun, Contrast, Sunset, Trash2, RotateCcw } from 'lucide-react';
 import {
   listMonitors,
   refreshMonitors,
@@ -15,29 +15,32 @@ import {
   applyMonitorPreset,
   type MonitorInfo,
   type MonitorPreset,
-} from "../../lib/commands";
+} from '../../lib/commands';
 
-type ScanStatus = "idle" | "pass" | "warn" | "fail";
+type ScanStatus = 'idle' | 'pass' | 'warn' | 'fail';
 
 const statusStyles: Record<ScanStatus, string> = {
-  idle: "bg-neutral-100 text-neutral-600",
-  pass: "bg-emerald-100 text-emerald-800",
-  warn: "bg-amber-100 text-amber-800",
-  fail: "bg-rose-100 text-rose-800",
+  idle: 'bg-neutral-100 text-neutral-600',
+  pass: 'bg-emerald-100 text-emerald-800',
+  warn: 'bg-amber-100 text-amber-800',
+  fail: 'bg-rose-100 text-rose-800',
 };
 
 // DDC/CI writes are slow (tens of ms over I2C), so we only push to the monitor
 // after the slider settles rather than on every pixel of drag.
 const WRITE_DEBOUNCE_MS = 150;
 
-type FeatureKey = "brightness" | "contrast";
+type FeatureKey = 'brightness' | 'contrast';
 
 const sliderMeta: { key: FeatureKey; icon: typeof Sun; label: string }[] = [
-  { key: "brightness", icon: Sun, label: "Brightness" },
-  { key: "contrast", icon: Contrast, label: "Contrast" },
+  { key: 'brightness', icon: Sun, label: 'Brightness' },
+  { key: 'contrast', icon: Contrast, label: 'Contrast' },
 ];
 
-const writers: Record<FeatureKey, (id: string, value: number) => Promise<void>> = {
+const writers: Record<
+  FeatureKey,
+  (id: string, value: number) => Promise<void>
+> = {
   brightness: setMonitorBrightness,
   contrast: setMonitorContrast,
 };
@@ -77,34 +80,34 @@ function gainsToWarmth(m: MonitorInfo) {
 export function BrightnessCard() {
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
   const [presets, setPresets] = useState<MonitorPreset[]>([]);
-  const [scanStatus, setScanStatus] = useState<ScanStatus>("idle");
-  const [scanMessage, setScanMessage] = useState<string>("");
+  const [scanStatus, setScanStatus] = useState<ScanStatus>('idle');
+  const [scanMessage, setScanMessage] = useState<string>('');
   const [busy, setBusy] = useState(false);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   async function load(refresh: boolean) {
     setBusy(true);
-    setScanStatus("idle");
+    setScanStatus('idle');
     try {
       const list = refresh ? await refreshMonitors() : await listMonitors();
       setMonitors(list);
       const controllable = list.filter((m) => m.brightness.supported).length;
       if (list.length === 0) {
-        setScanStatus("warn");
-        setScanMessage("No monitors detected.");
+        setScanStatus('warn');
+        setScanMessage('No monitors detected.');
       } else if (controllable === 0) {
-        setScanStatus("warn");
+        setScanStatus('warn');
         setScanMessage(
-          `${list.length} monitor${list.length === 1 ? "" : "s"} found, but none expose DDC/CI brightness. Enable DDC/CI in the monitor's on-screen menu.`,
+          `${list.length} monitor${list.length === 1 ? '' : 's'} found, but none expose DDC/CI brightness. Enable DDC/CI in the monitor's on-screen menu.`,
         );
       } else {
-        setScanStatus("pass");
+        setScanStatus('pass');
         setScanMessage(
-          `${controllable} of ${list.length} monitor${list.length === 1 ? "" : "s"} controllable.`,
+          `${controllable} of ${list.length} monitor${list.length === 1 ? '' : 's'} controllable.`,
         );
       }
     } catch (e) {
-      setScanStatus("fail");
+      setScanStatus('fail');
       setScanMessage(String(e));
     } finally {
       setBusy(false);
@@ -121,13 +124,19 @@ export function BrightnessCard() {
   // The physical brightness key adjusts every monitor in the Rust backend and
   // emits the new values; reflect them so the sliders track the key live.
   useEffect(() => {
-    const unlisten = listen<MonitorInfo[]>("brightness-changed", (event) => {
+    const unlisten = listen<MonitorInfo[]>('brightness-changed', (event) => {
       const next = event.payload;
       setMonitors((prev) =>
         prev.map((m) => {
           const updated = next.find((n) => n.id === m.id);
           return updated
-            ? { ...m, brightness: { ...m.brightness, value: updated.brightness.value } }
+            ? {
+                ...m,
+                brightness: {
+                  ...m.brightness,
+                  value: updated.brightness.value,
+                },
+              }
             : m;
         }),
       );
@@ -139,13 +148,15 @@ export function BrightnessCard() {
 
   function onSlide(id: string, feature: FeatureKey, value: number) {
     setMonitors((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, [feature]: { ...m[feature], value } } : m)),
+      prev.map((m) =>
+        m.id === id ? { ...m, [feature]: { ...m[feature], value } } : m,
+      ),
     );
     const timerKey = `${id}:${feature}`;
     if (timers.current[timerKey]) clearTimeout(timers.current[timerKey]);
     timers.current[timerKey] = setTimeout(() => {
       void writers[feature](id, value).catch((e) => {
-        setScanStatus("fail");
+        setScanStatus('fail');
         setScanMessage(String(e));
       });
     }, WRITE_DEBOUNCE_MS);
@@ -177,7 +188,7 @@ export function BrightnessCard() {
           await setMonitorGreenGain(id, g);
           await setMonitorBlueGain(id, b);
         } catch (e) {
-          setScanStatus("fail");
+          setScanStatus('fail');
           setScanMessage(String(e));
         }
       })();
@@ -189,10 +200,10 @@ export function BrightnessCard() {
     try {
       const list = await applyMonitorPreset(name);
       setMonitors(list);
-      setScanStatus("pass");
+      setScanStatus('pass');
       setScanMessage(`Applied "${name}".`);
     } catch (e) {
-      setScanStatus("fail");
+      setScanStatus('fail');
       setScanMessage(String(e));
     } finally {
       setBusy(false);
@@ -219,10 +230,10 @@ export function BrightnessCard() {
     setBusy(true);
     try {
       await snapshot(name);
-      setScanStatus("pass");
+      setScanStatus('pass');
       setScanMessage(`Updated "${name}" to current settings.`);
     } catch (e) {
-      setScanStatus("fail");
+      setScanStatus('fail');
       setScanMessage(String(e));
     } finally {
       setBusy(false);
@@ -230,13 +241,13 @@ export function BrightnessCard() {
   }
 
   async function onSavePreset() {
-    const name = window.prompt("Preset name")?.trim();
+    const name = window.prompt('Preset name')?.trim();
     if (!name) return;
     setBusy(true);
     try {
       await snapshot(name);
     } catch (e) {
-      setScanStatus("fail");
+      setScanStatus('fail');
       setScanMessage(String(e));
     } finally {
       setBusy(false);
@@ -249,7 +260,7 @@ export function BrightnessCard() {
       const next = await deleteMonitorPreset(name);
       setPresets(next);
     } catch (e) {
-      setScanStatus("fail");
+      setScanStatus('fail');
       setScanMessage(String(e));
     } finally {
       setBusy(false);
@@ -257,19 +268,21 @@ export function BrightnessCard() {
   }
 
   return (
-    <div className="col-span-2 rounded-lg border border-line bg-white/80 p-5 shadow-sm">
+    <div className="border-line col-span-2 rounded-lg border bg-white/80 p-5 shadow-sm">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-ink flex items-center gap-2">
+          <h2 className="text-ink flex items-center gap-2 text-base font-semibold">
             <Sun size={16} className="text-accent" aria-hidden />
             Display
           </h2>
           <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Per-monitor brightness, contrast and warmth over DDC/CI. The Keychron brightness
-            keys drive the sliders too.
+            Per-monitor brightness, contrast and warmth over DDC/CI. The
+            Keychron brightness keys drive the sliders too.
           </p>
         </div>
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[scanStatus]}`}>
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[scanStatus]}`}
+        >
           {scanStatus}
         </span>
       </div>
@@ -278,7 +291,7 @@ export function BrightnessCard() {
         <button
           type="button"
           disabled={busy}
-          className="rounded-md border border-line bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+          className="border-line rounded-md border bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
           onClick={() => void load(true)}
           title="Re-enumerate monitors (after plugging/unplugging)"
         >
@@ -286,7 +299,10 @@ export function BrightnessCard() {
         </button>
 
         {presets.map((p) => (
-          <span key={p.name} className="inline-flex items-center overflow-hidden rounded-md border border-line">
+          <span
+            key={p.name}
+            className="border-line inline-flex items-center overflow-hidden rounded-md border"
+          >
             <button
               type="button"
               disabled={busy}
@@ -299,7 +315,7 @@ export function BrightnessCard() {
             <button
               type="button"
               disabled={busy || monitors.length === 0}
-              className="border-l border-line bg-white px-1.5 py-1 text-neutral-400 hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-50"
+              className="border-line border-l bg-white px-1.5 py-1 text-neutral-400 hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-50"
               onClick={() => void onUpdatePreset(p.name)}
               aria-label={`Update preset ${p.name} to current settings`}
               title={`Update "${p.name}" to current settings`}
@@ -309,7 +325,7 @@ export function BrightnessCard() {
             <button
               type="button"
               disabled={busy}
-              className="border-l border-line bg-white px-1.5 py-1 text-neutral-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+              className="border-line border-l bg-white px-1.5 py-1 text-neutral-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
               onClick={() => void onDeletePreset(p.name)}
               aria-label={`Delete preset ${p.name}`}
               title={`Delete "${p.name}"`}
@@ -322,7 +338,7 @@ export function BrightnessCard() {
         <button
           type="button"
           disabled={busy || monitors.length === 0}
-          className="rounded-md border border-dashed border-line bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+          className="border-line rounded-md border border-dashed bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
           onClick={() => void onSavePreset()}
           title="Save the current settings as a new preset"
         >
@@ -331,15 +347,17 @@ export function BrightnessCard() {
       </div>
 
       {scanMessage && (
-        <p className={`mt-2 text-xs ${scanStatus === "fail" ? "text-rose-600" : "text-neutral-500"}`}>
+        <p
+          className={`mt-2 text-xs ${scanStatus === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
+        >
           {scanMessage}
         </p>
       )}
 
       <div className="mt-4 grid gap-3">
         {monitors.map((m) => (
-          <div key={m.id} className="rounded-md border border-line p-3">
-            <p className="truncate text-sm font-medium text-ink">
+          <div key={m.id} className="border-line rounded-md border p-3">
+            <p className="text-ink truncate text-sm font-medium">
               {m.name || `Monitor ${m.id}`}
             </p>
 
@@ -347,7 +365,11 @@ export function BrightnessCard() {
               const f = m[key];
               return (
                 <div key={key} className="mt-2 flex items-center gap-3">
-                  <Icon size={14} className="shrink-0 text-neutral-400" aria-hidden />
+                  <Icon
+                    size={14}
+                    className="shrink-0 text-neutral-400"
+                    aria-hidden
+                  />
                   {f.supported ? (
                     <>
                       <input
@@ -356,7 +378,9 @@ export function BrightnessCard() {
                         max={f.max}
                         step={1}
                         value={f.value}
-                        onChange={(e) => onSlide(m.id, key, Number(e.target.value))}
+                        onChange={(e) =>
+                          onSlide(m.id, key, Number(e.target.value))
+                        }
                         aria-label={`${label} for ${m.name || `Monitor ${m.id}`}`}
                         className="w-full"
                       />
@@ -365,7 +389,7 @@ export function BrightnessCard() {
                       </span>
                     </>
                   ) : (
-                    <span className="flex-1 text-xs italic text-neutral-400">
+                    <span className="flex-1 text-xs text-neutral-400 italic">
                       {label} not supported by this monitor
                     </span>
                   )}
@@ -373,35 +397,44 @@ export function BrightnessCard() {
               );
             })}
 
-            {m.redGain.supported && m.greenGain.supported && m.blueGain.supported && (
-              <div className="mt-2 flex items-center gap-3">
-                <Sunset size={14} className="shrink-0 text-neutral-400" aria-hidden />
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={gainsToWarmth(m)}
-                  onChange={(e) => onWarmth(m.id, Number(e.target.value))}
-                  aria-label={`Warmth for ${m.name || `Monitor ${m.id}`}`}
-                  title="Default (left) → warmer (right)"
-                  className="w-full"
-                />
-                <span className="w-20 shrink-0 text-right text-xs font-semibold text-neutral-500">
-                  {gainsToWarmth(m) === 0 ? "Default" : `Warm ${gainsToWarmth(m)}%`}
-                </span>
-              </div>
-            )}
+            {m.redGain.supported &&
+              m.greenGain.supported &&
+              m.blueGain.supported && (
+                <div className="mt-2 flex items-center gap-3">
+                  <Sunset
+                    size={14}
+                    className="shrink-0 text-neutral-400"
+                    aria-hidden
+                  />
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={gainsToWarmth(m)}
+                    onChange={(e) => onWarmth(m.id, Number(e.target.value))}
+                    aria-label={`Warmth for ${m.name || `Monitor ${m.id}`}`}
+                    title="Default (left) → warmer (right)"
+                    className="w-full"
+                  />
+                  <span className="w-20 shrink-0 text-right text-xs font-semibold text-neutral-500">
+                    {gainsToWarmth(m) === 0
+                      ? 'Default'
+                      : `Warm ${gainsToWarmth(m)}%`}
+                  </span>
+                </div>
+              )}
 
             {!m.brightness.supported &&
               !m.contrast.supported &&
               !m.redGain.supported &&
               !m.greenGain.supported &&
               !m.blueGain.supported && (
-              <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                DDC/CI unavailable. Enable DDC/CI in this monitor's on-screen menu.
-              </p>
-            )}
+                <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  DDC/CI unavailable. Enable DDC/CI in this monitor's on-screen
+                  menu.
+                </p>
+              )}
           </div>
         ))}
       </div>

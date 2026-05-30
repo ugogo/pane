@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { useEffect, useState } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import {
   areaSelectorOrigin,
   commitRegionCapture,
   hideAreaSelector,
-} from "../lib/commands";
+} from '../lib/commands';
 
 interface Rect {
   x: number;
@@ -13,7 +13,10 @@ interface Rect {
   h: number;
 }
 
-function rectFrom(a: { x: number; y: number }, b: { x: number; y: number }): Rect {
+function rectFrom(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): Rect {
   const x = Math.min(a.x, b.x);
   const y = Math.min(a.y, b.y);
   const w = Math.abs(a.x - b.x);
@@ -22,13 +25,16 @@ function rectFrom(a: { x: number; y: number }, b: { x: number; y: number }): Rec
 }
 
 export function AreaSelector() {
-  const [drag, setDrag] = useState<{ start: { x: number; y: number }; end: { x: number; y: number } } | null>(null);
+  const [drag, setDrag] = useState<{
+    start: { x: number; y: number };
+    end: { x: number; y: number };
+  } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>();
 
   useEffect(() => {
-    document.documentElement.style.background = "transparent";
-    document.body.style.background = "transparent";
+    document.documentElement.style.background = 'transparent';
+    document.body.style.background = 'transparent';
 
     function reset() {
       setDrag(null);
@@ -39,16 +45,16 @@ export function AreaSelector() {
     reset();
 
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         void hideAreaSelector();
       }
     }
 
-    const unlisten = listen("reset-area-selector", reset);
-    window.addEventListener("keydown", onKey);
+    const unlisten = listen('reset-area-selector', reset);
+    window.addEventListener('keydown', onKey);
     return () => {
       void unlisten.then((u) => u());
-      window.removeEventListener("keydown", onKey);
+      window.removeEventListener('keydown', onKey);
     };
   }, []);
 
@@ -83,8 +89,8 @@ export function AreaSelector() {
     <div
       className="fixed inset-0 select-none"
       style={{
-        background: "transparent",
-        cursor: "crosshair",
+        background: 'transparent',
+        cursor: 'crosshair',
       }}
       onMouseDown={(e) => {
         if (submitting) return;
@@ -105,7 +111,7 @@ export function AreaSelector() {
       {!rect && (
         <div
           className="pointer-events-none fixed inset-0"
-          style={{ background: "rgba(2, 6, 23, 0.65)" }}
+          style={{ background: 'rgba(2, 6, 23, 0.65)' }}
         />
       )}
 
@@ -117,7 +123,7 @@ export function AreaSelector() {
             top: rect.y,
             width: rect.w,
             height: rect.h,
-            boxShadow: "0 0 0 100vmax rgba(2, 6, 23, 0.65)",
+            boxShadow: '0 0 0 100vmax rgba(2, 6, 23, 0.65)',
           }}
         >
           <span className="absolute -top-5 left-0 rounded bg-sky-500 px-1.5 py-0.5 font-mono text-[10px] text-white">
@@ -126,7 +132,7 @@ export function AreaSelector() {
         </div>
       )}
 
-      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-md bg-black/60 px-3 py-1 text-xs font-medium text-white">
+      <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-md bg-black/60 px-3 py-1 text-xs font-medium text-white">
         Drag to select - Esc to cancel
       </div>
 
