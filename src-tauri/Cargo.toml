@@ -36,7 +36,11 @@ windows = { version = "0.62", features = ["Devices_Enumeration", "Devices_Lights
 # (used to declare the undocumented IPolicyConfig interface in commands/audio.rs).
 windows-core = "0.62"
 
+# NOTE: `ddc` is intentionally held at 0.2 to match `ddc-winapi` 0.2, which only
+# implements `ddc` 0.2's `Ddc` trait. The only `ddc-winapi` compatible with
+# `ddc` 0.3 is a pre-release alpha (0.3.0-alpha.2), so bumping `ddc` alone breaks
+# the trait impl. Revisit once a stable `ddc-winapi` 0.3 is published.
 [target.'cfg(windows)'.dependencies]
-ddc = "0.3"
+ddc = "0.2"
 ddc-winapi = "0.2"
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Media_Audio", "Win32_Storage_Packaging_Appx"] }

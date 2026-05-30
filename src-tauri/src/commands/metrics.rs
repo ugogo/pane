@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::time::Instant;
-use sysinfo::{Pid, System};
+use sysinfo::{Pid, ProcessesToUpdate, System};
 use tauri::State;
 
 /// Captured at the very top of `run()` in lib.rs — before the Tauri builder
@@ -31,7 +31,7 @@ pub fn get_process_metrics(start_time: State<'_, StartTime>) -> Result<ProcessMe
     let pid = std::process::id();
 
     let mut sys = System::new();
-    sys.refresh_process(Pid::from_u32(pid));
+    sys.refresh_processes(ProcessesToUpdate::Some(&[Pid::from_u32(pid)]), true);
 
     let process = sys
         .process(Pid::from_u32(pid))
