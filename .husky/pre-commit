@@ -1,0 +1,9 @@
+# Frontend: Prettier + ESLint --fix on staged JS/TS, rustfmt on staged Rust.
+npx lint-staged
+
+# Rust: run clippy when any Rust source is staged. lint-staged has already
+# run rustfmt and re-staged the results above; this gates the lint pass.
+if git diff --cached --name-only --diff-filter=ACMR | grep -q '^src-tauri/.*\.rs$'; then
+  echo "↳ Rust changes staged — running cargo clippy"
+  cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+fi
