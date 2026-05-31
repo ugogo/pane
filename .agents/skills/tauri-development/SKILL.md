@@ -42,12 +42,14 @@ src-tauri/
 ## TypeScript Guidelines
 
 ### Code Style
+
 - Use functional components with TypeScript
 - Define proper interfaces for all data structures
 - Use async/await for asynchronous operations
 - Implement proper error handling
 
 ### Tauri Integration
+
 ```typescript
 import { invoke } from '@tauri-apps/api/tauri';
 
@@ -64,6 +66,7 @@ await listen('event-name', (event) => {
 ## Rust Guidelines
 
 ### Command Definitions
+
 ```rust
 #[tauri::command]
 fn my_command(arg: String) -> Result<String, String> {
@@ -80,12 +83,14 @@ fn main() {
 ```
 
 ### Error Handling
+
 - Use Result types for fallible operations
 - Define custom error types when needed
 - Propagate errors appropriately
 - Log errors for debugging
 
 ### Security
+
 - Validate all inputs from the frontend
 - Use Tauri's security features (CSP, allowlist)
 - Minimize permissions in tauri.conf.json
@@ -94,12 +99,14 @@ fn main() {
 ## UI Development
 
 ### TailwindCSS
+
 - Use utility-first approach
 - Implement responsive design
 - Use dark mode support
 - Follow consistent spacing and sizing
 
 ### ShadCN-UI Components
+
 - Use pre-built accessible components
 - Customize with TailwindCSS
 - Maintain consistent theming

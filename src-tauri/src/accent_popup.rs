@@ -37,7 +37,9 @@ mod imp {
     use once_cell::sync::Lazy;
     use once_cell::sync::OnceCell;
     use serde::{Deserialize, Serialize};
-    use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindowBuilder};
+    use tauri::{
+        AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindowBuilder,
+    };
 
     use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, WPARAM};
     use windows::Win32::Graphics::Gdi::ClientToScreen;
@@ -49,8 +51,8 @@ mod imp {
     };
     use windows::Win32::UI::WindowsAndMessaging::{
         CallNextHookEx, DispatchMessageW, GetClassNameW, GetCursorPos, GetForegroundWindow,
-        GetGUIThreadInfo, GetMessageW, GetWindowLongPtrW, GetWindowThreadProcessId, MSG,
-        SetWindowLongPtrW, SetWindowsHookExW, GUITHREADINFO, GWL_EXSTYLE, KBDLLHOOKSTRUCT,
+        GetGUIThreadInfo, GetMessageW, GetWindowLongPtrW, GetWindowThreadProcessId,
+        SetWindowLongPtrW, SetWindowsHookExW, GUITHREADINFO, GWL_EXSTYLE, KBDLLHOOKSTRUCT, MSG,
         WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WS_EX_NOACTIVATE,
     };
 
@@ -184,7 +186,9 @@ mod imp {
     }
 
     fn save_enabled(app: &AppHandle, enabled: bool) {
-        let Some(path) = settings_path(app) else { return };
+        let Some(path) = settings_path(app) else {
+            return;
+        };
         if let Ok(text) = serde_json::to_string_pretty(&Settings { enabled }) {
             let _ = std::fs::write(path, text);
         }
@@ -486,18 +490,22 @@ mod imp {
                 w
             }
             None => {
-                match WebviewWindowBuilder::new(app, POPUP_LABEL, WebviewUrl::External(target.clone()))
-                    .title("Accent Popup")
-                    .inner_size(popup_w, POPUP_H)
-                    .position(pos_x, pos_y)
-                    .decorations(false)
-                    .transparent(true)
-                    .always_on_top(true)
-                    .skip_taskbar(true)
-                    .resizable(false)
-                    .focused(false)
-                    .visible(false)
-                    .build()
+                match WebviewWindowBuilder::new(
+                    app,
+                    POPUP_LABEL,
+                    WebviewUrl::External(target.clone()),
+                )
+                .title("Accent Popup")
+                .inner_size(popup_w, POPUP_H)
+                .position(pos_x, pos_y)
+                .decorations(false)
+                .transparent(true)
+                .always_on_top(true)
+                .skip_taskbar(true)
+                .resizable(false)
+                .focused(false)
+                .visible(false)
+                .build()
                 {
                     Ok(w) => w,
                     Err(e) => {
@@ -589,11 +597,11 @@ mod imp {
     // Code, Discord, browsers) and console/terminal hosts (PowerShell, cmd,
     // Windows Terminal) all fall here.
     const TEXT_WINDOW_CLASSES: &[&str] = &[
-        "Chrome_RenderWidgetHostHWND", // Chromium/Electron content surface
-        "Chrome_WidgetWin_1",          // Chromium/Electron top-level window
-        "ConsoleWindowClass",          // classic conhost (PowerShell, cmd)
+        "Chrome_RenderWidgetHostHWND",   // Chromium/Electron content surface
+        "Chrome_WidgetWin_1",            // Chromium/Electron top-level window
+        "ConsoleWindowClass",            // classic conhost (PowerShell, cmd)
         "CASCADIA_HOSTING_WINDOW_CLASS", // Windows Terminal
-        "Windows.UI.Core.CoreWindow",  // UWP apps
+        "Windows.UI.Core.CoreWindow",    // UWP apps
     ];
 
     fn class_name_of(hwnd: windows::Win32::Foundation::HWND) -> String {
@@ -642,11 +650,7 @@ mod imp {
 
     // ── Hook callback ─────────────────────────────────────────────────────────
 
-    unsafe extern "system" fn hook_callback(
-        code: i32,
-        wparam: WPARAM,
-        lparam: LPARAM,
-    ) -> LRESULT {
+    unsafe extern "system" fn hook_callback(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
         if code < 0 {
             return CallNextHookEx(None, code, wparam, lparam);
         }

@@ -254,8 +254,8 @@ pub fn adjust_all(delta: i32) -> Vec<MonitorInfo> {
     let mut out = Vec::with_capacity(cache.len());
     for (index, entry) in cache.iter_mut().enumerate() {
         if entry.brightness.supported {
-            let target =
-                (entry.brightness.value as i32 + delta).clamp(0, entry.brightness.max as i32) as u16;
+            let target = (entry.brightness.value as i32 + delta)
+                .clamp(0, entry.brightness.max as i32) as u16;
             if let Some(mon) = monitors.get_mut(index) {
                 if mon.set_vcp_feature(VCP_BRIGHTNESS, target).is_ok() {
                     entry.brightness.value = target;

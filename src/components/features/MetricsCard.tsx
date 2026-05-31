@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { getProcessMetrics, type ProcessMetrics } from "../../lib/commands";
+import { useEffect, useEffectEvent, useState } from 'react';
+import { getProcessMetrics, type ProcessMetrics } from '../../lib/commands';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -12,17 +12,17 @@ function fmtMs(ms: number) {
 }
 
 // pass < 150 MB · warn 150–300 MB · fail > 300 MB
-function ramStatus(mb: number): "pass" | "warn" | "fail" {
-  if (mb < 150) return "pass";
-  if (mb < 300) return "warn";
-  return "fail";
+function ramStatus(mb: number): 'pass' | 'warn' | 'fail' {
+  if (mb < 150) return 'pass';
+  if (mb < 300) return 'warn';
+  return 'fail';
 }
 
 const statusStyles = {
-  pass: "bg-emerald-100 text-emerald-800",
-  warn: "bg-amber-100 text-amber-800",
-  fail: "bg-rose-100 text-rose-800",
-  idle: "bg-neutral-100 text-neutral-600",
+  pass: 'bg-emerald-100 text-emerald-800',
+  warn: 'bg-amber-100 text-amber-800',
+  fail: 'bg-rose-100 text-rose-800',
+  idle: 'bg-neutral-100 text-neutral-600',
 };
 
 // ── Sparkline ────────────────────────────────────────────────────────────────
@@ -36,11 +36,11 @@ function Sparkline({ history }: { history: number[] }) {
         const pct = Math.max((mb / max) * 100, 4);
         const status = ramStatus(mb);
         const barColor =
-          status === "pass"
-            ? "bg-emerald-400"
-            : status === "warn"
-              ? "bg-amber-400"
-              : "bg-rose-400";
+          status === 'pass'
+            ? 'bg-emerald-400'
+            : status === 'warn'
+              ? 'bg-amber-400'
+              : 'bg-rose-400';
         return (
           <div
             key={i}
@@ -62,45 +62,45 @@ export function MetricsCard() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   // Rolling window of the last 30 working-set samples (MB)
   const [history, setHistory] = useState<number[]>([]);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
-  const refresh = useCallback(async () => {
-    try {
-      const m = await getProcessMetrics();
-      setMetrics(m);
-      setError(undefined);
-      setHistory((prev) => [...prev.slice(-29), m.workingSetMb]);
-    } catch (err) {
-      setError(String(err));
-    }
-  }, []);
+  // State updates live in the deferred `.then`/`.catch` callbacks, not the
+  // synchronous body, so this is safe to call from an effect.
+  function refresh() {
+    return getProcessMetrics()
+      .then((m) => {
+        setMetrics(m);
+        setError(undefined);
+        setHistory((prev) => [...prev.slice(-29), m.workingSetMb]);
+      })
+      .catch((err: unknown) => setError(String(err)));
+  }
 
-  // First fetch on mount
+  // Effect Event: always sees the latest state, never a dependency.
+  const onTick = useEffectEvent(() => void refresh());
+
+  // First fetch on mount, then poll every 2 s while auto-refresh is on.
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    onTick();
+    if (!autoRefresh) return;
+    const id = setInterval(onTick, 2000);
+    return () => clearInterval(id);
+  }, [autoRefresh]);
 
-  // Auto-refresh every 2 s
-  useEffect(() => {
-    if (autoRefresh) {
-      intervalRef.current = setInterval(() => void refresh(), 2000);
-    } else {
-      clearInterval(intervalRef.current);
-    }
-    return () => clearInterval(intervalRef.current);
-  }, [autoRefresh, refresh]);
-
-  const status = error ? "fail" : metrics ? ramStatus(metrics.workingSetMb) : "idle";
+  const status = error
+    ? 'fail'
+    : metrics
+      ? ramStatus(metrics.workingSetMb)
+      : 'idle';
 
   return (
-    <div className="col-span-2 rounded-lg border border-line bg-white/80 p-5 shadow-sm">
+    <div className="border-line col-span-2 rounded-lg border bg-white/80 p-5 shadow-sm">
       {/* Header */}
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-ink">Process metrics</h2>
+          <h2 className="text-ink text-base font-semibold">Process metrics</h2>
           <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Live RAM and startup time — benchmark against the WinUI 3 baseline before
-            validating any other checklist item.
+            Live RAM and startup time. Benchmark against the WinUI 3 baseline
+            before validating any other checklist item.
           </p>
         </div>
         <span
@@ -111,14 +111,19 @@ export function MetricsCard() {
       </div>
 
       {error ? (
-        <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>
+        <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {error}
+        </p>
       ) : metrics ? (
         <>
           {/* Stat grid */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat label="Working set" value={fmtMb(metrics.workingSetMb)} />
             <Stat label="Virtual mem" value={fmtMb(metrics.virtualMemoryMb)} />
-            <Stat label="Startup elapsed" value={fmtMs(metrics.startupElapsedMs)} />
+            <Stat
+              label="Startup elapsed"
+              value={fmtMs(metrics.startupElapsedMs)}
+            />
             <Stat label="PID" value={String(metrics.pid)} />
           </div>
 
@@ -126,7 +131,7 @@ export function MetricsCard() {
           {history.length > 1 && (
             <div className="mt-4">
               <p className="mb-1 text-xs text-neutral-400">
-                Working set — last {history.length} samples
+                Working set · last {history.length} samples
               </p>
               <Sparkline history={history} />
             </div>
@@ -140,7 +145,7 @@ export function MetricsCard() {
       <div className="mt-4 flex items-center gap-3">
         <button
           type="button"
-          className="rounded-md border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink hover:bg-neutral-50"
+          className="border-line text-ink rounded-md border bg-white px-3 py-1.5 text-xs font-medium hover:bg-neutral-50"
           onClick={() => void refresh()}
         >
           Refresh now
@@ -163,7 +168,9 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-neutral-50 px-3 py-2">
       <div className="text-xs text-neutral-400">{label}</div>
-      <div className="mt-0.5 font-mono text-sm font-semibold text-ink">{value}</div>
+      <div className="text-ink mt-0.5 font-mono text-sm font-semibold">
+        {value}
+      </div>
     </div>
   );
 }

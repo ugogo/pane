@@ -45,7 +45,9 @@ mod imp {
 
     use super::{AudioDevice, VolumeInfo};
     use core::ffi::c_void;
-    use windows::core::{interface, IUnknown, IUnknown_Vtbl, GUID, HRESULT, HSTRING, PCWSTR, PWSTR};
+    use windows::core::{
+        interface, IUnknown, IUnknown_Vtbl, GUID, HRESULT, HSTRING, PCWSTR, PWSTR,
+    };
     use windows::Win32::Devices::FunctionDiscovery::PKEY_Device_FriendlyName;
     use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
     use windows::Win32::Media::Audio::{
@@ -60,7 +62,8 @@ mod imp {
     use windows::Win32::System::Variant::VT_LPWSTR;
 
     // CLSID_CPolicyConfigClient — the COM class implementing IPolicyConfig.
-    const CLSID_POLICY_CONFIG_CLIENT: GUID = GUID::from_u128(0x870af99c_171d_4f9e_af0d_e63df40c2bc9);
+    const CLSID_POLICY_CONFIG_CLIENT: GUID =
+        GUID::from_u128(0x870af99c_171d_4f9e_af0d_e63df40c2bc9);
 
     /// Undocumented interface used to set the default audio endpoint.
     ///
@@ -339,8 +342,7 @@ mod watch {
                     .GetDefaultAudioEndpoint(flow, eConsole)
                     .ok()
                     .and_then(|device| {
-                        let vol: IAudioEndpointVolume =
-                            device.Activate(CLSCTX_ALL, None).ok()?;
+                        let vol: IAudioEndpointVolume = device.Activate(CLSCTX_ALL, None).ok()?;
                         let cb: IAudioEndpointVolumeCallback = VolumeCallback {
                             app: self.app.clone(),
                             kind,
@@ -368,12 +370,7 @@ mod watch {
     }
 
     impl IMMNotificationClient_Impl for DeviceNotify_Impl {
-        fn OnDefaultDeviceChanged(
-            &self,
-            flow: EDataFlow,
-            role: ERole,
-            _id: &PCWSTR,
-        ) -> Result<()> {
+        fn OnDefaultDeviceChanged(&self, flow: EDataFlow, role: ERole, _id: &PCWSTR) -> Result<()> {
             // Fires once per role; act on eConsole only so we rebind just once.
             if role == eConsole {
                 if let Ok(mut ep) = self.endpoints.lock() {

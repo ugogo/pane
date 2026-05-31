@@ -27,7 +27,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          components: clippy, rustfmt
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -45,8 +45,18 @@ jobs:
       - name: Type-check frontend
         run: npx tsc --noEmit
 
+      - name: Lint frontend (ESLint)
+        run: npm run lint
+
+      - name: Check formatting (Prettier)
+        run: npm run format:check
+
       - name: Build frontend
         run: npx vite build
+
+      - name: Check Rust formatting (rustfmt)
+        working-directory: src-tauri
+        run: cargo fmt -- --check
 
       - name: Stage placeholder identity resources
         run: |

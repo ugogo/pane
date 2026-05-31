@@ -1,0 +1,13 @@
+# Build output & dependencies
+dist/
+node_modules/
+.claude/
+
+# Rust / Tauri (formatted by rustfmt, not Prettier)
+src-tauri/
+
+# Generated / vendored
+package-lock.json
+assets/
+*.min.js
+*.min.css

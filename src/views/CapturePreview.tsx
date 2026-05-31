@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { Check, Clipboard, Save, X } from "lucide-react";
-import { listen } from "@tauri-apps/api/event";
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { Check, Clipboard, Save, X } from 'lucide-react';
+import { listen } from '@tauri-apps/api/event';
 import {
   copyLatestCaptureToClipboard,
   hideCapturePreview,
@@ -8,31 +8,80 @@ import {
   saveLatestCaptureToDesktop,
   takeLatestCapture,
   type CaptureResult,
-} from "../lib/commands";
+} from '../lib/commands';
 
-type Phase = "hidden" | "slide-in" | "idle" | "scale-out" | "scale-in" | "closing";
+type Phase =
+  | 'hidden'
+  | 'slide-in'
+  | 'idle'
+  | 'scale-out'
+  | 'scale-in'
+  | 'closing';
+
+type ActState = 'idle' | 'busy' | 'success';
 
 const PHASE_ANIMATION: Record<Phase, string | undefined> = {
   hidden: undefined,
   idle: undefined,
-  "slide-in": "cap-slide-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both",
-  "scale-out": "cap-scale-out 130ms ease-in both",
-  "scale-in": "cap-scale-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
-  closing: "cap-close-out 200ms ease-in both",
+  'slide-in': 'cap-slide-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both',
+  'scale-out': 'cap-scale-out 130ms ease-in both',
+  'scale-in': 'cap-scale-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both',
+  closing: 'cap-close-out 200ms ease-in both',
 };
 
+// Runs `callback` after the next paint (or a 300ms fallback). Pure utility, so
+// it lives at module scope. Returns a cleanup that cancels the pending run.
+function afterPaint(callback: () => void) {
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    callback();
+  };
+
+  const timeout = window.setTimeout(finish, 300);
+  const firstFrame = requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      window.clearTimeout(timeout);
+      finish();
+    });
+  });
+
+  return () => {
+    done = true;
+    window.clearTimeout(timeout);
+    cancelAnimationFrame(firstFrame);
+  };
+}
+
+interface View {
+  capture: CaptureResult | null;
+  phase: Phase;
+  revision: number;
+}
+
 export function CapturePreview() {
-  const [capture, setCapture] = useState<CaptureResult | null>(null);
+  const [view, setView] = useState<View>({
+    capture: null,
+    phase: 'hidden',
+    revision: 0,
+  });
   const [error, setError] = useState<string>();
-  const [revision, setRevision] = useState(0);
-  const [phase, setPhase] = useState<Phase>("hidden");
-  const [copyState, setCopyState] = useState<"idle" | "busy" | "success">("idle");
-  const [saveState, setSaveState] = useState<"idle" | "busy" | "success">("idle");
+  const [actions, setActions] = useState<{ copy: ActState; save: ActState }>({
+    copy: 'idle',
+    save: 'idle',
+  });
+  const { capture, phase, revision } = view;
+
   const closeTimer = useRef<number | undefined>(undefined);
   const lastFetchAt = useRef(0);
-  const phaseRef = useRef<Phase>("hidden");
+  const phaseRef = useRef<Phase>('hidden');
   const captureRef = useRef<CaptureResult | null>(null);
   const pending = useRef<CaptureResult | null>(null);
+
+  function setPhase(next: Phase) {
+    setView((v) => ({ ...v, phase: next }));
+  }
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -42,117 +91,108 @@ export function CapturePreview() {
   }, [capture]);
 
   useEffect(() => {
-    document.documentElement.style.background = "transparent";
-    document.body.style.background = "transparent";
+    document.documentElement.style.background = 'transparent';
+    document.body.style.background = 'transparent';
+    const timer = closeTimer;
     return () => {
-      if (closeTimer.current) {
-        window.clearTimeout(closeTimer.current);
+      if (timer.current) {
+        window.clearTimeout(timer.current);
       }
     };
   }, []);
 
-  async function fetchLatest(isRefresh = false) {
+  // State updates live in the deferred `.then`/`.catch` callbacks, so this is
+  // safe to call from an effect.
+  function fetchLatest(isRefresh = false) {
     const started = performance.now();
     lastFetchAt.current = started;
-    try {
-      const c = await takeLatestCapture();
-      if (!c) {
-        setError("No capture available.");
-        return;
-      }
+    return takeLatestCapture()
+      .then((c) => {
+        if (!c) {
+          setError('No capture available.');
+          return;
+        }
 
-      // Re-displaying the identical capture (e.g. on window focus) shouldn't
-      // replay the swap animation.
-      if (isRefresh && captureRef.current && c.dataUrl === captureRef.current.dataUrl) {
-        return;
-      }
+        // Re-displaying the identical capture (e.g. on window focus) shouldn't
+        // replay the swap animation.
+        if (
+          isRefresh &&
+          captureRef.current &&
+          c.dataUrl === captureRef.current.dataUrl
+        ) {
+          return;
+        }
 
-      setError(undefined);
-      setCopyState("idle");
-      setSaveState("idle");
+        setError(undefined);
+        setActions({ copy: 'idle', save: 'idle' });
 
-      const visible = phaseRef.current !== "hidden" && phaseRef.current !== "closing";
-      if (isRefresh && visible && captureRef.current) {
-        // A preview is already on screen: scale the old one out, then the new in.
-        pending.current = c;
-        setPhase("scale-out");
-      } else {
-        // First display: slide it in once the window is shown.
-        setCapture(c);
-        setRevision((r) => r + 1);
-      }
-    } catch (e) {
-      setError(String(e));
-    }
+        const visible =
+          phaseRef.current !== 'hidden' && phaseRef.current !== 'closing';
+        if (isRefresh && visible && captureRef.current) {
+          // A preview is already on screen: scale the old one out, then the new in.
+          pending.current = c;
+          setPhase('scale-out');
+        } else {
+          // First display: slide it in once the window is shown.
+          setView((v) => ({ ...v, capture: c, revision: v.revision + 1 }));
+        }
+      })
+      .catch((e: unknown) => setError(String(e)));
   }
 
-  useEffect(() => {
-    void fetchLatest();
+  // Effect Events so the mount-only effect below doesn't depend on fetchLatest.
+  const onFirstFetch = useEffectEvent(() => void fetchLatest());
+  const onRefetch = useEffectEvent(() => void fetchLatest(true));
 
-    const unlisten = listen("refresh-capture", () => {
-      void fetchLatest(true);
+  useEffect(() => {
+    // Not state initialization: this pulls the latest capture from the Rust
+    // backend on mount (the backend also pushes later updates via events).
+    // eslint-disable-next-line react-doctor/no-initialize-state
+    onFirstFetch();
+
+    const unlisten = listen('refresh-capture', () => {
+      onRefetch();
     });
 
     function fetchWhenWoken() {
-      if (document.visibilityState === "hidden") return;
+      if (document.visibilityState === 'hidden') return;
       if (performance.now() - lastFetchAt.current < 500) return;
-      void fetchLatest(true);
+      onRefetch();
     }
 
-    window.addEventListener("focus", fetchWhenWoken);
-    document.addEventListener("visibilitychange", fetchWhenWoken);
+    window.addEventListener('focus', fetchWhenWoken);
+    document.addEventListener('visibilitychange', fetchWhenWoken);
 
     return () => {
       void unlisten.then((u) => u());
-      window.removeEventListener("focus", fetchWhenWoken);
-      document.removeEventListener("visibilitychange", fetchWhenWoken);
+      window.removeEventListener('focus', fetchWhenWoken);
+      document.removeEventListener('visibilitychange', fetchWhenWoken);
     };
   }, []);
-
-  function afterPaint(callback: () => void) {
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      callback();
-    };
-
-    const timeout = window.setTimeout(finish, 300);
-    const firstFrame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.clearTimeout(timeout);
-        finish();
-      });
-    });
-
-    return () => {
-      done = true;
-      window.clearTimeout(timeout);
-      cancelAnimationFrame(firstFrame);
-    };
-  }
 
   useEffect(() => {
     if (revision === 0) return;
 
     return afterPaint(() => {
       void previewReady()
-        .then(() => setPhase("slide-in"))
-        .catch((e) => setError(String(e)));
+        .then(() => setView((v) => ({ ...v, phase: 'slide-in' })))
+        .catch((e: unknown) => setError(String(e)));
     });
   }, [revision]);
 
   function onCardAnimationEnd(e: React.AnimationEvent<HTMLDivElement>) {
     if (e.target !== e.currentTarget) return;
     const current = phaseRef.current;
-    if (current === "scale-out") {
+    if (current === 'scale-out') {
       if (pending.current) {
-        setCapture(pending.current);
+        const next = pending.current;
         pending.current = null;
+        setView((v) => ({ ...v, capture: next, phase: 'scale-in' }));
+      } else {
+        setPhase('scale-in');
       }
-      setPhase("scale-in");
-    } else if (current === "slide-in" || current === "scale-in") {
-      setPhase("idle");
+    } else if (current === 'slide-in' || current === 'scale-in') {
+      setPhase('idle');
     }
   }
 
@@ -160,11 +200,11 @@ export function CapturePreview() {
     if (closeTimer.current) {
       window.clearTimeout(closeTimer.current);
     }
-    setPhase("closing");
+    setPhase('closing');
     window.setTimeout(() => {
       void hideCapturePreview()
-        .then(() => setPhase("hidden"))
-        .catch((e) => setError(String(e)));
+        .then(() => setPhase('hidden'))
+        .catch((e: unknown) => setError(String(e)));
     }, 200);
   }
 
@@ -178,33 +218,36 @@ export function CapturePreview() {
   }
 
   async function copyCapture() {
-    if (!capture || copyState === "busy") return;
-    setCopyState("busy");
+    if (!capture || actions.copy === 'busy') return;
+    setActions((a) => ({ ...a, copy: 'busy' }));
     try {
       await copyLatestCaptureToClipboard();
-      setCopyState("success");
+      setActions((a) => ({ ...a, copy: 'success' }));
       closeSoon();
     } catch (e) {
-      setCopyState("idle");
+      setActions((a) => ({ ...a, copy: 'idle' }));
       setError(String(e));
     }
   }
 
   async function saveCapture() {
-    if (!capture || saveState === "busy") return;
-    setSaveState("busy");
+    if (!capture || actions.save === 'busy') return;
+    setActions((a) => ({ ...a, save: 'busy' }));
     try {
       await saveLatestCaptureToDesktop();
-      setSaveState("success");
+      setActions((a) => ({ ...a, save: 'success' }));
       closeSoon();
     } catch (e) {
-      setSaveState("idle");
+      setActions((a) => ({ ...a, save: 'idle' }));
       setError(String(e));
     }
   }
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-transparent" data-tauri-drag-region>
+    <div
+      className="fixed inset-0 overflow-hidden bg-transparent"
+      data-tauri-drag-region
+    >
       <style>
         {`
           @keyframes cap-slide-in {
@@ -230,8 +273,8 @@ export function CapturePreview() {
         data-tauri-drag-region
         onAnimationEnd={onCardAnimationEnd}
         style={{
-          opacity: phase === "hidden" ? 0 : 1,
-          transformOrigin: "50% 50%",
+          opacity: phase === 'hidden' ? 0 : 1,
+          transformOrigin: '50% 50%',
           animation: PHASE_ANIMATION[phase],
         }}
       >
@@ -254,15 +297,15 @@ export function CapturePreview() {
         {capture && (
           <div className="absolute inset-0 flex items-center justify-center gap-2 bg-slate-900/55 opacity-0 backdrop-blur-[1px] transition-opacity duration-150 group-hover:opacity-100">
             <ActionButton
-              icon={copyState === "success" ? Check : Clipboard}
-              label={copyState === "success" ? "Copied" : "Copy"}
-              busy={copyState === "busy"}
+              icon={actions.copy === 'success' ? Check : Clipboard}
+              label={actions.copy === 'success' ? 'Copied' : 'Copy'}
+              busy={actions.copy === 'busy'}
               onClick={() => void copyCapture()}
             />
             <ActionButton
-              icon={saveState === "success" ? Check : Save}
-              label={saveState === "success" ? "Saved" : "Save"}
-              busy={saveState === "busy"}
+              icon={actions.save === 'success' ? Check : Save}
+              label={actions.save === 'success' ? 'Saved' : 'Save'}
+              busy={actions.save === 'busy'}
               onClick={() => void saveCapture()}
             />
           </div>
@@ -271,7 +314,7 @@ export function CapturePreview() {
         <button
           type="button"
           onClick={() => void close()}
-          className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-900/70 text-[11px] text-slate-200 opacity-0 transition-opacity duration-150 hover:bg-slate-900/90 group-hover:opacity-100"
+          className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-slate-900/70 text-[11px] text-slate-200 opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-slate-900/90"
           aria-label="Close preview"
         >
           <X aria-hidden="true" size={14} strokeWidth={2.25} />

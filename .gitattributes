@@ -1,0 +1,18 @@
+# Normalize line endings to LF on checkout everywhere.
+# Prettier is configured with endOfLine: "lf"; without this, GitHub's Windows
+# runners (core.autocrlf=true) check files out as CRLF and `prettier --check`
+# fails on every text file. Binary files are auto-detected and left untouched.
+* text=auto eol=lf
+
+# Explicit binaries (belt-and-suspenders for asset types in the repo).
+*.png binary
+*.ico binary
+*.icns binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.msix binary
+*.cer binary
