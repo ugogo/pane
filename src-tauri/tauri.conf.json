@@ -18,7 +18,13 @@
         "height": 600,
         "resizable": true,
         "center": true,
-        "visible": false
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "windowEffects": {
+          "effects": ["acrylic"],
+          "color": "#21181ce8"
+        }
       }
     ],
     "security": {

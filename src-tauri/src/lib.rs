@@ -7,6 +7,7 @@ mod tray;
 use commands::capture::LatestCapture;
 use commands::metrics::StartTime;
 use std::time::Instant;
+use tauri::Manager;
 
 pub fn run() {
     let boot = Instant::now();
@@ -31,6 +32,10 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_decorations(false);
+                let _ = window.set_theme(Some(tauri::Theme::Dark));
+            }
             tray::create(app)?;
             commands::hotkeys::restore_capture_hotkeys(app.handle());
             if let Err(e) = power_notify::register() {

@@ -50,7 +50,7 @@ export function AccentPopup() {
   if (accents.length === 0) return null;
 
   return (
-    <div className="bg-foreground fixed inset-0 flex gap-1 rounded-lg border border-white/10 p-1.5 shadow-lg">
+    <div className="border-border bg-card text-card-foreground fixed inset-0 flex gap-1 rounded-lg border p-1.5 shadow-lg">
       {accents.map((ch, i) => (
         <button
           key={ch}
@@ -60,14 +60,16 @@ export function AccentPopup() {
           onClick={() => void accentSelect(ch)}
           className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md transition-colors ${
             i === selected
-              ? 'bg-background text-foreground'
-              : 'text-background/90 hover:bg-white/10'
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
           }`}
         >
           <span className="text-lg leading-none">{ch}</span>
           <span
             className={`text-[9px] leading-none ${
-              i === selected ? 'text-foreground/75' : 'text-background/40'
+              i === selected
+                ? 'text-primary-foreground/75'
+                : 'text-muted-foreground/60'
             }`}
           >
             {i + 1}

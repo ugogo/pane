@@ -1,12 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import {
+  Activity,
   AlertTriangle,
+  Camera,
   CheckCircle2,
   Download,
+  Languages,
+  Lightbulb,
   Loader2,
+  Minus,
+  Monitor,
+  Power,
   RotateCcw,
+  Square,
+  Volume2,
+  X,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { AccentCard } from '@/components/features/AccentCard';
 import { BrightnessCard } from '@/components/features/BrightnessCard';
 import { CaptureCard } from '@/components/features/CaptureCard';
@@ -28,6 +40,16 @@ import {
   type PendingUpdate,
 } from '@/lib/updater';
 
+const modules = [
+  { id: 'capture', label: 'Capture', icon: Camera },
+  { id: 'display', label: 'Display', icon: Monitor },
+  { id: 'sound', label: 'Sound', icon: Volume2 },
+  { id: 'lights', label: 'Lights', icon: Lightbulb },
+  { id: 'accent', label: 'Accents', icon: Languages },
+  { id: 'startup', label: 'Startup', icon: Power },
+  { id: 'diagnostics', label: 'Diagnostics', icon: Activity },
+] satisfies readonly { id: string; label: string; icon: LucideIcon }[];
+
 type UpdateNoticeState =
   | { status: 'hidden' }
   | { status: 'available'; update: PendingUpdate; version: string }
@@ -47,10 +69,20 @@ function formatBytes(bytes: number) {
 }
 
 export function App() {
+  const contentScrollRef = useRef<HTMLDivElement>(null);
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const [updateNotice, setUpdateNotice] = useState<UpdateNoticeState>({
     status: 'hidden',
   });
+
+  useLayoutEffect(() => {
+    const isOverlayView = new URL(window.location.href).searchParams.has(
+      'view',
+    );
+    if (!isOverlayView) {
+      contentScrollRef.current?.scrollTo({ left: 0, top: 0 });
+    }
+  }, []);
 
   useEffect(() => {
     const firstFrame = requestAnimationFrame(() => {
@@ -123,49 +155,153 @@ export function App() {
   };
 
   return (
-    <main className="bg-background min-h-screen">
-      <div className="mx-auto w-full max-w-[900px] space-y-4 p-4">
-        <header className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Pane</h1>
-            <p className="text-muted-foreground text-sm">
-              Windows utilities in one place.
-            </p>
+    <main className="text-foreground grid h-screen grid-rows-[36px_minmax(0,1fr)] overflow-hidden bg-transparent">
+      <AppTitlebar />
+
+      <div className="grid min-h-0 md:grid-cols-[200px_minmax(0,1fr)]">
+        <aside className="app-sidebar px-4 py-5">
+          <nav
+            aria-label="Pane modules"
+            className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible"
+          >
+            {modules.map(({ id, label, icon: Icon }) => (
+              <a
+                key={id}
+                href={`#${id}`}
+                className="flex min-w-max items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-white/62 transition-colors hover:bg-white/8 hover:text-white md:min-w-0"
+              >
+                <Icon aria-hidden="true" className="size-4 shrink-0" />
+                <span>{label}</span>
+              </a>
+            ))}
+          </nav>
+        </aside>
+
+        <div
+          ref={contentScrollRef}
+          className="bg-background min-w-0 overflow-y-auto p-8"
+        >
+          <div className="mx-auto max-w-[760px] space-y-4">
+            <header className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight">Pane</h1>
+                <p className="text-muted-foreground text-sm">
+                  Windows utilities in one place.
+                </p>
+              </div>
+              <p className="bg-card/70 text-muted-foreground rounded-md border px-2 py-1 font-mono text-xs">
+                {appVersion ?? 'version unavailable'}
+              </p>
+            </header>
+
+            <UpdateNotice
+              state={updateNotice}
+              onInstall={handleInstallUpdate}
+              onRestart={() => void restartToApplyUpdate()}
+            />
+
+            <section id="capture" className="scroll-mt-4">
+              <CaptureCard />
+            </section>
+
+            <div className="grid gap-4">
+              <section id="display" className="scroll-mt-4">
+                <BrightnessCard />
+              </section>
+              <section id="sound" className="scroll-mt-4">
+                <SoundCard />
+              </section>
+              <section id="lights" className="scroll-mt-4">
+                <LightingCard />
+              </section>
+              <section id="accent" className="scroll-mt-4">
+                <AccentCard />
+              </section>
+              <section id="startup" className="scroll-mt-4">
+                <InfraCard />
+              </section>
+            </div>
+
+            <Collapsible defaultOpen={import.meta.env.DEV}>
+              <section
+                id="diagnostics"
+                className="bg-card/85 scroll-mt-4 rounded-xl border"
+              >
+                <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium">
+                  Diagnostics
+                  <span className="text-muted-foreground text-xs">Toggle</span>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="border-t p-4">
+                  <MetricsCard />
+                </CollapsibleContent>
+              </section>
+            </Collapsible>
           </div>
-          <p className="text-muted-foreground rounded-md border px-2 py-1 font-mono text-xs">
-            {appVersion ?? 'version unavailable'}
-          </p>
-        </header>
-
-        <UpdateNotice
-          state={updateNotice}
-          onInstall={handleInstallUpdate}
-          onRestart={() => void restartToApplyUpdate()}
-        />
-
-        <CaptureCard />
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <BrightnessCard />
-          <SoundCard />
-          <LightingCard />
-          <AccentCard />
-          <InfraCard />
         </div>
-
-        <Collapsible defaultOpen={import.meta.env.DEV}>
-          <div className="bg-card rounded-xl border">
-            <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium">
-              Diagnostics
-              <span className="text-muted-foreground text-xs">Toggle</span>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="border-t p-4">
-              <MetricsCard />
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
       </div>
     </main>
+  );
+}
+
+function AppTitlebar() {
+  return (
+    <div
+      className="app-titlebar"
+      data-tauri-drag-region
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.button !== 0) return;
+        const target = event.target as HTMLElement;
+        if (target.closest('button')) return;
+        void getCurrentWindow().startDragging().catch(console.error);
+      }}
+    >
+      <div
+        className="flex min-w-0 items-center gap-2 px-3"
+        data-tauri-drag-region
+      >
+        <span className="bg-primary text-primary-foreground flex size-4 items-center justify-center rounded-[4px]">
+          <Camera aria-hidden="true" className="size-3" />
+        </span>
+        <span
+          className="truncate text-xs font-medium text-white/86"
+          data-tauri-drag-region
+        >
+          Pane
+        </span>
+      </div>
+
+      <div className="ml-auto flex h-full">
+        <button
+          aria-label="Minimize"
+          className="app-window-control"
+          type="button"
+          onClick={() =>
+            void getCurrentWindow().minimize().catch(console.error)
+          }
+        >
+          <Minus aria-hidden="true" className="size-3.5" />
+        </button>
+        <button
+          aria-label="Maximize or restore"
+          className="app-window-control"
+          type="button"
+          onClick={() =>
+            void getCurrentWindow().toggleMaximize().catch(console.error)
+          }
+        >
+          <Square aria-hidden="true" className="size-3" />
+        </button>
+        <button
+          aria-label="Close to tray"
+          className="app-window-control app-window-control-close"
+          type="button"
+          onClick={() => void getCurrentWindow().hide().catch(console.error)}
+        >
+          <X aria-hidden="true" className="size-3.5" />
+        </button>
+      </div>
+    </div>
   );
 }
 

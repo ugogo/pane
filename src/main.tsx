@@ -29,6 +29,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 );
 
 if (!new URL(window.location.href).searchParams.has('view')) {
+  if ('scrollRestoration' in window.history) {
+    window.history.scrollRestoration = 'manual';
+  }
+  if (window.location.hash) {
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+  window.scrollTo(0, 0);
+
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       void getCurrentWindow().show().catch(console.error);

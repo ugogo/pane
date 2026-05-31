@@ -131,7 +131,7 @@ export function AreaSelector() {
           }}
         >
           <span
-            className={`bg-foreground/85 text-background absolute left-0 rounded-md border border-white/10 px-1.5 py-0.5 font-mono text-[10px] shadow-lg ${
+            className={`border-border bg-card/90 text-card-foreground absolute left-0 rounded-md border px-1.5 py-0.5 font-mono text-[10px] shadow-lg ${
               sizeLabelInside ? 'top-1.5' : '-top-6'
             }`}
           >
@@ -141,7 +141,7 @@ export function AreaSelector() {
       )}
 
       <div
-        className={`bg-foreground/75 text-background pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-md border border-white/10 px-3 py-1.5 text-xs font-medium shadow-lg ${
+        className={`border-border bg-card/90 text-card-foreground pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-md border px-3 py-1.5 text-xs font-medium shadow-lg ${
           helperAtBottom ? 'bottom-3' : 'top-3'
         }`}
       >

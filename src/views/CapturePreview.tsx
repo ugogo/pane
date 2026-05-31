@@ -269,7 +269,7 @@ export function CapturePreview() {
         `}
       </style>
       <div
-        className="group bg-foreground absolute bottom-0 left-0 h-[200px] w-[250px] overflow-hidden rounded-lg border border-white/10 shadow-lg"
+        className="group border-border bg-card text-card-foreground absolute bottom-0 left-0 h-[200px] w-[250px] overflow-hidden rounded-lg border shadow-lg"
         data-tauri-drag-region
         onAnimationEnd={onCardAnimationEnd}
         style={{
@@ -295,7 +295,7 @@ export function CapturePreview() {
         )}
 
         {capture && (
-          <div className="bg-foreground/55 absolute inset-0 flex items-center justify-center gap-2 opacity-0 backdrop-blur-[1px] transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100">
+          <div className="bg-background/70 absolute inset-0 flex items-center justify-center gap-2 opacity-0 backdrop-blur-[1px] transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100">
             <ActionButton
               icon={actions.copy === 'success' ? Check : Clipboard}
               label={actions.copy === 'success' ? 'Copied' : 'Copy'}
@@ -314,14 +314,14 @@ export function CapturePreview() {
         <button
           type="button"
           onClick={() => void close()}
-          className="bg-foreground/70 text-background hover:bg-foreground absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full opacity-0 transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100"
+          className="bg-background/85 text-foreground hover:bg-muted absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full opacity-0 transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100"
           aria-label="Close preview"
         >
           <X aria-hidden="true" size={14} strokeWidth={2.25} />
         </button>
 
         {capture && (
-          <span className="bg-foreground/70 text-background/80 pointer-events-none absolute bottom-1.5 left-1.5 rounded px-1.5 py-0.5 font-mono text-[10px] opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+          <span className="bg-background/85 text-muted-foreground pointer-events-none absolute bottom-1.5 left-1.5 rounded px-1.5 py-0.5 font-mono text-[10px] opacity-0 transition-opacity duration-150 group-hover:opacity-100">
             {capture.width} x {capture.height}
           </span>
         )}
@@ -347,7 +347,7 @@ function ActionButton({
       disabled={busy}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onClick}
-      className="bg-foreground/75 text-background hover:bg-foreground flex h-8 min-w-[76px] items-center justify-center gap-1.5 rounded-md border border-white/10 px-2.5 text-xs font-semibold shadow-lg transition active:translate-y-px disabled:cursor-wait"
+      className="border-border bg-background/85 text-foreground hover:bg-muted flex h-8 min-w-[76px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold shadow-lg transition active:translate-y-px disabled:cursor-wait"
     >
       <Icon aria-hidden="true" size={14} strokeWidth={2.35} />
       {label}
