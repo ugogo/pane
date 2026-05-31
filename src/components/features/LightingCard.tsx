@@ -1,5 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Cpu, Lightbulb, Monitor, Mouse } from 'lucide-react';
+import {
+  Button,
+  Slider,
+  Badge,
+  Body1,
+  Caption1,
+  makeStyles,
+  shorthands,
+  tokens,
+} from '@fluentui/react-components';
+import {
+  LightbulbRegular,
+  CursorRegular,
+  DeveloperBoardRegular,
+  DesktopRegular,
+} from '@fluentui/react-icons';
+import { FeatureCard } from '../FeatureCard';
+import { statusBadgeColor, type ProbeStatus } from '../../lib/status';
 import {
   applyDxLight,
   applyDynamicLighting,
@@ -14,16 +31,6 @@ import {
   type DynamicLightingDevice,
   type LightState,
 } from '../../lib/commands';
-
-type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail' | 'disabled';
-
-const statusStyles: Record<ProbeStatus, string> = {
-  idle: 'bg-neutral-100 text-neutral-600',
-  pass: 'bg-emerald-100 text-emerald-800',
-  warn: 'bg-amber-100 text-amber-800',
-  fail: 'bg-rose-100 text-rose-800',
-  disabled: 'bg-neutral-200 text-neutral-600',
-};
 
 // A "light" is anything we can paint a color onto. We normalize all three
 // sources (Windows Dynamic Lighting devices, MSI Mystic Light, DX Light) into
@@ -64,11 +71,11 @@ function lightSubtitle(l: Light) {
 function LightIcon({ light }: { light: Light }) {
   switch (light.kind) {
     case 'dynamic':
-      return <Mouse size={16} aria-hidden />;
+      return <CursorRegular fontSize={16} aria-hidden />;
     case 'msi':
-      return <Cpu size={16} aria-hidden />;
+      return <DeveloperBoardRegular fontSize={16} aria-hidden />;
     case 'dxlight':
-      return <Monitor size={16} aria-hidden />;
+      return <DesktopRegular fontSize={16} aria-hidden />;
   }
 }
 
@@ -95,13 +102,92 @@ interface Result {
   message: string;
 }
 
+const useStyles = makeStyles({
+  body: { display: 'flex', flexDirection: 'column', gap: '12px' },
+  controls: { display: 'flex', alignItems: 'center', gap: '8px' },
+  message: { color: tokens.colorNeutralForeground3 },
+  error: { color: tokens.colorPaletteRedForeground1 },
+  row: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    borderRadius: tokens.borderRadiusMedium,
+    padding: '12px',
+  },
+  head: { display: 'flex', alignItems: 'flex-start', gap: '8px' },
+  iconBox: {
+    display: 'flex',
+    flexShrink: 0,
+    width: '32px',
+    height: '32px',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: tokens.borderRadiusMedium,
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    backgroundColor: tokens.colorNeutralBackground3,
+    color: tokens.colorNeutralForeground2,
+  },
+  text: { minWidth: 0, flexGrow: 1 },
+  title: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  subtitle: {
+    color: tokens.colorNeutralForeground3,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  controlsRow: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    flexWrap: 'wrap',
+    gap: '12px',
+  },
+  colorInput: {
+    width: '44px',
+    height: '32px',
+    padding: 0,
+    cursor: 'pointer',
+    borderRadius: tokens.borderRadiusMedium,
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  sliderCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    flexGrow: 1,
+    minWidth: '140px',
+  },
+  note: {
+    color: tokens.colorStatusWarningForeground1,
+    backgroundColor: tokens.colorStatusWarningBackground1,
+    borderRadius: tokens.borderRadiusMedium,
+    paddingTop: '6px',
+    paddingBottom: '6px',
+    paddingLeft: '10px',
+    paddingRight: '10px',
+  },
+});
+
+type Styles = ReturnType<typeof useStyles>;
+
 interface LightRowProps {
   light: Light;
   initialState?: LightState;
   disabledReason?: string;
+  styles: Styles;
 }
 
-function LightRow({ light, initialState, disabledReason }: LightRowProps) {
+function LightRow({
+  light,
+  initialState,
+  disabledReason,
+  styles,
+}: LightRowProps) {
   // Lazy initializers so the persisted state seeds the controls once, on
   // first mount. Subsequent refreshes don't clobber user input.
   const [color, setColor] = useState<string>(() =>
@@ -120,7 +206,7 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result>({ status: 'idle', message: '' });
   const disabled = Boolean(disabledReason);
-  const visibleStatus = disabled ? 'disabled' : result.status;
+  const visibleStatus: ProbeStatus = disabled ? 'disabled' : result.status;
 
   async function apply() {
     if (disabled) return;
@@ -191,83 +277,68 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
   }
 
   return (
-    <div className="border-line rounded-md border p-3">
-      <div className="flex items-start gap-3">
-        <div className="border-line mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border bg-neutral-50 text-neutral-600">
+    <div className={styles.row}>
+      <div className={styles.head}>
+        <div className={styles.iconBox}>
           <LightIcon light={light} />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-ink truncate text-sm font-medium">
-            {lightTitle(light)}
-          </p>
-          <p className="truncate text-xs text-neutral-500">
+        <div className={styles.text}>
+          <Body1 className={styles.title}>{lightTitle(light)}</Body1>
+          <Caption1 className={styles.subtitle}>
             {lightSubtitle(light)}
-          </p>
+          </Caption1>
         </div>
-        <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${statusStyles[visibleStatus]}`}
-        >
+        <Badge appearance="filled" color={statusBadgeColor(visibleStatus)}>
           {visibleStatus}
-        </span>
+        </Badge>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-[auto_1fr_auto_auto]">
+      <div className={styles.controlsRow}>
         <input
           type="color"
           aria-label={`Color for ${lightTitle(light)}`}
           disabled={disabled}
-          className="border-line h-9 w-12 rounded-md border bg-white p-1 disabled:cursor-not-allowed disabled:opacity-50"
+          className={styles.colorInput}
           value={color}
           onChange={(e) => setColor(e.target.value)}
         />
 
-        <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-semibold text-neutral-600">
-            Brightness {Math.round(brightness * 100)}%
-          </span>
-          <input
-            type="range"
+        <div className={styles.sliderCol}>
+          <Caption1>Brightness {Math.round(brightness * 100)}%</Caption1>
+          <Slider
             min={0}
             max={1}
             step={0.01}
             value={brightness}
-            onChange={(e) => setBrightness(Number(e.target.value))}
             disabled={disabled}
-            className="w-full disabled:cursor-not-allowed disabled:opacity-50"
+            onChange={(_, data) => setBrightness(data.value)}
+            aria-label={`Brightness for ${lightTitle(light)}`}
           />
-        </label>
+        </div>
 
-        <button
-          type="button"
-          disabled={busy || disabled}
-          className="border-line text-ink h-9 rounded-md border bg-white px-3 text-xs font-semibold hover:bg-neutral-50 disabled:opacity-50"
-          onClick={() => void apply()}
-        >
+        <Button disabled={busy || disabled} onClick={() => void apply()}>
           Apply
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          appearance="subtle"
           disabled={busy || disabled}
-          className="border-line h-9 rounded-md border bg-white px-3 text-xs font-semibold text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
           onClick={() => void turnOff()}
         >
           Off
-        </button>
+        </Button>
       </div>
 
-      {disabledReason && (
-        <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          {disabledReason}
-        </p>
-      )}
+      {disabledReason ? (
+        <Caption1 className={styles.note}>{disabledReason}</Caption1>
+      ) : null}
 
-      {result.message && (
-        <p
-          className={`mt-2 text-[11px] ${result.status === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
+      {result.message ? (
+        <Caption1
+          className={result.status === 'fail' ? styles.error : styles.message}
         >
           {result.message}
-        </p>
-      )}
+        </Caption1>
+      ) : null}
     </div>
   );
 }
@@ -279,6 +350,7 @@ interface Scan {
 }
 
 export function LightingCard() {
+  const styles = useStyles();
   const [lights, setLights] = useState<Light[]>([]);
   const [savedStates, setSavedStates] = useState<Record<string, LightState>>(
     {},
@@ -394,55 +466,42 @@ export function LightingCard() {
   const keyedLights = lights.map((l) => ({ key: lightKey(l), light: l }));
 
   return (
-    <div className="border-line col-span-2 rounded-lg border bg-white/80 p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-ink flex items-center gap-2 text-base font-semibold">
-            <Lightbulb size={16} className="text-accent" aria-hidden />
-            Lights
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Per-device color and brightness for Windows Dynamic Lighting, MSI
-            Mystic Light, and the DX Light monitor bias strip.
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[scan.status]}`}
-        >
-          {scan.status}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          className="border-line rounded-md border bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
-          onClick={() => {
-            beginRefresh();
-            void refresh();
-          }}
-        >
-          Refresh
-        </button>
-        <button
-          type="button"
-          disabled={busy || keyedLights.length === 0}
-          className="border-line rounded-md border bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
-          onClick={() => void restore()}
-          title="Re-apply the last saved color/brightness to every light"
-        >
-          Restore
-        </button>
-        {scan.message && (
-          <p
-            className={`text-xs ${scan.status === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
+    <FeatureCard
+      wide
+      title="Lights"
+      description="Per-device color and brightness for Windows Dynamic Lighting, MSI Mystic Light, and the DX Light monitor bias strip."
+      icon={<LightbulbRegular />}
+      status={scan.status}
+    >
+      <div className={styles.body}>
+        <div className={styles.controls}>
+          <Button
+            size="small"
+            disabled={busy}
+            onClick={() => {
+              beginRefresh();
+              void refresh();
+            }}
           >
-            {scan.message}
-          </p>
-        )}
-      </div>
-      <div className="mt-4 grid gap-3">
+            Refresh
+          </Button>
+          <Button
+            size="small"
+            disabled={busy || keyedLights.length === 0}
+            onClick={() => void restore()}
+            title="Re-apply the last saved color/brightness to every light"
+          >
+            Restore
+          </Button>
+          {scan.message ? (
+            <Caption1
+              className={scan.status === 'fail' ? styles.error : styles.message}
+            >
+              {scan.message}
+            </Caption1>
+          ) : null}
+        </div>
+
         {keyedLights.map(({ key, light }) => (
           <LightRow
             key={key}
@@ -451,9 +510,10 @@ export function LightingCard() {
             disabledReason={
               light.kind === 'dynamic' ? scan.disabledReason : undefined
             }
+            styles={styles}
           />
         ))}
       </div>
-    </div>
+    </FeatureCard>
   );
 }

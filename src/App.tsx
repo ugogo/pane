@@ -1,12 +1,26 @@
 import { useEffect, useState } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import {
-  AlertTriangle,
-  CheckCircle2,
-  Download,
-  Loader2,
-  RotateCcw,
-} from 'lucide-react';
+  FluentProvider,
+  webLightTheme,
+  makeStyles,
+  tokens,
+  Title2,
+  Caption1,
+  Badge,
+  Link,
+  Button,
+  Spinner,
+  ProgressBar,
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
+  MessageBarActions,
+} from '@fluentui/react-components';
+import {
+  ArrowDownloadRegular,
+  ArrowClockwiseRegular,
+} from '@fluentui/react-icons';
 import { AccentCard } from './components/features/AccentCard';
 import { BrightnessCard } from './components/features/BrightnessCard';
 import { CaptureCard } from './components/features/CaptureCard';
@@ -40,7 +54,62 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const useStyles = makeStyles({
+  root: {
+    minHeight: '100vh',
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
+  container: {
+    maxWidth: '1024px',
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    paddingTop: '24px',
+    paddingBottom: '24px',
+    paddingLeft: '24px',
+    paddingRight: '24px',
+  },
+  header: {
+    marginBottom: '24px',
+    paddingBottom: '24px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: tokens.colorNeutralStroke2,
+  },
+  titleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  designLink: {
+    marginLeft: 'auto',
+    fontSize: '12px',
+  },
+  version: {
+    marginTop: '4px',
+    display: 'block',
+  },
+  notice: {
+    marginBottom: '16px',
+  },
+  progressRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginTop: '8px',
+  },
+  progressLabel: {
+    minWidth: '40px',
+    textAlign: 'right',
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '16px',
+  },
+});
+
 export function App() {
+  const styles = useStyles();
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const [updateNotice, setUpdateNotice] = useState<UpdateNoticeState>({
     status: 'hidden',
@@ -117,29 +186,37 @@ export function App() {
   };
 
   return (
-    <main className="bg-panel min-h-screen">
-      <div className="mx-auto max-w-5xl p-6">
-        <header className="border-line mb-6 border-b pb-6">
-          <div className="flex items-center gap-2">
-            <h1 className="text-ink text-2xl font-semibold">Pane</h1>
+    <FluentProvider theme={webLightTheme} className={styles.root}>
+      <div className={styles.container}>
+        <header className={styles.header}>
+          <div className={styles.titleRow}>
+            <Title2>Pane</Title2>
             {import.meta.env.DEV ? (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold tracking-wide text-amber-800">
-                dev
-              </span>
+              <>
+                <Badge appearance="tint" color="warning" size="small">
+                  dev
+                </Badge>
+                <Link href="?view=design" className={styles.designLink}>
+                  Design system →
+                </Link>
+              </>
             ) : null}
           </div>
-          <p className="mt-1 text-sm text-slate-500">
+          <Caption1 className={styles.version}>
             Version {appVersion ?? 'unavailable'}
-          </p>
+          </Caption1>
         </header>
 
         <UpdateNotice
+          className={styles.notice}
+          progressRowClassName={styles.progressRow}
+          progressLabelClassName={styles.progressLabel}
           state={updateNotice}
           onInstall={handleInstallUpdate}
           onRestart={() => void restartToApplyUpdate()}
         />
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className={styles.grid}>
           <MetricsCard />
           <CaptureCard />
           <InfraCard />
@@ -149,7 +226,7 @@ export function App() {
           <AccentCard />
         </div>
       </div>
-    </main>
+    </FluentProvider>
   );
 }
 
@@ -157,53 +234,47 @@ function UpdateNotice({
   state,
   onInstall,
   onRestart,
+  className,
+  progressRowClassName,
+  progressLabelClassName,
 }: {
   state: UpdateNoticeState;
   onInstall: () => void;
   onRestart: () => void;
+  className: string;
+  progressRowClassName: string;
+  progressLabelClassName: string;
 }) {
   if (state.status === 'hidden') return null;
 
   if (state.status === 'error') {
     return (
-      <div
-        className="mb-4 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
-        role="alert"
-      >
-        <AlertTriangle
-          aria-hidden="true"
-          className="mt-0.5 size-4 shrink-0 text-red-600"
-        />
-        <div>
-          <p className="font-medium">Update failed</p>
-          <p className="mt-1 break-words text-red-800">{state.message}</p>
-        </div>
-      </div>
+      <MessageBar className={className} intent="error">
+        <MessageBarBody>
+          <MessageBarTitle>Update failed</MessageBarTitle>
+          {state.message}
+        </MessageBarBody>
+      </MessageBar>
     );
   }
 
   if (state.status === 'installed') {
     return (
-      <div className="mb-4 flex items-center justify-between gap-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-        <div className="flex min-w-0 items-start gap-3">
-          <CheckCircle2
-            aria-hidden="true"
-            className="mt-0.5 size-4 shrink-0 text-emerald-700"
-          />
-          <div className="min-w-0">
-            <p className="font-medium">Pane {state.version} is installed</p>
-            <p className="mt-1 text-emerald-800">Restart when you are ready.</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="inline-flex shrink-0 items-center gap-2 rounded-md border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-950 hover:bg-emerald-100"
-          onClick={onRestart}
-        >
-          <RotateCcw aria-hidden="true" className="size-3.5" />
-          Restart
-        </button>
-      </div>
+      <MessageBar className={className} intent="success">
+        <MessageBarBody>
+          <MessageBarTitle>Pane {state.version} is installed</MessageBarTitle>
+          Restart when you are ready.
+        </MessageBarBody>
+        <MessageBarActions>
+          <Button
+            appearance="primary"
+            icon={<ArrowClockwiseRegular />}
+            onClick={onRestart}
+          >
+            Restart
+          </Button>
+        </MessageBarActions>
+      </MessageBar>
     );
   }
 
@@ -222,57 +293,33 @@ function UpdateNotice({
     : null;
 
   return (
-    <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
-          {isInstalling ? (
-            <Loader2
-              aria-hidden="true"
-              className="mt-0.5 size-4 shrink-0 animate-spin text-amber-700"
+    <MessageBar className={className} intent="warning">
+      <MessageBarBody>
+        <MessageBarTitle>Pane {state.version} is available</MessageBarTitle>
+        {isInstalling ? 'Installing update…' : 'Update when you are ready.'}
+        {isInstalling ? (
+          <div className={progressRowClassName}>
+            <ProgressBar
+              value={progress === null ? undefined : progress / 100}
             />
-          ) : (
-            <Download
-              aria-hidden="true"
-              className="mt-0.5 size-4 shrink-0 text-amber-700"
-            />
-          )}
-          <div className="min-w-0">
-            <p className="font-medium">Pane {state.version} is available</p>
-            <p className="mt-1 text-amber-800">
-              {isInstalling
-                ? 'Installing update...'
-                : 'Update when you are ready.'}
-            </p>
+            <Caption1 className={progressLabelClassName}>
+              {progressLabel}
+            </Caption1>
           </div>
-        </div>
-        <button
-          type="button"
-          className="inline-flex shrink-0 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-950 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+        ) : null}
+      </MessageBarBody>
+      <MessageBarActions>
+        <Button
+          appearance="primary"
           disabled={isInstalling}
+          icon={
+            isInstalling ? <Spinner size="tiny" /> : <ArrowDownloadRegular />
+          }
           onClick={onInstall}
         >
-          {isInstalling ? (
-            <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
-          ) : (
-            <Download aria-hidden="true" className="size-3.5" />
-          )}
           {isInstalling ? 'Installing' : 'Update'}
-        </button>
-      </div>
-
-      {isInstalling ? (
-        <div className="mt-3 flex items-center gap-3">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-amber-100">
-            <div
-              className="h-full rounded-full bg-amber-500 transition-all"
-              style={{ width: `${progress ?? 10}%` }}
-            />
-          </div>
-          <span className="w-12 shrink-0 text-right text-xs font-medium text-amber-800">
-            {progressLabel}
-          </span>
-        </div>
-      ) : null}
-    </div>
+        </Button>
+      </MessageBarActions>
+    </MessageBar>
   );
 }

@@ -1,6 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { Sun, Contrast, Sunset, Trash2, RotateCcw } from 'lucide-react';
+import {
+  Button,
+  Slider,
+  Body1,
+  Caption1,
+  Tooltip,
+  makeStyles,
+  mergeClasses,
+  shorthands,
+  tokens,
+} from '@fluentui/react-components';
+import {
+  BrightnessHighRegular,
+  CircleHalfFillRegular,
+  TemperatureRegular,
+  DeleteRegular,
+  ArrowResetRegular,
+  AddRegular,
+  type FluentIcon,
+} from '@fluentui/react-icons';
+import { FeatureCard } from '../FeatureCard';
+import type { ProbeStatus } from '../../lib/status';
 import {
   listMonitors,
   refreshMonitors,
@@ -17,19 +38,10 @@ import {
   type MonitorPreset,
 } from '../../lib/commands';
 
-type ScanStatus = 'idle' | 'pass' | 'warn' | 'fail';
-
 interface Scan {
-  status: ScanStatus;
+  status: ProbeStatus;
   message: string;
 }
-
-const statusStyles: Record<ScanStatus, string> = {
-  idle: 'bg-neutral-100 text-neutral-600',
-  pass: 'bg-emerald-100 text-emerald-800',
-  warn: 'bg-amber-100 text-amber-800',
-  fail: 'bg-rose-100 text-rose-800',
-};
 
 // DDC/CI writes are slow (tens of ms over I2C), so we only push to the monitor
 // after the slider settles rather than on every pixel of drag.
@@ -37,9 +49,9 @@ const WRITE_DEBOUNCE_MS = 150;
 
 type FeatureKey = 'brightness' | 'contrast';
 
-const sliderMeta: { key: FeatureKey; icon: typeof Sun; label: string }[] = [
-  { key: 'brightness', icon: Sun, label: 'Brightness' },
-  { key: 'contrast', icon: Contrast, label: 'Contrast' },
+const sliderMeta: { key: FeatureKey; icon: FluentIcon; label: string }[] = [
+  { key: 'brightness', icon: BrightnessHighRegular, label: 'Brightness' },
+  { key: 'contrast', icon: CircleHalfFillRegular, label: 'Contrast' },
 ];
 
 const writers: Record<
@@ -82,7 +94,61 @@ function gainsToWarmth(m: MonitorInfo) {
   return Math.round(d * 100);
 }
 
+const useStyles = makeStyles({
+  body: { display: 'flex', flexDirection: 'column', gap: '12px' },
+  presetBar: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  presetGroup: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '2px',
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    borderRadius: tokens.borderRadiusMedium,
+    padding: '2px',
+  },
+  message: { color: tokens.colorNeutralForeground3 },
+  error: { color: tokens.colorPaletteRedForeground1 },
+  monitor: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    borderRadius: tokens.borderRadiusMedium,
+    padding: '12px',
+  },
+  sliderRow: { display: 'flex', alignItems: 'center', gap: '12px' },
+  sliderIcon: { flexShrink: 0, color: tokens.colorNeutralForeground3 },
+  slider: { flexGrow: 1 },
+  sliderPct: {
+    minWidth: '44px',
+    textAlign: 'right',
+    color: tokens.colorNeutralForeground3,
+  },
+  warmthPct: { minWidth: '84px' },
+  unsupported: {
+    flexGrow: 1,
+    fontStyle: 'italic',
+    color: tokens.colorNeutralForeground3,
+  },
+  note: {
+    color: tokens.colorStatusWarningForeground1,
+    backgroundColor: tokens.colorStatusWarningBackground1,
+    borderRadius: tokens.borderRadiusMedium,
+    paddingTop: '6px',
+    paddingBottom: '6px',
+    paddingLeft: '10px',
+    paddingRight: '10px',
+  },
+});
+
+type Styles = ReturnType<typeof useStyles>;
+
 export function BrightnessCard() {
+  const styles = useStyles();
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
   const [presets, setPresets] = useState<MonitorPreset[]>([]);
   const [scan, setScan] = useState<Scan>({ status: 'idle', message: '' });
@@ -272,58 +338,48 @@ export function BrightnessCard() {
   }
 
   return (
-    <div className="border-line col-span-2 rounded-lg border bg-white/80 p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-ink flex items-center gap-2 text-base font-semibold">
-            <Sun size={16} className="text-accent" aria-hidden />
-            Display
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Per-monitor brightness, contrast and warmth over DDC/CI. The
-            Keychron brightness keys drive the sliders too.
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[scan.status]}`}
-        >
-          {scan.status}
-        </span>
-      </div>
+    <FeatureCard
+      wide
+      title="Display"
+      description="Per-monitor brightness, contrast and warmth over DDC/CI. The Keychron brightness keys drive the sliders too."
+      icon={<BrightnessHighRegular />}
+      status={scan.status}
+    >
+      <div className={styles.body}>
+        <PresetBar
+          presets={presets}
+          busy={busy}
+          hasMonitors={monitors.length > 0}
+          styles={styles}
+          onRefresh={() => {
+            beginLoad();
+            void load(true);
+          }}
+          onApply={(name) => void onApplyPreset(name)}
+          onUpdate={(name) => void onUpdatePreset(name)}
+          onDelete={(name) => void onDeletePreset(name)}
+          onSave={() => void onSavePreset()}
+        />
 
-      <PresetBar
-        presets={presets}
-        busy={busy}
-        hasMonitors={monitors.length > 0}
-        onRefresh={() => {
-          beginLoad();
-          void load(true);
-        }}
-        onApply={(name) => void onApplyPreset(name)}
-        onUpdate={(name) => void onUpdatePreset(name)}
-        onDelete={(name) => void onDeletePreset(name)}
-        onSave={() => void onSavePreset()}
-      />
+        {scan.message ? (
+          <Caption1
+            className={scan.status === 'fail' ? styles.error : styles.message}
+          >
+            {scan.message}
+          </Caption1>
+        ) : null}
 
-      {scan.message && (
-        <p
-          className={`mt-2 text-xs ${scan.status === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
-        >
-          {scan.message}
-        </p>
-      )}
-
-      <div className="mt-4 grid gap-3">
         {monitors.map((m) => (
           <MonitorRow
             key={m.id}
             monitor={m}
             onSlide={onSlide}
             onWarmth={onWarmth}
+            styles={styles}
           />
         ))}
       </div>
-    </div>
+    </FeatureCard>
   );
 }
 
@@ -331,6 +387,7 @@ function PresetBar({
   presets,
   busy,
   hasMonitors,
+  styles,
   onRefresh,
   onApply,
   onUpdate,
@@ -340,6 +397,7 @@ function PresetBar({
   presets: MonitorPreset[];
   busy: boolean;
   hasMonitors: boolean;
+  styles: Styles;
   onRefresh: () => void;
   onApply: (name: string) => void;
   onUpdate: (name: string) => void;
@@ -347,63 +405,63 @@ function PresetBar({
   onSave: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
+    <div className={styles.presetBar}>
+      <Button
+        size="small"
         disabled={busy}
-        className="border-line rounded-md border bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
         onClick={onRefresh}
         title="Re-enumerate monitors (after plugging/unplugging)"
       >
         Refresh
-      </button>
+      </Button>
 
       {presets.map((p) => (
-        <span
-          key={p.name}
-          className="border-line inline-flex items-center overflow-hidden rounded-md border"
-        >
-          <button
-            type="button"
+        <span key={p.name} className={styles.presetGroup}>
+          <Button
+            size="small"
+            appearance="subtle"
             disabled={busy}
-            className="bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
             onClick={() => onApply(p.name)}
             title={`Apply — brightness ${p.brightnessPct}%, contrast ${p.contrastPct}%, white balance R${p.redGainPct}/G${p.greenGainPct}/B${p.blueGainPct}`}
           >
             {p.name}
-          </button>
-          <button
-            type="button"
-            disabled={busy || !hasMonitors}
-            className="border-line border-l bg-white px-1.5 py-1 text-neutral-400 hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-50"
-            onClick={() => onUpdate(p.name)}
-            aria-label={`Update preset ${p.name} to current settings`}
-            title={`Update "${p.name}" to current settings`}
+          </Button>
+          <Tooltip
+            content={`Update "${p.name}" to current settings`}
+            relationship="label"
           >
-            <RotateCcw size={12} aria-hidden />
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            className="border-line border-l bg-white px-1.5 py-1 text-rose-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
-            onClick={() => onDelete(p.name)}
-            aria-label={`Delete preset ${p.name}`}
-            title={`Delete "${p.name}"`}
-          >
-            <Trash2 size={12} aria-hidden />
-          </button>
+            <Button
+              size="small"
+              appearance="subtle"
+              icon={<ArrowResetRegular />}
+              disabled={busy || !hasMonitors}
+              aria-label={`Update preset ${p.name} to current settings`}
+              onClick={() => onUpdate(p.name)}
+            />
+          </Tooltip>
+          <Tooltip content={`Delete "${p.name}"`} relationship="label">
+            <Button
+              size="small"
+              appearance="subtle"
+              icon={<DeleteRegular />}
+              disabled={busy}
+              aria-label={`Delete preset ${p.name}`}
+              onClick={() => onDelete(p.name)}
+            />
+          </Tooltip>
         </span>
       ))}
 
-      <button
-        type="button"
+      <Button
+        size="small"
+        appearance="subtle"
+        icon={<AddRegular />}
         disabled={busy || !hasMonitors}
-        className="border-line rounded-md border border-dashed bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
         onClick={onSave}
         title="Save the current settings as a new preset"
       >
-        + Save preset
-      </button>
+        Save preset
+      </Button>
     </div>
   );
 }
@@ -412,75 +470,80 @@ function MonitorRow({
   monitor: m,
   onSlide,
   onWarmth,
+  styles,
 }: {
   monitor: MonitorInfo;
   onSlide: (id: string, feature: FeatureKey, value: number) => void;
   onWarmth: (id: string, t: number) => void;
+  styles: Styles;
 }) {
   const name = m.name || `Monitor ${m.id}`;
+  const warmth = gainsToWarmth(m);
   return (
-    <div className="border-line rounded-md border p-3">
-      <p className="text-ink truncate text-sm font-medium">{name}</p>
+    <div className={styles.monitor}>
+      <Body1>{name}</Body1>
 
       {sliderMeta.map(({ key, icon: Icon, label }) => {
         const f = m[key];
         return (
-          <div key={key} className="mt-2 flex items-center gap-3">
-            <Icon size={14} className="shrink-0 text-neutral-400" aria-hidden />
+          <div key={key} className={styles.sliderRow}>
+            <Icon className={styles.sliderIcon} fontSize={16} aria-hidden />
             {f.supported ? (
               <>
-                <input
-                  type="range"
+                <Slider
+                  className={styles.slider}
                   min={0}
                   max={f.max}
-                  step={1}
                   value={f.value}
-                  onChange={(e) => onSlide(m.id, key, Number(e.target.value))}
+                  onChange={(_, data) => onSlide(m.id, key, data.value)}
                   aria-label={`${label} for ${name}`}
-                  className="w-full"
                 />
-                <span className="w-10 shrink-0 text-right text-xs font-semibold text-neutral-500">
+                <Caption1 className={styles.sliderPct}>
                   {pct(f.value, f.max)}%
-                </span>
+                </Caption1>
               </>
             ) : (
-              <span className="flex-1 text-xs text-neutral-400 italic">
+              <Caption1 className={styles.unsupported}>
                 {label} not supported by this monitor
-              </span>
+              </Caption1>
             )}
           </div>
         );
       })}
 
-      {m.redGain.supported && m.greenGain.supported && m.blueGain.supported && (
-        <div className="mt-2 flex items-center gap-3">
-          <Sunset size={14} className="shrink-0 text-neutral-400" aria-hidden />
-          <input
-            type="range"
+      {m.redGain.supported && m.greenGain.supported && m.blueGain.supported ? (
+        <div className={styles.sliderRow}>
+          <TemperatureRegular
+            className={styles.sliderIcon}
+            fontSize={16}
+            aria-hidden
+          />
+          <Slider
+            className={styles.slider}
             min={0}
             max={100}
-            step={1}
-            value={gainsToWarmth(m)}
-            onChange={(e) => onWarmth(m.id, Number(e.target.value))}
+            value={warmth}
+            onChange={(_, data) => onWarmth(m.id, data.value)}
             aria-label={`Warmth for ${name}`}
             title="Default (left) → warmer (right)"
-            className="w-full"
           />
-          <span className="w-20 shrink-0 text-right text-xs font-semibold text-neutral-500">
-            {gainsToWarmth(m) === 0 ? 'Default' : `Warm ${gainsToWarmth(m)}%`}
-          </span>
+          <Caption1
+            className={mergeClasses(styles.sliderPct, styles.warmthPct)}
+          >
+            {warmth === 0 ? 'Default' : `Warm ${warmth}%`}
+          </Caption1>
         </div>
-      )}
+      ) : null}
 
       {!m.brightness.supported &&
-        !m.contrast.supported &&
-        !m.redGain.supported &&
-        !m.greenGain.supported &&
-        !m.blueGain.supported && (
-          <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            DDC/CI unavailable. Enable DDC/CI in this monitor's on-screen menu.
-          </p>
-        )}
+      !m.contrast.supported &&
+      !m.redGain.supported &&
+      !m.greenGain.supported &&
+      !m.blueGain.supported ? (
+        <Caption1 className={styles.note}>
+          DDC/CI unavailable. Enable DDC/CI in this monitor's on-screen menu.
+        </Caption1>
+      ) : null}
     </div>
   );
 }

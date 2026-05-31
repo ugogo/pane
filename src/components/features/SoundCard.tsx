@@ -1,6 +1,25 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { Volume2, VolumeX, Mic, MicOff, Star } from 'lucide-react';
+import {
+  Button,
+  Slider,
+  Body1,
+  Caption1,
+  makeStyles,
+  mergeClasses,
+  shorthands,
+  tokens,
+} from '@fluentui/react-components';
+import {
+  Speaker2Regular,
+  SpeakerMuteRegular,
+  MicRegular,
+  MicOffRegular,
+  StarRegular,
+  StarFilled,
+} from '@fluentui/react-icons';
+import { FeatureCard } from '../FeatureCard';
+import type { ProbeStatus } from '../../lib/status';
 import {
   listOutputDevices,
   listInputDevices,
@@ -15,15 +34,6 @@ import {
   type AudioDevice,
   type VolumeInfo,
 } from '../../lib/commands';
-
-type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
-
-const statusStyles: Record<ProbeStatus, string> = {
-  idle: 'bg-neutral-100 text-neutral-600',
-  pass: 'bg-emerald-100 text-emerald-800',
-  warn: 'bg-amber-100 text-amber-800',
-  fail: 'bg-rose-100 text-rose-800',
-};
 
 // Avoid flooding the endpoint with a write on every pixel of slider drag.
 const WRITE_DEBOUNCE_MS = 100;
@@ -162,7 +172,108 @@ function reducer(state: State, action: Action): State {
   }
 }
 
+const useStyles = makeStyles({
+  body: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  controls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  message: { color: tokens.colorNeutralForeground3 },
+  error: { color: tokens.colorPaletteRedForeground1 },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: '12px',
+  },
+  section: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    borderRadius: tokens.borderRadiusMedium,
+    padding: '12px',
+  },
+  list: {
+    display: 'flex',
+    flexDirection: 'column',
+    maxHeight: '160px',
+    overflowY: 'auto',
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  item: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    paddingLeft: '8px',
+    paddingRight: '8px',
+    paddingTop: '6px',
+    paddingBottom: '6px',
+  },
+  itemDefault: {
+    backgroundColor: tokens.colorBrandBackground2,
+  },
+  deviceBtn: {
+    display: 'flex',
+    flexGrow: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    gap: '8px',
+    backgroundColor: 'transparent',
+    ...shorthands.borderStyle('none'),
+    padding: 0,
+    margin: 0,
+    cursor: 'pointer',
+    textAlign: 'left',
+    color: 'inherit',
+    fontFamily: 'inherit',
+    fontSize: 'inherit',
+  },
+  dot: {
+    width: '6px',
+    height: '6px',
+    flexShrink: 0,
+    borderRadius: tokens.borderRadiusCircular,
+    backgroundColor: 'transparent',
+  },
+  dotOn: { backgroundColor: tokens.colorBrandBackground },
+  name: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    color: tokens.colorNeutralForeground2,
+  },
+  nameDefault: {
+    color: tokens.colorNeutralForeground1,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  volRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginTop: '4px',
+  },
+  slider: { flexGrow: 1 },
+  volPct: {
+    minWidth: '44px',
+    textAlign: 'right',
+    color: tokens.colorNeutralForeground3,
+  },
+  empty: {
+    color: tokens.colorNeutralForeground3,
+    fontStyle: 'italic',
+  },
+});
+
+type Styles = ReturnType<typeof useStyles>;
+
 export function SoundCard() {
+  const styles = useStyles();
   const [state, dispatch] = useReducer(reducer, initialState);
   const { devices, volumes, status, message, busy } = state;
   const [favorites, setFavorites] = useState<Record<Kind, Set<string>>>(() => ({
@@ -286,75 +397,64 @@ export function SoundCard() {
   }
 
   return (
-    <div className="border-line col-span-2 rounded-lg border bg-white/80 p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-ink flex items-center gap-2 text-base font-semibold">
-            <Volume2 size={16} className="text-accent" aria-hidden />
-            Sound
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-500">
-            System volume, mute, and default output/input device for the
-            speakers and microphone.
-          </p>
+    <FeatureCard
+      wide
+      title="Sound"
+      description="System volume, mute, and default output/input device for the speakers and microphone."
+      icon={<Speaker2Regular />}
+      status={status}
+    >
+      <div className={styles.body}>
+        <div className={styles.controls}>
+          <Button
+            size="small"
+            disabled={busy}
+            onClick={() => {
+              dispatch({ type: 'beginLoad' });
+              void load();
+            }}
+          >
+            Refresh
+          </Button>
+          {message ? (
+            <Caption1
+              className={status === 'fail' ? styles.error : styles.message}
+            >
+              {message}
+            </Caption1>
+          ) : null}
         </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[status]}`}
-        >
-          {status}
-        </span>
-      </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          className="border-line rounded-md border bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
-          onClick={() => {
-            dispatch({ type: 'beginLoad' });
-            void load();
-          }}
-          title="Re-enumerate audio devices"
-        >
-          Refresh
-        </button>
+        <div className={styles.grid}>
+          <Section
+            kind="output"
+            label="Output"
+            devices={devices.output}
+            vol={volumes.output}
+            busy={busy}
+            favs={favorites.output}
+            onSelect={onSelectDevice}
+            onToggleMute={onToggleMute}
+            onVolume={onVolume}
+            onToggleFavorite={toggleFavorite}
+            styles={styles}
+          />
+          <Section
+            kind="input"
+            label="Input"
+            devices={devices.input}
+            vol={volumes.input}
+            busy={busy}
+            favs={favorites.input}
+            onSelect={onSelectDevice}
+            onToggleMute={onToggleMute}
+            onVolume={onVolume}
+            onToggleFavorite={toggleFavorite}
+            styles={styles}
+          />
+        </div>
       </div>
-
-      {message && (
-        <p
-          className={`mt-2 text-xs ${status === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
-        >
-          {message}
-        </p>
-      )}
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Section
-          kind="output"
-          label="Output"
-          devices={devices.output}
-          vol={volumes.output}
-          busy={busy}
-          favs={favorites.output}
-          onSelect={onSelectDevice}
-          onToggleMute={onToggleMute}
-          onVolume={onVolume}
-          onToggleFavorite={toggleFavorite}
-        />
-        <Section
-          kind="input"
-          label="Input"
-          devices={devices.input}
-          vol={volumes.input}
-          busy={busy}
-          favs={favorites.input}
-          onSelect={onSelectDevice}
-          onToggleMute={onToggleMute}
-          onVolume={onVolume}
-          onToggleFavorite={toggleFavorite}
-        />
-      </div>
-    </div>
+    </FeatureCard>
   );
 }
 
@@ -369,6 +469,7 @@ interface SectionProps {
   onToggleMute: (kind: Kind) => void;
   onVolume: (kind: Kind, percent: number) => void;
   onToggleFavorite: (kind: Kind, id: string) => void;
+  styles: Styles;
 }
 
 function Section({
@@ -382,25 +483,27 @@ function Section({
   onToggleMute,
   onVolume,
   onToggleFavorite,
+  styles,
 }: SectionProps) {
   const muted = vol?.muted ?? false;
   const ordered = orderDevices(devices, favs);
   return (
-    <div className="border-line rounded-md border p-3">
-      <p className="text-ink text-sm font-medium">{label}</p>
+    <div className={styles.section}>
+      <Body1>{label}</Body1>
 
       {ordered.length === 0 ? (
-        <p className="mt-2 text-xs text-neutral-400 italic">No devices.</p>
+        <Caption1 className={styles.empty}>No devices.</Caption1>
       ) : (
-        <ul className="divide-line border-line mt-2 max-h-40 divide-y overflow-y-auto rounded-md border">
+        <div className={styles.list}>
           {ordered.map((d) => {
             const isFav = favs.has(d.id);
             return (
-              <li
+              <div
                 key={d.id}
-                className={`flex items-center gap-2 px-2 py-1.5 ${
-                  d.isDefault ? 'bg-accent/10' : ''
-                }`}
+                className={mergeClasses(
+                  styles.item,
+                  d.isDefault && styles.itemDefault,
+                )}
               >
                 <button
                   type="button"
@@ -411,49 +514,54 @@ function Section({
                       ? 'Current default'
                       : `Set as default ${label.toLowerCase()}`
                   }
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:opacity-50"
+                  className={styles.deviceBtn}
                 >
                   <span
                     aria-hidden
-                    className={`size-1.5 shrink-0 rounded-full ${
-                      d.isDefault ? 'bg-accent' : 'bg-transparent'
-                    }`}
+                    className={mergeClasses(
+                      styles.dot,
+                      d.isDefault && styles.dotOn,
+                    )}
                   />
                   <span
-                    className={`truncate text-sm ${
-                      d.isDefault ? 'text-ink font-medium' : 'text-neutral-600'
-                    }`}
+                    className={mergeClasses(
+                      styles.name,
+                      d.isDefault && styles.nameDefault,
+                    )}
                   >
                     {d.name}
                   </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onToggleFavorite(kind, d.id)}
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  icon={
+                    isFav ? (
+                      <StarFilled
+                        color={tokens.colorPaletteMarigoldForeground1}
+                      />
+                    ) : (
+                      <StarRegular />
+                    )
+                  }
+                  aria-pressed={isFav}
                   aria-label={
                     isFav ? `Unfavorite ${d.name}` : `Favorite ${d.name}`
                   }
-                  aria-pressed={isFav}
                   title={isFav ? 'Unfavorite' : 'Favorite'}
-                  className="shrink-0 rounded p-1 hover:bg-neutral-100"
-                >
-                  <Star
-                    size={13}
-                    aria-hidden
-                    fill={isFav ? 'currentColor' : 'none'}
-                    className={isFav ? 'text-amber-500' : 'text-neutral-300'}
-                  />
-                </button>
-              </li>
+                  onClick={() => onToggleFavorite(kind, d.id)}
+                />
+              </div>
             );
           })}
-        </ul>
+        </div>
       )}
 
       {vol ? (
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            type="button"
+        <div className={styles.volRow}>
+          <Button
+            size="small"
+            appearance="subtle"
             onClick={() => onToggleMute(kind)}
             aria-label={
               muted
@@ -461,40 +569,36 @@ function Section({
                 : `Mute ${label.toLowerCase()}`
             }
             title={muted ? 'Unmute' : 'Mute'}
-            className={`border-line shrink-0 rounded-md border p-1.5 hover:bg-neutral-50 ${
-              muted ? 'text-rose-600' : 'text-neutral-500'
-            }`}
-          >
-            {kind === 'output' ? (
-              muted ? (
-                <VolumeX size={14} aria-hidden />
+            icon={
+              kind === 'output' ? (
+                muted ? (
+                  <SpeakerMuteRegular />
+                ) : (
+                  <Speaker2Regular />
+                )
+              ) : muted ? (
+                <MicOffRegular />
               ) : (
-                <Volume2 size={14} aria-hidden />
+                <MicRegular />
               )
-            ) : muted ? (
-              <MicOff size={14} aria-hidden />
-            ) : (
-              <Mic size={14} aria-hidden />
-            )}
-          </button>
-          <input
-            type="range"
+            }
+          />
+          <Slider
+            className={styles.slider}
             min={0}
             max={100}
-            step={1}
             value={vpct(vol.volume)}
-            onChange={(e) => onVolume(kind, Number(e.target.value))}
+            onChange={(_, data) => onVolume(kind, data.value)}
             aria-label={`${label} volume`}
-            className="w-full"
           />
-          <span className="w-10 shrink-0 text-right text-xs font-semibold text-neutral-500">
+          <Caption1 className={styles.volPct}>
             {muted ? 'Muted' : `${vpct(vol.volume)}%`}
-          </span>
+          </Caption1>
         </div>
       ) : (
-        <p className="mt-2 text-xs text-neutral-400 italic">
+        <Caption1 className={styles.empty}>
           No volume control available.
-        </p>
+        </Caption1>
       )}
     </div>
   );

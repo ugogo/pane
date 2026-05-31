@@ -1,19 +1,34 @@
 import { useEffect, useState } from 'react';
 import {
+  Switch,
+  Caption1,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components';
+import { TextCaseTitleRegular } from '@fluentui/react-icons';
+import { FeatureCard } from '../FeatureCard';
+import type { ProbeStatus } from '../../lib/status';
+import {
   getAccentPopupEnabled,
   setAccentPopupEnabled,
 } from '../../lib/commands';
 
-type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
-
-const statusStyles: Record<ProbeStatus, string> = {
-  idle: 'bg-neutral-100 text-neutral-600',
-  pass: 'bg-emerald-100 text-emerald-800',
-  warn: 'bg-amber-100 text-amber-800',
-  fail: 'bg-rose-100 text-rose-800',
-};
+const useStyles = makeStyles({
+  body: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  hint: {
+    color: tokens.colorNeutralForeground3,
+  },
+  error: {
+    color: tokens.colorPaletteRedForeground1,
+  },
+});
 
 export function AccentCard() {
+  const styles = useStyles();
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [error, setError] = useState<string>();
 
@@ -42,43 +57,25 @@ export function AccentCard() {
       : 'pass';
 
   return (
-    <div className="border-line rounded-lg border bg-white/80 p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-ink text-base font-semibold">Accent popup</h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Hold a letter (a, e, c, …) to pick an accented variant: à â é ç ô …
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[status]}`}
-        >
-          {status}
-        </span>
+    <FeatureCard
+      title="Accent popup"
+      description="Hold a letter (a, e, c, …) to pick an accented variant: à â é ç ô …"
+      icon={<TextCaseTitleRegular />}
+      status={status}
+    >
+      <div className={styles.body}>
+        <Switch
+          checked={enabled ?? false}
+          disabled={enabled === null}
+          onChange={(_, data) => void handleToggle(data.checked)}
+          label="Enable long-press accents"
+        />
+        <Caption1 className={styles.hint}>
+          Works in text fields, Chromium/Electron apps, and terminals. Pick a
+          variant with a click or its number key; Esc dismisses.
+        </Caption1>
+        {error ? <Caption1 className={styles.error}>{error}</Caption1> : null}
       </div>
-
-      <div className="border-line rounded-md border p-3">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-ink text-sm font-medium">
-              Enable long-press accents
-            </p>
-            <p className="text-xs text-neutral-500">
-              Works in text fields, Chromium/Electron apps, and terminals. Pick
-              a variant with a click or its number key; Esc dismisses.
-            </p>
-          </div>
-          <input
-            type="checkbox"
-            aria-label="Enable long-press accents"
-            className="accent-accent size-5"
-            disabled={enabled === null}
-            checked={enabled ?? false}
-            onChange={(e) => void handleToggle(e.target.checked)}
-          />
-        </div>
-        {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
-      </div>
-    </div>
+    </FeatureCard>
   );
 }

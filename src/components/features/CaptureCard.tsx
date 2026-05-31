@@ -1,5 +1,16 @@
 import { useEffect, useReducer } from 'react';
 import {
+  Button,
+  Body1,
+  Caption1,
+  makeStyles,
+  shorthands,
+  tokens,
+} from '@fluentui/react-components';
+import { ScreenshotRegular } from '@fluentui/react-icons';
+import { FeatureCard } from '../FeatureCard';
+import type { ProbeStatus } from '../../lib/status';
+import {
   captureFullscreen,
   clearCaptureHotkey,
   getCaptureHotkeys,
@@ -10,15 +21,6 @@ import {
   type CaptureAction,
 } from '../../lib/commands';
 import { ShortcutInput } from '../ShortcutInput';
-
-type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
-
-const statusStyles: Record<ProbeStatus, string> = {
-  idle: 'bg-neutral-100 text-neutral-600',
-  pass: 'bg-emerald-100 text-emerald-800',
-  warn: 'bg-amber-100 text-amber-800',
-  fail: 'bg-rose-100 text-rose-800',
-};
 
 interface State {
   hotkeys: { fullscreen: string; area: string };
@@ -85,7 +87,77 @@ async function runArea(): Promise<string | null> {
   }
 }
 
+const useStyles = makeStyles({
+  body: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: '12px',
+  },
+  tile: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    borderRadius: tokens.borderRadiusMedium,
+    padding: '12px',
+  },
+  controls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  message: {
+    color: tokens.colorNeutralForeground3,
+  },
+  error: {
+    color: tokens.colorPaletteRedForeground1,
+  },
+});
+
+type Styles = ReturnType<typeof useStyles>;
+
+function Row({
+  label,
+  hotkey,
+  onCommit,
+  onClear,
+  onTrigger,
+  busy,
+  styles,
+}: {
+  label: string;
+  hotkey: string;
+  onCommit: (a: string) => void;
+  onClear: () => void;
+  onTrigger: () => void;
+  busy: boolean;
+  styles: Styles;
+}) {
+  return (
+    <div className={styles.tile}>
+      <Body1>{label}</Body1>
+      <ShortcutInput
+        value={hotkey}
+        onCommit={onCommit}
+        onClear={onClear}
+        placeholder="Click and press a chord"
+      />
+      <div>
+        <Button size="small" disabled={busy} onClick={onTrigger}>
+          Trigger now
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function CaptureCard() {
+  const styles = useStyles();
   const [state, dispatch] = useReducer(reducer, initialState);
   const { hotkeys, status, message, busy } = state;
 
@@ -141,104 +213,60 @@ export function CaptureCard() {
   }
 
   return (
-    <div className="border-line col-span-2 rounded-lg border bg-white/80 p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-ink text-base font-semibold">Screen capture</h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Fullscreen and area capture, triggerable via global hotkeys. The
-            area selector overlay is centred at half monitor width and half
-            height minus 50px.
-          </p>
+    <FeatureCard
+      wide
+      title="Screen capture"
+      description="Fullscreen and area capture, triggerable via global hotkeys. The area selector overlay is centred at half monitor width and half height minus 50px."
+      icon={<ScreenshotRegular />}
+      status={status}
+    >
+      <div className={styles.body}>
+        <div className={styles.grid}>
+          <Row
+            label="Fullscreen capture"
+            hotkey={hotkeys.fullscreen}
+            onCommit={(a) => void bind('fullscreen', a)}
+            onClear={() => void clear('fullscreen')}
+            onTrigger={() => void trigger('fullscreen')}
+            busy={busy}
+            styles={styles}
+          />
+          <Row
+            label="Area capture"
+            hotkey={hotkeys.area}
+            onCommit={(a) => void bind('area', a)}
+            onClear={() => void clear('area')}
+            onTrigger={() => void trigger('area')}
+            busy={busy}
+            styles={styles}
+          />
         </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[status]}`}
-        >
-          {status}
-        </span>
-      </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Row
-          label="Fullscreen capture"
-          hotkey={hotkeys.fullscreen}
-          onCommit={(a) => void bind('fullscreen', a)}
-          onClear={() => void clear('fullscreen')}
-          onTrigger={() => void trigger('fullscreen')}
-          busy={busy}
-        />
-        <Row
-          label="Area capture"
-          hotkey={hotkeys.area}
-          onCommit={(a) => void bind('area', a)}
-          onClear={() => void clear('area')}
-          onTrigger={() => void trigger('area')}
-          busy={busy}
-        />
-      </div>
-
-      <div className="mt-3 flex items-center gap-2">
-        <button
-          type="button"
-          className="border-line rounded-md border bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50"
-          onClick={() => {
-            void toggleCapturePreview().then((visible) => {
-              dispatch({
-                type: 'notify',
-                status: 'idle',
-                message: visible ? 'Preview shown.' : 'Preview hidden.',
+        <div className={styles.controls}>
+          <Button
+            size="small"
+            appearance="subtle"
+            onClick={() => {
+              void toggleCapturePreview().then((visible) => {
+                dispatch({
+                  type: 'notify',
+                  status: 'idle',
+                  message: visible ? 'Preview shown.' : 'Preview hidden.',
+                });
               });
-            });
-          }}
-        >
-          Toggle preview
-        </button>
-        {message && (
-          <p
-            className={`text-xs ${status === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
+            }}
           >
-            {message}
-          </p>
-        )}
+            Toggle preview
+          </Button>
+          {message ? (
+            <Caption1
+              className={status === 'fail' ? styles.error : styles.message}
+            >
+              {message}
+            </Caption1>
+          ) : null}
+        </div>
       </div>
-    </div>
-  );
-}
-
-function Row({
-  label,
-  hotkey,
-  onCommit,
-  onClear,
-  onTrigger,
-  busy,
-}: {
-  label: string;
-  hotkey: string;
-  onCommit: (a: string) => void;
-  onClear: () => void;
-  onTrigger: () => void;
-  busy: boolean;
-}) {
-  return (
-    <div className="border-line rounded-md border p-3">
-      <p className="text-ink text-sm font-medium">{label}</p>
-      <div className="mt-2">
-        <ShortcutInput
-          value={hotkey}
-          onCommit={onCommit}
-          onClear={onClear}
-          placeholder="Click and press a chord"
-        />
-      </div>
-      <button
-        type="button"
-        disabled={busy}
-        className="border-line text-ink mt-2 rounded-md border bg-white px-3 py-1.5 text-xs font-medium hover:bg-neutral-50 disabled:opacity-50"
-        onClick={onTrigger}
-      >
-        Trigger now
-      </button>
-    </div>
+    </FeatureCard>
   );
 }

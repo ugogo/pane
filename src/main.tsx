@@ -5,6 +5,7 @@ import { App } from './App';
 import { AccentPopup } from './views/AccentPopup';
 import { AreaSelector } from './views/AreaSelector';
 import { CapturePreview } from './views/CapturePreview';
+import { DesignSystem } from './views/DesignSystem';
 import './styles.css';
 
 function resolveView() {
@@ -16,6 +17,10 @@ function resolveView() {
       return <AreaSelector />;
     case 'preview':
       return <CapturePreview />;
+    // Dev-only component gallery. Gated so it never ships in a release build;
+    // falls through to the app in production.
+    case 'design':
+      return import.meta.env.DEV ? <DesignSystem /> : <App />;
     default:
       return <App />;
   }

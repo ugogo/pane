@@ -1,4 +1,10 @@
 import { useRef, useState } from 'react';
+import {
+  makeStyles,
+  mergeClasses,
+  shorthands,
+  tokens,
+} from '@fluentui/react-components';
 
 const MOD_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta']);
 
@@ -82,6 +88,36 @@ function buildAccelerator(
   return parts.join('+');
 }
 
+const useStyles = makeStyles({
+  input: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
+    minHeight: '32px',
+    paddingLeft: '12px',
+    paddingRight: '12px',
+    textAlign: 'left',
+    cursor: 'text',
+    fontFamily: tokens.fontFamilyMonospace,
+    fontSize: '14px',
+    borderRadius: tokens.borderRadiusMedium,
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
+    backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground1,
+    outlineStyle: 'none',
+    ':hover': {
+      ...shorthands.borderColor(tokens.colorNeutralStroke1Hover),
+    },
+  },
+  capturing: {
+    ...shorthands.border('1px', 'solid', tokens.colorCompoundBrandStroke),
+    backgroundColor: tokens.colorNeutralBackground1Selected,
+  },
+  placeholder: {
+    color: tokens.colorNeutralForeground3,
+  },
+});
+
 export interface ShortcutInputProps {
   value: string;
   onCommit: (accelerator: string) => void;
@@ -100,6 +136,7 @@ export function ShortcutInput({
   onClear,
   placeholder,
 }: ShortcutInputProps) {
+  const styles = useStyles();
   const [capturing, setCapturing] = useState(false);
   const [draft, setDraft] = useState('');
   const ref = useRef<HTMLButtonElement>(null);
@@ -175,13 +212,9 @@ export function ShortcutInput({
       }}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
-      className={`flex min-h-[2.25rem] w-full cursor-text items-center rounded-md border px-3 text-left font-mono text-sm transition outline-none ${
-        capturing
-          ? 'border-accent bg-accent/5 text-ink ring-accent/30 ring-2'
-          : 'border-line text-ink bg-white hover:border-neutral-300'
-      }`}
+      className={mergeClasses(styles.input, capturing && styles.capturing)}
     >
-      <span className={value || capturing ? '' : 'text-neutral-400'}>
+      <span className={value || capturing ? undefined : styles.placeholder}>
         {display}
       </span>
     </button>

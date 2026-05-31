@@ -1,4 +1,15 @@
 import { useEffect, useEffectEvent, useState } from 'react';
+import {
+  Switch,
+  Button,
+  Caption1,
+  makeStyles,
+  mergeClasses,
+  tokens,
+} from '@fluentui/react-components';
+import { TopSpeedRegular } from '@fluentui/react-icons';
+import { FeatureCard } from '../FeatureCard';
+import type { ProbeStatus } from '../../lib/status';
 import { getProcessMetrics, type ProcessMetrics } from '../../lib/commands';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -12,41 +23,93 @@ function fmtMs(ms: number) {
 }
 
 // pass < 150 MB · warn 150–300 MB · fail > 300 MB
-function ramStatus(mb: number): 'pass' | 'warn' | 'fail' {
+function ramStatus(mb: number): ProbeStatus {
   if (mb < 150) return 'pass';
   if (mb < 300) return 'warn';
   return 'fail';
 }
 
-const statusStyles = {
-  pass: 'bg-emerald-100 text-emerald-800',
-  warn: 'bg-amber-100 text-amber-800',
-  fail: 'bg-rose-100 text-rose-800',
-  idle: 'bg-neutral-100 text-neutral-600',
-};
+const useStyles = makeStyles({
+  body: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  statGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+    gap: '12px',
+  },
+  stat: {
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+    paddingTop: '8px',
+    paddingBottom: '8px',
+    paddingLeft: '12px',
+    paddingRight: '12px',
+  },
+  statLabel: {
+    color: tokens.colorNeutralForeground3,
+  },
+  statValue: {
+    marginTop: '2px',
+    fontFamily: tokens.fontFamilyMonospace,
+    fontSize: '14px',
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  sparkLabel: {
+    color: tokens.colorNeutralForeground3,
+    marginBottom: '4px',
+    display: 'block',
+  },
+  spark: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    gap: '1px',
+    height: '32px',
+  },
+  bar: {
+    flexGrow: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    borderRadius: '2px',
+    opacity: 0.85,
+  },
+  barPass: { backgroundColor: tokens.colorPaletteGreenBackground3 },
+  barWarn: { backgroundColor: tokens.colorPaletteYellowBackground3 },
+  barFail: { backgroundColor: tokens.colorPaletteRedBackground3 },
+  controls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+  },
+  error: {
+    color: tokens.colorPaletteRedForeground1,
+  },
+});
 
-// ── Sparkline ────────────────────────────────────────────────────────────────
+type Styles = ReturnType<typeof useStyles>;
 
-function Sparkline({ history }: { history: number[] }) {
+function Sparkline({ history, styles }: { history: number[]; styles: Styles }) {
   if (history.length < 2) return null;
   const max = Math.max(...history, 1);
   return (
-    <div className="flex h-8 items-end gap-px" title="Working set over time">
+    <div className={styles.spark} title="Working set over time">
       {history.map((mb, i) => {
         const pct = Math.max((mb / max) * 100, 4);
         const status = ramStatus(mb);
         const barColor =
           status === 'pass'
-            ? 'bg-emerald-400'
+            ? styles.barPass
             : status === 'warn'
-              ? 'bg-amber-400'
-              : 'bg-rose-400';
+              ? styles.barWarn
+              : styles.barFail;
         return (
           <div
             key={i}
-            className={`flex-1 rounded-sm opacity-80 ${barColor}`}
+            className={mergeClasses(styles.bar, barColor)}
             style={{ height: `${pct}%` }}
-            title={`${fmtMb(mb)}`}
+            title={fmtMb(mb)}
           />
         );
       })}
@@ -54,9 +117,25 @@ function Sparkline({ history }: { history: number[] }) {
   );
 }
 
-// ── MetricsCard ──────────────────────────────────────────────────────────────
+function Stat({
+  label,
+  value,
+  styles,
+}: {
+  label: string;
+  value: string;
+  styles: Styles;
+}) {
+  return (
+    <div className={styles.stat}>
+      <Caption1 className={styles.statLabel}>{label}</Caption1>
+      <div className={styles.statValue}>{value}</div>
+    </div>
+  );
+}
 
 export function MetricsCard() {
+  const styles = useStyles();
   const [metrics, setMetrics] = useState<ProcessMetrics | null>(null);
   const [error, setError] = useState<string>();
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -86,91 +165,68 @@ export function MetricsCard() {
     return () => clearInterval(id);
   }, [autoRefresh]);
 
-  const status = error
+  const status: ProbeStatus = error
     ? 'fail'
     : metrics
       ? ramStatus(metrics.workingSetMb)
       : 'idle';
 
   return (
-    <div className="border-line col-span-2 rounded-lg border bg-white/80 p-5 shadow-sm">
-      {/* Header */}
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-ink text-base font-semibold">Process metrics</h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Live RAM and startup time. Benchmark against the WinUI 3 baseline
-            before validating any other checklist item.
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[status]}`}
-        >
-          {status}
-        </span>
-      </div>
-
-      {error ? (
-        <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {error}
-        </p>
-      ) : metrics ? (
-        <>
-          {/* Stat grid */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Working set" value={fmtMb(metrics.workingSetMb)} />
-            <Stat label="Virtual mem" value={fmtMb(metrics.virtualMemoryMb)} />
-            <Stat
-              label="Startup elapsed"
-              value={fmtMs(metrics.startupElapsedMs)}
-            />
-            <Stat label="PID" value={String(metrics.pid)} />
-          </div>
-
-          {/* Sparkline */}
-          {history.length > 1 && (
-            <div className="mt-4">
-              <p className="mb-1 text-xs text-neutral-400">
-                Working set · last {history.length} samples
-              </p>
-              <Sparkline history={history} />
+    <FeatureCard
+      wide
+      title="Process metrics"
+      description="Live RAM and startup time. Benchmark against the WinUI 3 baseline before validating any other checklist item."
+      icon={<TopSpeedRegular />}
+      status={status}
+    >
+      <div className={styles.body}>
+        {error ? (
+          <Caption1 className={styles.error}>{error}</Caption1>
+        ) : metrics ? (
+          <>
+            <div className={styles.statGrid}>
+              <Stat
+                label="Working set"
+                value={fmtMb(metrics.workingSetMb)}
+                styles={styles}
+              />
+              <Stat
+                label="Virtual mem"
+                value={fmtMb(metrics.virtualMemoryMb)}
+                styles={styles}
+              />
+              <Stat
+                label="Startup elapsed"
+                value={fmtMs(metrics.startupElapsedMs)}
+                styles={styles}
+              />
+              <Stat label="PID" value={String(metrics.pid)} styles={styles} />
             </div>
-          )}
-        </>
-      ) : (
-        <p className="text-sm text-neutral-400">Fetching…</p>
-      )}
 
-      {/* Controls */}
-      <div className="mt-4 flex items-center gap-3">
-        <button
-          type="button"
-          className="border-line text-ink rounded-md border bg-white px-3 py-1.5 text-xs font-medium hover:bg-neutral-50"
-          onClick={() => void refresh()}
-        >
-          Refresh now
-        </button>
-        <label className="flex cursor-pointer items-center gap-2 text-xs text-neutral-500">
-          <input
-            type="checkbox"
-            className="accent-accent"
+            {history.length > 1 ? (
+              <div>
+                <Caption1 className={styles.sparkLabel}>
+                  Working set · last {history.length} samples
+                </Caption1>
+                <Sparkline history={history} styles={styles} />
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <Caption1 className={styles.statLabel}>Fetching…</Caption1>
+        )}
+
+        <div className={styles.controls}>
+          <Button size="small" onClick={() => void refresh()}>
+            Refresh now
+          </Button>
+          <Switch
             checked={autoRefresh}
-            onChange={(e) => setAutoRefresh(e.target.checked)}
+            onChange={(_, data) => setAutoRefresh(data.checked)}
+            label="Auto-refresh every 2 s"
           />
-          Auto-refresh every 2 s
-        </label>
+        </div>
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md bg-neutral-50 px-3 py-2">
-      <div className="text-xs text-neutral-400">{label}</div>
-      <div className="text-ink mt-0.5 font-mono text-sm font-semibold">
-        {value}
-      </div>
-    </div>
+    </FeatureCard>
   );
 }
