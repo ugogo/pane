@@ -3,6 +3,7 @@ pub mod audio;
 pub mod brightness;
 pub mod capture;
 pub mod capture_sound;
+pub mod companion;
 pub mod dx_light;
 pub mod dynamic_lighting;
 pub mod hotkeys;

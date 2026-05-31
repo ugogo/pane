@@ -3084,6 +3084,7 @@ dependencies = [
  "hidapi",
  "image",
  "once_cell",
+ "rand",
  "serde",
  "serde_json",
  "sysinfo",
