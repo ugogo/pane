@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { cn } from '../lib/utils';
 
 const MOD_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta']);
 
@@ -87,6 +88,7 @@ export interface ShortcutInputProps {
   onCommit: (accelerator: string) => void;
   onClear?: () => void;
   placeholder?: string;
+  ariaLabel?: string;
 }
 
 /**
@@ -99,6 +101,7 @@ export function ShortcutInput({
   onCommit,
   onClear,
   placeholder,
+  ariaLabel = 'Shortcut input',
 }: ShortcutInputProps) {
   const [capturing, setCapturing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -164,7 +167,7 @@ export function ShortcutInput({
     <button
       ref={ref}
       type="button"
-      aria-label="Shortcut input"
+      aria-label={ariaLabel}
       onFocus={() => {
         setCapturing(true);
         setDraft('');
@@ -175,13 +178,14 @@ export function ShortcutInput({
       }}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
-      className={`flex min-h-[2.25rem] w-full cursor-text items-center rounded-md border px-3 text-left font-mono text-sm transition outline-none ${
+      className={cn(
+        'focus-visible:ring-ring/50 flex min-h-8 w-full cursor-text items-center rounded-md border px-2.5 text-left font-mono text-sm transition outline-none focus-visible:ring-3',
         capturing
-          ? 'border-accent bg-accent/5 text-ink ring-accent/30 ring-2'
-          : 'border-line text-ink bg-white hover:border-neutral-300'
-      }`}
+          ? 'border-ring bg-muted text-foreground'
+          : 'border-input bg-background text-foreground hover:bg-muted',
+      )}
     >
-      <span className={value || capturing ? '' : 'text-neutral-400'}>
+      <span className={value || capturing ? '' : 'text-muted-foreground'}>
         {display}
       </span>
     </button>

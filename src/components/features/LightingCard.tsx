@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Cpu, Lightbulb, Monitor, Mouse } from 'lucide-react';
+import { Cpu, Monitor, Mouse } from 'lucide-react';
 import {
   applyDxLight,
   applyDynamicLighting,
@@ -14,16 +14,18 @@ import {
   type DynamicLightingDevice,
   type LightState,
 } from '../../lib/commands';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { StatusBadge, StatusText } from './status-ui';
 
 type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail' | 'disabled';
-
-const statusStyles: Record<ProbeStatus, string> = {
-  idle: 'bg-neutral-100 text-neutral-600',
-  pass: 'bg-emerald-100 text-emerald-800',
-  warn: 'bg-amber-100 text-amber-800',
-  fail: 'bg-rose-100 text-rose-800',
-  disabled: 'bg-neutral-200 text-neutral-600',
-};
 
 // A "light" is anything we can paint a color onto. We normalize all three
 // sources (Windows Dynamic Lighting devices, MSI Mystic Light, DX Light) into
@@ -191,24 +193,18 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
   }
 
   return (
-    <div className="border-line rounded-md border p-3">
+    <div className="rounded-lg border p-3">
       <div className="flex items-start gap-3">
-        <div className="border-line mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border bg-neutral-50 text-neutral-600">
+        <div className="bg-muted text-muted-foreground mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border">
           <LightIcon light={light} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-ink truncate text-sm font-medium">
-            {lightTitle(light)}
-          </p>
-          <p className="truncate text-xs text-neutral-500">
+          <p className="truncate text-sm font-medium">{lightTitle(light)}</p>
+          <p className="text-muted-foreground truncate text-xs">
             {lightSubtitle(light)}
           </p>
         </div>
-        <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${statusStyles[visibleStatus]}`}
-        >
-          {visibleStatus}
-        </span>
+        <StatusBadge status={visibleStatus} />
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-[auto_1fr_auto_auto]">
@@ -216,13 +212,13 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
           type="color"
           aria-label={`Color for ${lightTitle(light)}`}
           disabled={disabled}
-          className="border-line h-9 w-12 rounded-md border bg-white p-1 disabled:cursor-not-allowed disabled:opacity-50"
+          className="bg-background h-9 w-12 rounded-md border p-1 disabled:cursor-not-allowed disabled:opacity-50"
           value={color}
           onChange={(e) => setColor(e.target.value)}
         />
 
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-semibold text-neutral-600">
+          <span className="text-muted-foreground text-xs">
             Brightness {Math.round(brightness * 100)}%
           </span>
           <input
@@ -237,36 +233,33 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
           />
         </label>
 
-        <button
-          type="button"
+        <Button
           disabled={busy || disabled}
-          className="border-line text-ink h-9 rounded-md border bg-white px-3 text-xs font-semibold hover:bg-neutral-50 disabled:opacity-50"
+          size="sm"
           onClick={() => void apply()}
         >
           Apply
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
           disabled={busy || disabled}
-          className="border-line h-9 rounded-md border bg-white px-3 text-xs font-semibold text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+          size="sm"
+          variant="ghost"
           onClick={() => void turnOff()}
         >
           Off
-        </button>
+        </Button>
       </div>
 
       {disabledReason && (
-        <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="bg-muted text-muted-foreground mt-3 rounded-lg border px-3 py-2 text-xs">
           {disabledReason}
         </p>
       )}
 
       {result.message && (
-        <p
-          className={`mt-2 text-[11px] ${result.status === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
-        >
+        <StatusText className="mt-2 text-xs" status={result.status}>
           {result.message}
-        </p>
+        </StatusText>
       )}
     </div>
   );
@@ -278,7 +271,7 @@ interface Scan {
   disabledReason: string;
 }
 
-export function LightingCard() {
+export function LightingCard({ className }: { className?: string }) {
   const [lights, setLights] = useState<Light[]>([]);
   const [savedStates, setSavedStates] = useState<Record<string, LightState>>(
     {},
@@ -394,66 +387,51 @@ export function LightingCard() {
   const keyedLights = lights.map((l) => ({ key: lightKey(l), light: l }));
 
   return (
-    <div className="border-line col-span-2 rounded-lg border bg-white/80 p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-ink flex items-center gap-2 text-base font-semibold">
-            <Lightbulb size={16} className="text-accent" aria-hidden />
-            Lights
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Per-device color and brightness for Windows Dynamic Lighting, MSI
-            Mystic Light, and the DX Light monitor bias strip.
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[scan.status]}`}
-        >
-          {scan.status}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          className="border-line rounded-md border bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
-          onClick={() => {
-            beginRefresh();
-            void refresh();
-          }}
-        >
-          Refresh
-        </button>
-        <button
-          type="button"
-          disabled={busy || keyedLights.length === 0}
-          className="border-line rounded-md border bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
-          onClick={() => void restore()}
-          title="Re-apply the last saved color/brightness to every light"
-        >
-          Restore
-        </button>
-        {scan.message && (
-          <p
-            className={`text-xs ${scan.status === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle>Lights</CardTitle>
+        <CardDescription>Supported lighting hardware.</CardDescription>
+        <CardAction>
+          <StatusBadge status={scan.status} />
+        </CardAction>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Button
+            disabled={busy}
+            size="sm"
+            onClick={() => {
+              beginRefresh();
+              void refresh();
+            }}
           >
-            {scan.message}
-          </p>
+            Refresh
+          </Button>
+          <Button
+            disabled={busy || keyedLights.length === 0}
+            size="sm"
+            variant="ghost"
+            onClick={() => void restore()}
+          >
+            Restore
+          </Button>
+        </div>
+        {scan.message && (
+          <StatusText status={scan.status}>{scan.message}</StatusText>
         )}
-      </div>
-      <div className="mt-4 grid gap-3">
-        {keyedLights.map(({ key, light }) => (
-          <LightRow
-            key={key}
-            light={light}
-            initialState={savedStates[key]}
-            disabledReason={
-              light.kind === 'dynamic' ? scan.disabledReason : undefined
-            }
-          />
-        ))}
-      </div>
-    </div>
+        <div className="grid gap-3">
+          {keyedLights.map(({ key, light }) => (
+            <LightRow
+              key={key}
+              light={light}
+              initialState={savedStates[key]}
+              disabledReason={
+                light.kind === 'dynamic' ? scan.disabledReason : undefined
+              }
+            />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

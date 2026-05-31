@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability",
+  "identifier": "accent-popup",
+  "description": "Accent picker popup. Baseline core/window/event access only — no updater, process restart, global shortcuts, or window-state persistence.",
+  "windows": ["accent-popup"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-close",
+    "core:window:allow-hide",
+    "core:webview:default",
+    "core:event:default"
+  ]
+}

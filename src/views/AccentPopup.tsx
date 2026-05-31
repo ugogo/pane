@@ -18,8 +18,7 @@ export function AccentPopup() {
   const [selected, setSelected] = useState(0);
 
   useEffect(() => {
-    // The global stylesheet paints #root opaque (#f5f5f4); clear it (and its
-    // ancestors) so this overlay window is genuinely transparent.
+    // Clear inherited app backgrounds so this overlay window is transparent.
     document.documentElement.style.background = 'transparent';
     document.body.style.background = 'transparent';
     const root = document.getElementById('root');
@@ -51,22 +50,24 @@ export function AccentPopup() {
   if (accents.length === 0) return null;
 
   return (
-    <div className="fixed inset-0 flex gap-1 bg-slate-800 p-1.5 shadow-2xl ring-1 ring-white/10">
+    <div className="bg-foreground fixed inset-0 flex gap-1 rounded-lg border border-white/10 p-1.5 shadow-lg">
       {accents.map((ch, i) => (
         <button
           key={ch}
           type="button"
+          aria-label={`Select ${ch}, shortcut ${i + 1}`}
+          aria-current={i === selected ? 'true' : undefined}
           onClick={() => void accentSelect(ch)}
           className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md transition-colors ${
             i === selected
-              ? 'bg-slate-600 text-white'
-              : 'text-slate-100 hover:bg-slate-700'
+              ? 'bg-background text-foreground'
+              : 'text-background/90 hover:bg-white/10'
           }`}
         >
           <span className="text-lg leading-none">{ch}</span>
           <span
             className={`text-[9px] leading-none ${
-              i === selected ? 'text-slate-300' : 'text-slate-500'
+              i === selected ? 'text-foreground/75' : 'text-background/40'
             }`}
           >
             {i + 1}

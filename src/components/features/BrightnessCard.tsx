@@ -16,6 +16,21 @@ import {
   type MonitorInfo,
   type MonitorPreset,
 } from '../../lib/commands';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { StatusBadge, StatusText } from './status-ui';
 
 type ScanStatus = 'idle' | 'pass' | 'warn' | 'fail';
 
@@ -23,13 +38,6 @@ interface Scan {
   status: ScanStatus;
   message: string;
 }
-
-const statusStyles: Record<ScanStatus, string> = {
-  idle: 'bg-neutral-100 text-neutral-600',
-  pass: 'bg-emerald-100 text-emerald-800',
-  warn: 'bg-amber-100 text-amber-800',
-  fail: 'bg-rose-100 text-rose-800',
-};
 
 // DDC/CI writes are slow (tens of ms over I2C), so we only push to the monitor
 // after the slider settles rather than on every pixel of drag.
@@ -82,7 +90,7 @@ function gainsToWarmth(m: MonitorInfo) {
   return Math.round(d * 100);
 }
 
-export function BrightnessCard() {
+export function BrightnessCard({ className }: { className?: string }) {
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
   const [presets, setPresets] = useState<MonitorPreset[]>([]);
   const [scan, setScan] = useState<Scan>({ status: 'idle', message: '' });
@@ -272,58 +280,45 @@ export function BrightnessCard() {
   }
 
   return (
-    <div className="border-line col-span-2 rounded-lg border bg-white/80 p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-ink flex items-center gap-2 text-base font-semibold">
-            <Sun size={16} className="text-accent" aria-hidden />
-            Display
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Per-monitor brightness, contrast and warmth over DDC/CI. The
-            Keychron brightness keys drive the sliders too.
-          </p>
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle>Display</CardTitle>
+        <CardDescription>Monitor brightness and presets.</CardDescription>
+        <CardAction>
+          <StatusBadge status={scan.status} />
+        </CardAction>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <PresetBar
+          presets={presets}
+          busy={busy}
+          hasMonitors={monitors.length > 0}
+          onRefresh={() => {
+            beginLoad();
+            void load(true);
+          }}
+          onApply={(name) => void onApplyPreset(name)}
+          onUpdate={(name) => void onUpdatePreset(name)}
+          onDelete={(name) => void onDeletePreset(name)}
+          onSave={() => void onSavePreset()}
+        />
+
+        {scan.message && (
+          <StatusText status={scan.status}>{scan.message}</StatusText>
+        )}
+
+        <div className="grid gap-3">
+          {monitors.map((m) => (
+            <MonitorRow
+              key={m.id}
+              monitor={m}
+              onSlide={onSlide}
+              onWarmth={onWarmth}
+            />
+          ))}
         </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[scan.status]}`}
-        >
-          {scan.status}
-        </span>
-      </div>
-
-      <PresetBar
-        presets={presets}
-        busy={busy}
-        hasMonitors={monitors.length > 0}
-        onRefresh={() => {
-          beginLoad();
-          void load(true);
-        }}
-        onApply={(name) => void onApplyPreset(name)}
-        onUpdate={(name) => void onUpdatePreset(name)}
-        onDelete={(name) => void onDeletePreset(name)}
-        onSave={() => void onSavePreset()}
-      />
-
-      {scan.message && (
-        <p
-          className={`mt-2 text-xs ${scan.status === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
-        >
-          {scan.message}
-        </p>
-      )}
-
-      <div className="mt-4 grid gap-3">
-        {monitors.map((m) => (
-          <MonitorRow
-            key={m.id}
-            monitor={m}
-            onSlide={onSlide}
-            onWarmth={onWarmth}
-          />
-        ))}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -348,62 +343,74 @@ function PresetBar({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
+      <Button
         disabled={busy}
-        className="border-line rounded-md border bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+        size="sm"
         onClick={onRefresh}
         title="Re-enumerate monitors (after plugging/unplugging)"
       >
         Refresh
-      </button>
+      </Button>
 
       {presets.map((p) => (
         <span
           key={p.name}
-          className="border-line inline-flex items-center overflow-hidden rounded-md border"
+          className="inline-flex items-center overflow-hidden rounded-lg border"
         >
           <button
             type="button"
             disabled={busy}
-            className="bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+            className="hover:bg-muted px-2.5 py-1 text-xs font-medium transition disabled:opacity-50"
             onClick={() => onApply(p.name)}
             title={`Apply — brightness ${p.brightnessPct}%, contrast ${p.contrastPct}%, white balance R${p.redGainPct}/G${p.greenGainPct}/B${p.blueGainPct}`}
           >
             {p.name}
           </button>
-          <button
-            type="button"
-            disabled={busy || !hasMonitors}
-            className="border-line border-l bg-white px-1.5 py-1 text-neutral-400 hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-50"
-            onClick={() => onUpdate(p.name)}
-            aria-label={`Update preset ${p.name} to current settings`}
-            title={`Update "${p.name}" to current settings`}
-          >
-            <RotateCcw size={12} aria-hidden />
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            className="border-line border-l bg-white px-1.5 py-1 text-rose-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
-            onClick={() => onDelete(p.name)}
-            aria-label={`Delete preset ${p.name}`}
-            title={`Delete "${p.name}"`}
-          >
-            <Trash2 size={12} aria-hidden />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  disabled={busy || !hasMonitors}
+                  className="text-muted-foreground hover:bg-muted hover:text-foreground border-l px-1.5 py-1 transition disabled:opacity-50"
+                  onClick={() => onUpdate(p.name)}
+                  aria-label={`Update preset ${p.name} to current settings`}
+                >
+                  <RotateCcw size={12} aria-hidden />
+                </button>
+              }
+            />
+            <TooltipContent>Update "{p.name}"</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="text-muted-foreground hover:bg-muted hover:text-destructive border-l px-1.5 py-1 transition disabled:opacity-50"
+                  onClick={() => onDelete(p.name)}
+                  aria-label={`Delete preset ${p.name}`}
+                >
+                  <Trash2 size={12} aria-hidden />
+                </button>
+              }
+            />
+            <TooltipContent>Delete "{p.name}"</TooltipContent>
+          </Tooltip>
         </span>
       ))}
 
-      <button
-        type="button"
+      <Button
         disabled={busy || !hasMonitors}
-        className="border-line rounded-md border border-dashed bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+        size="sm"
+        variant="ghost"
+        className="border border-dashed"
         onClick={onSave}
         title="Save the current settings as a new preset"
       >
         + Save preset
-      </button>
+      </Button>
     </div>
   );
 }
@@ -419,14 +426,18 @@ function MonitorRow({
 }) {
   const name = m.name || `Monitor ${m.id}`;
   return (
-    <div className="border-line rounded-md border p-3">
-      <p className="text-ink truncate text-sm font-medium">{name}</p>
+    <div className="rounded-lg border p-3">
+      <p className="truncate text-sm font-medium">{name}</p>
 
       {sliderMeta.map(({ key, icon: Icon, label }) => {
         const f = m[key];
         return (
           <div key={key} className="mt-2 flex items-center gap-3">
-            <Icon size={14} className="shrink-0 text-neutral-400" aria-hidden />
+            <Icon
+              size={14}
+              className="text-muted-foreground shrink-0"
+              aria-hidden
+            />
             {f.supported ? (
               <>
                 <input
@@ -439,12 +450,12 @@ function MonitorRow({
                   aria-label={`${label} for ${name}`}
                   className="w-full"
                 />
-                <span className="w-10 shrink-0 text-right text-xs font-semibold text-neutral-500">
+                <span className="text-muted-foreground w-10 shrink-0 text-right text-xs">
                   {pct(f.value, f.max)}%
                 </span>
               </>
             ) : (
-              <span className="flex-1 text-xs text-neutral-400 italic">
+              <span className="text-muted-foreground flex-1 text-xs">
                 {label} not supported by this monitor
               </span>
             )}
@@ -454,7 +465,11 @@ function MonitorRow({
 
       {m.redGain.supported && m.greenGain.supported && m.blueGain.supported && (
         <div className="mt-2 flex items-center gap-3">
-          <Sunset size={14} className="shrink-0 text-neutral-400" aria-hidden />
+          <Sunset
+            size={14}
+            className="text-muted-foreground shrink-0"
+            aria-hidden
+          />
           <input
             type="range"
             min={0}
@@ -466,7 +481,7 @@ function MonitorRow({
             title="Default (left) → warmer (right)"
             className="w-full"
           />
-          <span className="w-20 shrink-0 text-right text-xs font-semibold text-neutral-500">
+          <span className="text-muted-foreground w-20 shrink-0 text-right text-xs">
             {gainsToWarmth(m) === 0 ? 'Default' : `Warm ${gainsToWarmth(m)}%`}
           </span>
         </div>
@@ -477,7 +492,7 @@ function MonitorRow({
         !m.redGain.supported &&
         !m.greenGain.supported &&
         !m.blueGain.supported && (
-          <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <p className="bg-muted text-muted-foreground mt-2 rounded-lg border px-3 py-2 text-xs">
             DDC/CI unavailable. Enable DDC/CI in this monitor's on-screen menu.
           </p>
         )}

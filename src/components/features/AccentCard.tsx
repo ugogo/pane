@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
+import { getAccentPopupEnabled, setAccentPopupEnabled } from '@/lib/commands';
 import {
-  getAccentPopupEnabled,
-  setAccentPopupEnabled,
-} from '../../lib/commands';
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { StatusBadge, StatusText } from './status-ui';
 
-type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
+type ProbeStatus = 'idle' | 'pass' | 'fail';
 
-const statusStyles: Record<ProbeStatus, string> = {
-  idle: 'bg-neutral-100 text-neutral-600',
-  pass: 'bg-emerald-100 text-emerald-800',
-  warn: 'bg-amber-100 text-amber-800',
-  fail: 'bg-rose-100 text-rose-800',
-};
-
-export function AccentCard() {
+export function AccentCard({ className }: { className?: string }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [error, setError] = useState<string>();
 
@@ -42,43 +42,31 @@ export function AccentCard() {
       : 'pass';
 
   return (
-    <div className="border-line rounded-lg border bg-white/80 p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-ink text-base font-semibold">Accent popup</h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Hold a letter (a, e, c, …) to pick an accented variant: à â é ç ô …
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[status]}`}
-        >
-          {status}
-        </span>
-      </div>
-
-      <div className="border-line rounded-md border p-3">
-        <div className="flex items-center justify-between gap-4">
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle>Accent popup</CardTitle>
+        <CardDescription>Long-press letters for accents.</CardDescription>
+        <CardAction>
+          <StatusBadge status={status} />
+        </CardAction>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
           <div>
-            <p className="text-ink text-sm font-medium">
-              Enable long-press accents
-            </p>
-            <p className="text-xs text-neutral-500">
-              Works in text fields, Chromium/Electron apps, and terminals. Pick
-              a variant with a click or its number key; Esc dismisses.
+            <p className="text-sm font-medium">Enabled</p>
+            <p className="text-muted-foreground text-sm">
+              Choose variants with click, number keys, or Esc to dismiss.
             </p>
           </div>
-          <input
-            type="checkbox"
+          <Switch
             aria-label="Enable long-press accents"
-            className="accent-accent size-5"
             disabled={enabled === null}
             checked={enabled ?? false}
-            onChange={(e) => void handleToggle(e.target.checked)}
+            onCheckedChange={(checked) => void handleToggle(checked)}
           />
         </div>
-        {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
-      </div>
-    </div>
+        {error && <StatusText status="fail">{error}</StatusText>}
+      </CardContent>
+    </Card>
   );
 }

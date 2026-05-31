@@ -15,15 +15,23 @@ import {
   type AudioDevice,
   type VolumeInfo,
 } from '../../lib/commands';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { StatusBadge, StatusText } from './status-ui';
 
 type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
-
-const statusStyles: Record<ProbeStatus, string> = {
-  idle: 'bg-neutral-100 text-neutral-600',
-  pass: 'bg-emerald-100 text-emerald-800',
-  warn: 'bg-amber-100 text-amber-800',
-  fail: 'bg-rose-100 text-rose-800',
-};
 
 // Avoid flooding the endpoint with a write on every pixel of slider drag.
 const WRITE_DEBOUNCE_MS = 100;
@@ -162,7 +170,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-export function SoundCard() {
+export function SoundCard({ className }: { className?: string }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { devices, volumes, status, message, busy } = state;
   const [favorites, setFavorites] = useState<Record<Kind, Set<string>>>(() => ({
@@ -286,75 +294,56 @@ export function SoundCard() {
   }
 
   return (
-    <div className="border-line col-span-2 rounded-lg border bg-white/80 p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-ink flex items-center gap-2 text-base font-semibold">
-            <Volume2 size={16} className="text-accent" aria-hidden />
-            Sound
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-500">
-            System volume, mute, and default output/input device for the
-            speakers and microphone.
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[status]}`}
-        >
-          {status}
-        </span>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle>Sound</CardTitle>
+        <CardDescription>Default devices and volume.</CardDescription>
+        <CardAction>
+          <StatusBadge status={status} />
+        </CardAction>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Button
           disabled={busy}
-          className="border-line rounded-md border bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+          size="sm"
           onClick={() => {
             dispatch({ type: 'beginLoad' });
             void load();
           }}
-          title="Re-enumerate audio devices"
         >
           Refresh
-        </button>
-      </div>
+        </Button>
 
-      {message && (
-        <p
-          className={`mt-2 text-xs ${status === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
-        >
-          {message}
-        </p>
-      )}
+        {message && <StatusText status={status}>{message}</StatusText>}
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Section
-          kind="output"
-          label="Output"
-          devices={devices.output}
-          vol={volumes.output}
-          busy={busy}
-          favs={favorites.output}
-          onSelect={onSelectDevice}
-          onToggleMute={onToggleMute}
-          onVolume={onVolume}
-          onToggleFavorite={toggleFavorite}
-        />
-        <Section
-          kind="input"
-          label="Input"
-          devices={devices.input}
-          vol={volumes.input}
-          busy={busy}
-          favs={favorites.input}
-          onSelect={onSelectDevice}
-          onToggleMute={onToggleMute}
-          onVolume={onVolume}
-          onToggleFavorite={toggleFavorite}
-        />
-      </div>
-    </div>
+        <div className="grid gap-3">
+          <Section
+            kind="output"
+            label="Output"
+            devices={devices.output}
+            vol={volumes.output}
+            busy={busy}
+            favs={favorites.output}
+            onSelect={onSelectDevice}
+            onToggleMute={onToggleMute}
+            onVolume={onVolume}
+            onToggleFavorite={toggleFavorite}
+          />
+          <Section
+            kind="input"
+            label="Input"
+            devices={devices.input}
+            vol={volumes.input}
+            busy={busy}
+            favs={favorites.input}
+            onSelect={onSelectDevice}
+            onToggleMute={onToggleMute}
+            onVolume={onVolume}
+            onToggleFavorite={toggleFavorite}
+          />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -386,20 +375,20 @@ function Section({
   const muted = vol?.muted ?? false;
   const ordered = orderDevices(devices, favs);
   return (
-    <div className="border-line rounded-md border p-3">
-      <p className="text-ink text-sm font-medium">{label}</p>
+    <div className="rounded-lg border p-3">
+      <p className="text-sm font-medium">{label}</p>
 
       {ordered.length === 0 ? (
-        <p className="mt-2 text-xs text-neutral-400 italic">No devices.</p>
+        <p className="text-muted-foreground mt-2 text-xs">No devices.</p>
       ) : (
-        <ul className="divide-line border-line mt-2 max-h-40 divide-y overflow-y-auto rounded-md border">
+        <ul className="mt-2 max-h-40 divide-y overflow-y-auto rounded-lg border">
           {ordered.map((d) => {
             const isFav = favs.has(d.id);
             return (
               <li
                 key={d.id}
-                className={`flex items-center gap-2 px-2 py-1.5 ${
-                  d.isDefault ? 'bg-accent/10' : ''
+                className={`flex items-center gap-2 px-2 py-1.5 transition-colors ${
+                  d.isDefault ? 'bg-muted' : ''
                 }`}
               >
                 <button
@@ -421,29 +410,41 @@ function Section({
                   />
                   <span
                     className={`truncate text-sm ${
-                      d.isDefault ? 'text-ink font-medium' : 'text-neutral-600'
+                      d.isDefault
+                        ? 'text-foreground font-medium'
+                        : 'text-muted-foreground'
                     }`}
                   >
                     {d.name}
                   </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onToggleFavorite(kind, d.id)}
-                  aria-label={
-                    isFav ? `Unfavorite ${d.name}` : `Favorite ${d.name}`
-                  }
-                  aria-pressed={isFav}
-                  title={isFav ? 'Unfavorite' : 'Favorite'}
-                  className="shrink-0 rounded p-1 hover:bg-neutral-100"
-                >
-                  <Star
-                    size={13}
-                    aria-hidden
-                    fill={isFav ? 'currentColor' : 'none'}
-                    className={isFav ? 'text-amber-500' : 'text-neutral-300'}
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        onClick={() => onToggleFavorite(kind, d.id)}
+                        aria-label={
+                          isFav ? `Unfavorite ${d.name}` : `Favorite ${d.name}`
+                        }
+                        aria-pressed={isFav}
+                        className="hover:bg-muted shrink-0 rounded p-1 transition"
+                      >
+                        <Star
+                          size={13}
+                          aria-hidden
+                          fill={isFav ? 'currentColor' : 'none'}
+                          className={
+                            isFav ? 'text-foreground' : 'text-muted-foreground'
+                          }
+                        />
+                      </button>
+                    }
                   />
-                </button>
+                  <TooltipContent>
+                    {isFav ? 'Unfavorite' : 'Favorite'}
+                  </TooltipContent>
+                </Tooltip>
               </li>
             );
           })}
@@ -461,8 +462,8 @@ function Section({
                 : `Mute ${label.toLowerCase()}`
             }
             title={muted ? 'Unmute' : 'Mute'}
-            className={`border-line shrink-0 rounded-md border p-1.5 hover:bg-neutral-50 ${
-              muted ? 'text-rose-600' : 'text-neutral-500'
+            className={`hover:bg-muted shrink-0 rounded-md border p-1.5 transition ${
+              muted ? 'text-destructive' : 'text-muted-foreground'
             }`}
           >
             {kind === 'output' ? (
@@ -487,12 +488,12 @@ function Section({
             aria-label={`${label} volume`}
             className="w-full"
           />
-          <span className="w-10 shrink-0 text-right text-xs font-semibold text-neutral-500">
+          <span className="text-muted-foreground w-10 shrink-0 text-right text-xs">
             {muted ? 'Muted' : `${vpct(vol.volume)}%`}
           </span>
         </div>
       ) : (
-        <p className="mt-2 text-xs text-neutral-400 italic">
+        <p className="text-muted-foreground mt-2 text-xs">
           No volume control available.
         </p>
       )}

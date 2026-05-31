@@ -1,4 +1,5 @@
 import { useEffect, useReducer } from 'react';
+import { Eye } from 'lucide-react';
 import {
   captureFullscreen,
   clearCaptureHotkey,
@@ -10,21 +11,25 @@ import {
   type CaptureAction,
 } from '../../lib/commands';
 import { ShortcutInput } from '../ShortcutInput';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { StatusBadge, StatusText } from './status-ui';
 
 type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
-
-const statusStyles: Record<ProbeStatus, string> = {
-  idle: 'bg-neutral-100 text-neutral-600',
-  pass: 'bg-emerald-100 text-emerald-800',
-  warn: 'bg-amber-100 text-amber-800',
-  fail: 'bg-rose-100 text-rose-800',
-};
 
 interface State {
   hotkeys: { fullscreen: string; area: string };
   status: ProbeStatus;
   message: string;
   busy: boolean;
+  previewVisible: boolean | null;
 }
 
 type Action =
@@ -32,6 +37,7 @@ type Action =
   | { type: 'bound'; action: CaptureAction; accel: string }
   | { type: 'cleared'; action: CaptureAction }
   | { type: 'busy'; busy: boolean }
+  | { type: 'previewToggled'; visible: boolean }
   | { type: 'notify'; status: ProbeStatus; message: string };
 
 const initialState: State = {
@@ -39,6 +45,12 @@ const initialState: State = {
   status: 'idle',
   message: '',
   busy: false,
+  previewVisible: null,
+};
+
+const actionLabels: Record<CaptureAction, string> = {
+  fullscreen: 'full screen',
+  area: 'area',
 };
 
 function reducer(state: State, action: Action): State {
@@ -50,17 +62,26 @@ function reducer(state: State, action: Action): State {
         ...state,
         hotkeys: { ...state.hotkeys, [action.action]: action.accel },
         status: 'pass',
-        message: `Bound ${action.action} → ${action.accel}`,
+        message: `${actionLabels[action.action]} shortcut saved.`,
       };
     case 'cleared':
       return {
         ...state,
         hotkeys: { ...state.hotkeys, [action.action]: '' },
         status: 'idle',
-        message: `Cleared ${action.action} hotkey.`,
+        message: `${actionLabels[action.action]} shortcut cleared.`,
       };
     case 'busy':
       return { ...state, busy: action.busy };
+    case 'previewToggled':
+      return {
+        ...state,
+        previewVisible: action.visible,
+        status: 'pass',
+        message: action.visible
+          ? 'Floating preview is visible.'
+          : 'Floating preview is hidden.',
+      };
     case 'notify':
       return { ...state, status: action.status, message: action.message };
   }
@@ -85,9 +106,9 @@ async function runArea(): Promise<string | null> {
   }
 }
 
-export function CaptureCard() {
+export function CaptureCard({ className }: { className?: string }) {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { hotkeys, status, message, busy } = state;
+  const { hotkeys, status, message, busy, previewVisible } = state;
 
   useEffect(() => {
     void getCaptureHotkeys()
@@ -135,78 +156,78 @@ export function CaptureCard() {
       dispatch({
         type: 'notify',
         status: 'pass',
-        message: `Triggered ${action}.`,
+        message:
+          action === 'fullscreen'
+            ? 'Captured the full screen.'
+            : 'Area selection is ready.',
       });
     }
   }
 
+  const previewLabel = previewVisible
+    ? 'Hide floating preview'
+    : 'Show floating preview';
+
   return (
-    <div className="border-line col-span-2 rounded-lg border bg-white/80 p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-ink text-base font-semibold">Screen capture</h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-500">
-            Fullscreen and area capture, triggerable via global hotkeys. The
-            area selector overlay is centred at half monitor width and half
-            height minus 50px.
-          </p>
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle>Capture</CardTitle>
+        <CardDescription>
+          Fullscreen and area capture with global shortcuts.
+        </CardDescription>
+        <CardAction>
+          <StatusBadge status={status} />
+        </CardAction>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Row
+            label="Fullscreen capture"
+            actionLabel="Capture full screen"
+            shortcutLabel="Fullscreen capture shortcut"
+            hotkey={hotkeys.fullscreen}
+            onCommit={(a) => void bind('fullscreen', a)}
+            onClear={() => void clear('fullscreen')}
+            onTrigger={() => void trigger('fullscreen')}
+            busy={busy}
+          />
+          <Row
+            label="Area capture"
+            actionLabel="Select area"
+            shortcutLabel="Area capture shortcut"
+            hotkey={hotkeys.area}
+            onCommit={(a) => void bind('area', a)}
+            onClear={() => void clear('area')}
+            onTrigger={() => void trigger('area')}
+            busy={busy}
+          />
         </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[status]}`}
-        >
-          {status}
-        </span>
-      </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Row
-          label="Fullscreen capture"
-          hotkey={hotkeys.fullscreen}
-          onCommit={(a) => void bind('fullscreen', a)}
-          onClear={() => void clear('fullscreen')}
-          onTrigger={() => void trigger('fullscreen')}
-          busy={busy}
-        />
-        <Row
-          label="Area capture"
-          hotkey={hotkeys.area}
-          onCommit={(a) => void bind('area', a)}
-          onClear={() => void clear('area')}
-          onTrigger={() => void trigger('area')}
-          busy={busy}
-        />
-      </div>
-
-      <div className="mt-3 flex items-center gap-2">
-        <button
-          type="button"
-          className="border-line rounded-md border bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50"
-          onClick={() => {
-            void toggleCapturePreview().then((visible) => {
-              dispatch({
-                type: 'notify',
-                status: 'idle',
-                message: visible ? 'Preview shown.' : 'Preview hidden.',
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button
+            size="sm"
+            variant="secondary"
+            aria-pressed={previewVisible ?? undefined}
+            onClick={() => {
+              void toggleCapturePreview().then((visible) => {
+                dispatch({ type: 'previewToggled', visible });
               });
-            });
-          }}
-        >
-          Toggle preview
-        </button>
-        {message && (
-          <p
-            className={`text-xs ${status === 'fail' ? 'text-rose-600' : 'text-neutral-500'}`}
+            }}
           >
-            {message}
-          </p>
-        )}
-      </div>
-    </div>
+            <Eye aria-hidden="true" className="size-3.5" />
+            {previewLabel}
+          </Button>
+          {message && <StatusText status={status}>{message}</StatusText>}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
 function Row({
   label,
+  actionLabel,
+  shortcutLabel,
   hotkey,
   onCommit,
   onClear,
@@ -214,6 +235,8 @@ function Row({
   busy,
 }: {
   label: string;
+  actionLabel: string;
+  shortcutLabel: string;
   hotkey: string;
   onCommit: (a: string) => void;
   onClear: () => void;
@@ -221,24 +244,28 @@ function Row({
   busy: boolean;
 }) {
   return (
-    <div className="border-line rounded-md border p-3">
-      <p className="text-ink text-sm font-medium">{label}</p>
-      <div className="mt-2">
+    <div className="space-y-3 rounded-lg border p-3">
+      <div className="space-y-2">
+        <p className="text-sm font-medium">{label}</p>
+        <Button
+          disabled={busy}
+          className="w-full"
+          size="sm"
+          onClick={onTrigger}
+        >
+          {actionLabel}
+        </Button>
+      </div>
+      <div className="space-y-1">
+        <p className="text-muted-foreground text-xs">Shortcut</p>
         <ShortcutInput
           value={hotkey}
           onCommit={onCommit}
           onClear={onClear}
+          ariaLabel={shortcutLabel}
           placeholder="Click and press a chord"
         />
       </div>
-      <button
-        type="button"
-        disabled={busy}
-        className="border-line text-ink mt-2 rounded-md border bg-white px-3 py-1.5 text-xs font-medium hover:bg-neutral-50 disabled:opacity-50"
-        onClick={onTrigger}
-      >
-        Trigger now
-      </button>
     </div>
   );
 }

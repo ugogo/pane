@@ -83,6 +83,8 @@ export function AreaSelector() {
   }
 
   const rect = drag ? rectFrom(drag.start, drag.end) : null;
+  const sizeLabelInside = rect ? rect.y < 28 : false;
+  const helperAtBottom = rect ? rect.y < 52 : false;
 
   return (
     <div
@@ -112,33 +114,42 @@ export function AreaSelector() {
       {!rect && (
         <div
           className="pointer-events-none fixed inset-0"
-          style={{ background: 'rgba(2, 6, 23, 0.65)' }}
+          style={{ background: 'rgba(24, 23, 19, 0.58)' }}
         />
       )}
 
       {rect && (
         <div
-          className="pointer-events-none absolute border-2 border-sky-300"
+          className="border-primary pointer-events-none absolute border"
           style={{
             left: rect.x,
             top: rect.y,
             width: rect.w,
             height: rect.h,
-            boxShadow: '0 0 0 100vmax rgba(2, 6, 23, 0.65)',
+            boxShadow:
+              '0 0 0 100vmax rgba(24, 23, 19, 0.58), 0 0 0 1px rgba(255, 254, 250, 0.55)',
           }}
         >
-          <span className="absolute -top-5 left-0 rounded bg-sky-500 px-1.5 py-0.5 font-mono text-[10px] text-white">
+          <span
+            className={`bg-foreground/85 text-background absolute left-0 rounded-md border border-white/10 px-1.5 py-0.5 font-mono text-[10px] shadow-lg ${
+              sizeLabelInside ? 'top-1.5' : '-top-6'
+            }`}
+          >
             {Math.round(rect.w)} x {Math.round(rect.h)}
           </span>
         </div>
       )}
 
-      <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-md bg-black/60 px-3 py-1 text-xs font-medium text-white">
+      <div
+        className={`bg-foreground/75 text-background pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-md border border-white/10 px-3 py-1.5 text-xs font-medium shadow-lg ${
+          helperAtBottom ? 'bottom-3' : 'top-3'
+        }`}
+      >
         Drag to select - Esc to cancel
       </div>
 
       {error && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-md bg-rose-600 px-3 py-1 text-xs text-white">
+        <div className="bg-destructive absolute bottom-3 left-1/2 -translate-x-1/2 rounded-md border border-white/10 px-3 py-1.5 text-xs text-white shadow-lg">
           {error}
         </div>
       )}
