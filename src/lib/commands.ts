@@ -1,5 +1,26 @@
 import { invoke } from '@tauri-apps/api/core';
 
+// Wire types shared with the phone companion live in @pane/protocol (the single
+// source of truth mirrored from the Rust serde structs). The Tauri `invoke`
+// result types below that aren't part of the companion HTTP contract stay local.
+import type {
+  AudioDevice,
+  Feature,
+  LightState,
+  MonitorInfo,
+  MonitorPreset,
+  VolumeInfo,
+} from '@pane/protocol';
+
+export type {
+  AudioDevice,
+  Feature,
+  LightState,
+  MonitorInfo,
+  MonitorPreset,
+  VolumeInfo,
+};
+
 // ── Instrumentation ──────────────────────────────────────────────────────────
 
 export interface ProcessMetrics {
@@ -184,25 +205,8 @@ export function clearCaptureHotkey(action: CaptureAction) {
 }
 
 // ── Monitor controls (DDC/CI) ──────────────────────────────────────────────────
-
-/** One adjustable DDC/CI control. `supported` is false when the monitor doesn't expose the VCP code. */
-export interface Feature {
-  value: number;
-  /** Max VCP value for this monitor (often 100). */
-  max: number;
-  supported: boolean;
-}
-
-export interface MonitorInfo {
-  /** Enumeration index as a string — stable within a session. */
-  id: string;
-  name: string;
-  brightness: Feature; // VCP 0x10
-  contrast: Feature; // VCP 0x12
-  redGain: Feature; // VCP 0x16 (white-balance red gain)
-  greenGain: Feature; // VCP 0x18 (white-balance green gain)
-  blueGain: Feature; // VCP 0x1A (white-balance blue gain)
-}
+// `Feature` and `MonitorInfo` are shared wire types (imported from
+// @pane/protocol and re-exported above).
 
 /** Enumerate monitors and read each control once (seeds the cache). */
 export function listMonitors() {
@@ -239,15 +243,8 @@ export function adjustAllBrightness(delta: number) {
   return invoke<MonitorInfo[]>('adjust_all_brightness', { delta });
 }
 
-/** A reusable monitor target, stored as percentages, plus a night-light flag. */
-export interface MonitorPreset {
-  name: string;
-  brightnessPct: number;
-  contrastPct: number;
-  redGainPct: number;
-  greenGainPct: number;
-  blueGainPct: number;
-}
+// `MonitorPreset` is a shared wire type (imported from @pane/protocol and
+// re-exported above).
 
 export function getMonitorPresets() {
   return invoke<MonitorPreset[]>('get_monitor_presets');
@@ -406,15 +403,8 @@ export function turnAllLightsOffForSleep() {
 }
 
 // ── Persisted per-light state ─────────────────────────────────────────────────
-
-export interface LightState {
-  r: number;
-  g: number;
-  b: number;
-  brightness: number;
-  /** False means the user explicitly turned the light off (last color preserved). */
-  on: boolean;
-}
+// `LightState` is a shared wire type (imported from @pane/protocol and
+// re-exported above).
 
 /**
  * State keys:
@@ -432,19 +422,8 @@ export function restoreAllLights() {
 }
 
 // ── Sound ─────────────────────────────────────────────────────────────────────
-
-export interface AudioDevice {
-  /** Opaque MMDevice endpoint ID, used to set the default. */
-  id: string;
-  name: string;
-  isDefault: boolean;
-}
-
-export interface VolumeInfo {
-  /** Scalar 0.0–1.0. */
-  volume: number;
-  muted: boolean;
-}
+// `AudioDevice` and `VolumeInfo` are shared wire types (imported from
+// @pane/protocol and re-exported above).
 
 export function listOutputDevices() {
   return invoke<AudioDevice[]>('list_output_devices');

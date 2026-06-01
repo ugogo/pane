@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "description": "Pane — Windows desktop utility suite (Tauri 2 + React + Rust)",
+  "workspaces": [
+    "packages/*",
+    "mobile/companion"
+  ],
   "scripts": {
     "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev.ps1",
     "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/stop.ps1",
