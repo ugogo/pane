@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  PanResponder,
   Pressable,
   ScrollView,
   StatusBar,
@@ -9,8 +8,12 @@ import {
   Switch,
   Text,
   View,
-  type GestureResponderEvent,
 } from 'react-native';
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as SecureStore from 'expo-secure-store';
@@ -229,9 +232,11 @@ async function sendCommand(pairing: Pairing, body: CommandBody): Promise<void> {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <AppContent />
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.gestureRoot}>
+      <SafeAreaProvider>
+        <AppContent />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -642,10 +647,8 @@ function ControlScreen({
   );
 }
 
-// Core-RN slider (no native module) so it runs unmodified in Expo Go. Maps a
-// horizontal drag across the track to 0–100. Uses the touch's absolute `pageX`
-// against the track's measured window position — `locationX` is relative to
-// whichever child (fill/thumb) the finger lands on, which makes the value jump.
+// Expo Go-compatible slider using native gesture recognition. It maps the
+// gesture's absolute X position against the track's measured window position.
 function Slider({
   value,
   onValueChange,
@@ -674,51 +677,51 @@ function Slider({
     });
   };
 
-  const emitFromTouch = (event: GestureResponderEvent, commit: boolean) => {
+  const emitFromPosition = (pageX: number, commit: boolean) => {
     const width = widthRef.current;
     if (width <= 0) return;
-    const offset = event.nativeEvent.pageX - leftRef.current;
+    const offset = pageX - leftRef.current;
     const ratio = Math.max(0, Math.min(1, offset / width));
     const next = Math.round(ratio * 100);
     onValueChangeRef.current?.(next);
     if (commit) onChangeRef.current(next);
   };
 
-  const responderRef = useRef<ReturnType<typeof PanResponder.create> | null>(
-    null,
-  );
-  if (responderRef.current === null) {
-    responderRef.current = PanResponder.create({
-      onStartShouldSetPanResponder: () => !disabledRef.current,
-      onMoveShouldSetPanResponder: () => !disabledRef.current,
-      onPanResponderGrant: (event) => {
+  const tapGesture = Gesture.Tap()
+    .enabled(!disabled)
+    .runOnJS(true)
+    .onEnd((event, success) => {
+      if (success) {
         measure();
-        emitFromTouch(event, false);
-      },
-      onPanResponderMove: (event) => emitFromTouch(event, false),
-      onPanResponderRelease: (event) => emitFromTouch(event, true),
-      onPanResponderTerminate: (event) => emitFromTouch(event, true),
+        emitFromPosition(event.absoluteX, true);
+      }
     });
-  }
-  const panHandlers = responderRef.current.panHandlers;
+
+  const panGesture = Gesture.Pan()
+    .enabled(!disabled)
+    .runOnJS(true)
+    .onBegin((event) => {
+      measure();
+      emitFromPosition(event.absoluteX, false);
+    })
+    .onUpdate((event) => emitFromPosition(event.absoluteX, false))
+    .onFinalize((event) => emitFromPosition(event.absoluteX, true));
+
+  const sliderGesture = Gesture.Race(tapGesture, panGesture);
 
   return (
-    <View
-      ref={trackRef}
-      hitSlop={16}
-      style={styles.track}
-      onLayout={measure}
-      {...panHandlers}
-    >
-      <View
-        pointerEvents="none"
-        style={[styles.fill, { width: `${value}%` }]}
-      />
-      <View
-        pointerEvents="none"
-        style={[styles.thumb, { left: `${value}%` }]}
-      />
-    </View>
+    <GestureDetector gesture={sliderGesture}>
+      <View ref={trackRef} hitSlop={16} style={styles.track} onLayout={measure}>
+        <View
+          pointerEvents="none"
+          style={[styles.fill, { width: `${value}%` }]}
+        />
+        <View
+          pointerEvents="none"
+          style={[styles.thumb, { left: `${value}%` }]}
+        />
+      </View>
+    </GestureDetector>
   );
 }
 
@@ -732,6 +735,9 @@ function Screen({ children }: { children: React.ReactNode }) {
 }
 
 const styles = StyleSheet.create({
+  gestureRoot: {
+    flex: 1,
+  },
   shell: {
     backgroundColor: '#0b0b0c',
     flex: 1,
