@@ -20,68 +20,68 @@ Built as thin vertical slices so each one is independently testable and de-risks
 | 4     | Replace plain HTTP with TLS + QR-pinned certificate (`rcgen`/`rustls`)                                                                                                            | ⏳ Required before TestFlight |
 | 5     | Replace bearer token with Ed25519 request signing (timestamp + nonce + body hash; replay rejection); DPAPI-protected key storage                                                  | ⏳ Required before TestFlight |
 | 6     | mDNS/Bonjour discovery (`_pane._tcp`) so the phone finds Pane without a typed host; move app to an EAS dev build for the native bits                                              | ⏳ Nice-to-have               |
-| 7     | Remaining allowlisted commands (lighting, audio, presets, accent, startup), `GET /v1/snapshot`, `GET /v1/events`                                                                  | ⏳ Nice-to-have               |
+| 7     | Remaining allowlisted commands (lighting, audio, presets, accent, startup), `GET /v1/snapshot`, `GET /v1/events`                                                                  | ⏳ In progress                |
 
 > **Current transport is dev-only.** Slices 1–3 run plain HTTP with a bearer token over the LAN. That is safe enough on a trusted home network for testing, but **slices 4–5 (TLS pinning + signing) are mandatory before any TestFlight build** — until then the companion should stay behind a dev/trusted-network assumption.
 
 ## Key Changes
 
-- Add a `CompanionCard` under Pane’s System section with:
-  - enable/disable mobile companion
-  - server status and local discovery name
-  - “Pair iPhone” QR modal
-  - paired devices list with revoke
-- Add a Rust companion server started from Tauri setup only when enabled:
-  - random local port (plain HTTP today; HTTPS in slice 4)
-  - mDNS/Bonjour service `_pane._tcp.local` (slice 6)
-  - unauthenticated `GET /v1/hello` only returns instance/version/public pairing metadata
-  - authenticated `POST /v1/commands` today; `GET /v1/snapshot` and `GET /v1/events` in slice 7
-- Add pairing:
-  - Pane generates an install ID, pinned TLS certificate, and short-lived one-time pairing token.
-  - QR contains version, local service name/port, certificate fingerprint/public key, token, and expiry.
-  - iPhone sends device name plus its public signing key.
-  - Pane stores paired device public keys and a single `settings` role.
-- Add request security:
-  - every paired-device request is signed with the iPhone device key
-  - include timestamp, nonce, method/path/body hash
-  - reject expired timestamps, reused nonces, revoked devices, and unknown schema versions
-  - protect desktop private material with DPAPI or user-local restricted storage
-- Add a React Native / Expo app under `mobile/companion`:
-  - QR scanner onboarding (`expo-camera`)
-  - device bearer token stored in `expo-secure-store`
-  - brightness control today; Lighting, Audio, and other settings screens follow in slice 7
-  - later (dev build): local-network permission copy, Bonjour discovery, and certificate pinning from QR material
+- [x] Add a `CompanionCard` under Pane’s System section with:
+  - [x] enable/disable mobile companion
+  - [x] server status and local discovery name
+  - [x] “Pair iPhone” QR modal
+  - [x] paired devices list with revoke
+- [ ] Add a Rust companion server started from Tauri setup only when enabled:
+  - [x] random local port (plain HTTP today; HTTPS in slice 4)
+  - [ ] mDNS/Bonjour service `_pane._tcp.local` (slice 6)
+  - [x] unauthenticated `GET /v1/hello` only returns instance/version/public pairing metadata
+  - [x] authenticated `POST /v1/commands` today; [ ] `GET /v1/snapshot` and [ ] `GET /v1/events` in slice 7
+- [ ] Add pairing:
+  - [x] Pane generates install ID and short-lived one-time pairing token (QR over LAN)
+  - [ ] QR includes pinned TLS certificate fingerprint/public key (slice 4)
+  - [x] iPhone sends device name; Pane stores paired device bearer tokens with a single `settings` role
+  - [ ] iPhone sends public signing key (slice 5)
+- [ ] Add request security:
+  - [x] bearer token auth for paired devices (dev-only; slice 2)
+  - [ ] every paired-device request signed with the iPhone device key (slice 5)
+  - [ ] timestamp, nonce, method/path/body hash; replay rejection (slice 5)
+  - [ ] DPAPI-protected desktop private material (slice 5)
+- [x] Add a React Native / Expo app under `mobile/companion`:
+  - [x] QR scanner onboarding (`expo-camera`)
+  - [x] device bearer token stored in `expo-secure-store`
+  - [x] brightness control; [ ] Lighting, Audio, and other settings screens (slice 7)
+  - [ ] later (dev build): local-network permission copy, Bonjour discovery, certificate pinning from QR material
 
 ## Public Interfaces
 
 - Desktop Tauri commands:
-  - `get_companion_status`
-  - `set_companion_enabled(enabled)`
-  - `start_companion_pairing`
-  - `cancel_companion_pairing`
-  - `list_companion_devices`
-  - `revoke_companion_device(deviceId)`
+  - [x] `get_companion_status`
+  - [x] `set_companion_enabled(enabled)`
+  - [x] `start_companion_pairing`
+  - [x] `cancel_companion_pairing`
+  - [x] `list_companion_devices` (via status payload)
+  - [x] `revoke_companion_device(deviceId)`
 - LAN API:
-  - `GET /v1/hello` (implemented)
-  - `POST /v1/pair` (implemented)
-  - `POST /v1/commands` (implemented)
-  - `GET /v1/snapshot` (slice 7)
-  - `GET /v1/events` (slice 7)
+  - [x] `GET /v1/hello` (implemented)
+  - [x] `POST /v1/pair` (implemented)
+  - [x] `POST /v1/commands` (implemented)
+  - [ ] `GET /v1/snapshot` (slice 7)
+  - [ ] `GET /v1/events` (slice 7)
 - Allowed mobile commands (`CompanionCommand` enum):
-  - set brightness 0–100 across all monitors (implemented)
-  - the following are planned for slice 7:
-    - apply light color/brightness or turn light off
-    - apply monitor preset
-    - set default output/input audio device
-    - set output/input volume and mute
-    - set accent popup enabled
-    - set run-at-startup enabled
+  - [x] set brightness 0–100 across all monitors (implemented)
+  - [ ] the following are planned for slice 7:
+    - [ ] apply light color/brightness or turn light off
+    - [ ] apply monitor preset
+    - [ ] set default output/input audio device
+    - [ ] set output/input volume and mute
+    - [ ] set accent popup enabled
+    - [ ] set run-at-startup enabled
 - Explicitly excluded from v1:
-  - screenshots/capture
-  - clipboard writes
-  - hotkey editing
-  - updater install/restart
-  - arbitrary Tauri command invocation
+  - [x] screenshots/capture (not in allowlist)
+  - [x] clipboard writes (not in allowlist)
+  - [x] hotkey editing (not in allowlist)
+  - [x] updater install/restart (not in allowlist)
+  - [x] arbitrary Tauri command invocation (not in allowlist)
 
 ## Implementation Notes
 
@@ -93,26 +93,26 @@ Built as thin vertical slices so each one is independently testable and de-risks
 ## Test Plan
 
 - Rust unit tests:
-  - pairing token expiry and single-use behavior (implemented)
-  - bearer authorization of paired devices (implemented)
-  - command allowlist enforcement — non-allowlisted types fail to decode (implemented)
-  - `/v1/hello` served over a real socket (implemented)
-  - signature verification (slice 5)
-  - timestamp/nonce replay rejection (slice 5)
-  - revoked device rejection
+  - [x] pairing token expiry and single-use behavior (implemented)
+  - [x] bearer authorization of paired devices (implemented)
+  - [x] command allowlist enforcement — non-allowlisted types fail to decode (implemented)
+  - [x] `/v1/hello` served over a real socket (implemented)
+  - [ ] signature verification (slice 5)
+  - [ ] timestamp/nonce replay rejection (slice 5)
+  - [ ] revoked device rejection
 - Integration tests:
-  - pair a simulated device
-  - fetch snapshot
-  - run allowed mocked settings commands
-  - verify excluded capture/update/clipboard actions are impossible through companion API
+  - [ ] pair a simulated device
+  - [ ] fetch snapshot
+  - [ ] run allowed mocked settings commands
+  - [ ] verify excluded capture/update/clipboard actions are impossible through companion API
 - Manual smoke tests:
-  - iPhone local network permission prompt
-  - Windows firewall prompt behavior
-  - pair via QR
-  - revoke and confirm access stops
-  - restart Pane and confirm paired device persists
-  - reconnect after IP address changes
-  - verify no secrets appear in mDNS records
+  - [ ] iPhone local network permission prompt
+  - [ ] Windows firewall prompt behavior
+  - [x] pair via QR
+  - [x] revoke and confirm access stops
+  - [ ] restart Pane and confirm paired device persists
+  - [ ] reconnect after IP address changes
+  - [ ] verify no secrets appear in mDNS records
 
 ## Assumptions
 
