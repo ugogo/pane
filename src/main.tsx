@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { App } from './App';
+import { TooltipProvider } from './components/ui/tooltip';
 import { AccentPopup } from './views/AccentPopup';
 import { AreaSelector } from './views/AreaSelector';
 import { CapturePreview } from './views/CapturePreview';
@@ -22,10 +23,17 @@ function resolveView() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>{resolveView()}</React.StrictMode>,
+  <React.StrictMode>
+    <TooltipProvider>{resolveView()}</TooltipProvider>
+  </React.StrictMode>,
 );
 
 if (!new URL(window.location.href).searchParams.has('view')) {
+  if ('scrollRestoration' in window.history) {
+    window.history.scrollRestoration = 'manual';
+  }
+  window.scrollTo(0, 0);
+
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       void getCurrentWindow().show().catch(console.error);

@@ -15,7 +15,7 @@ with more modules intended to fit into the same dashboard over time.
 
 ## Stack
 
-- **Frontend**: TypeScript + React + Tailwind on Vite
+- **Frontend**: TypeScript + React + shadcn/ui on Tailwind v4 (Vite)
 - **Backend**: Rust + Tauri 2
 - **Entry point**: `src/App.tsx` -> `src-tauri/src/lib.rs`
 

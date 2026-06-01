@@ -58,9 +58,8 @@ unsafe extern "system" fn on_power_event(
             tokio::time::sleep(Duration::from_secs(3)).await;
             let results = crate::commands::light_state::restore_all().await;
             for (key, res) in results {
-                match res {
-                    Ok(()) => eprintln!("[wake] restored {key}"),
-                    Err(e) => eprintln!("[wake] failed to restore {key}: {e}"),
+                if let Err(e) = res {
+                    eprintln!("[wake] failed to restore {key}: {e}");
                 }
             }
         });

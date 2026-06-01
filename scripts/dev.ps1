@@ -11,7 +11,7 @@
          wait for the mutex to become available.
       3. Always stop any leftover dev processes (pane, cargo, node) before
          starting fresh.
-      4. Run `npx tauri dev` (blocking).
+      4. Run the local Tauri CLI (blocking).
 
     Prefer this over raw `tauri dev` or `npx vite`.
 
@@ -44,6 +44,43 @@ function Invoke-StopDev {
     if (-not $?) { Fail "stop failed" }
 }
 
+function Add-WebView2BrowserArgument {
+    param([string]$Argument)
+
+    $name = "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"
+    $current = [Environment]::GetEnvironmentVariable($name, "Process")
+    if ([string]::IsNullOrWhiteSpace($current)) {
+        [Environment]::SetEnvironmentVariable($name, $Argument, "Process")
+        return
+    }
+
+    $escaped = [regex]::Escape($Argument)
+    if ($current -notmatch "(^|\s)$escaped($|\s)") {
+        [Environment]::SetEnvironmentVariable($name, "$current $Argument", "Process")
+    }
+}
+
+function Invoke-TauriDev {
+    $tauriCli = Join-Path $root "node_modules/@tauri-apps/cli/tauri.js"
+    if (-not (Test-Path $tauriCli)) {
+        Fail "Tauri CLI not installed. Run npm install first."
+    }
+
+    $node = Get-Command "node.exe" -ErrorAction SilentlyContinue
+    if ($null -eq $node) {
+        $node = Get-Command "node" -ErrorAction Stop
+    }
+
+    $command = '"' + $node.Source + '" "' + $tauriCli + '" dev 2>&1'
+    & cmd.exe /d /s /c $command | ForEach-Object {
+        $line = $_.ToString()
+        if ($line -notlike "*STATUS_CONTROL_C_EXIT*") {
+            [Console]::Out.WriteLine($line)
+        }
+    }
+    return $LASTEXITCODE
+}
+
 function Acquire-DevMutex {
     param(
         [System.Threading.Mutex]$Mutex,
@@ -70,9 +107,10 @@ try {
     $acquired = $true
 
     Invoke-StopDev
+    Add-WebView2BrowserArgument "--disable-logging"
 
-    & npx tauri dev
-    exit $LASTEXITCODE
+    $exitCode = Invoke-TauriDev
+    exit $exitCode
 } finally {
     if ($acquired) {
         try {

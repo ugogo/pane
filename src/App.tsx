@@ -1,26 +1,107 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { ComponentType } from 'react';
+import { HashRouter, Navigate, NavLink, useLocation } from 'react-router';
 import { getVersion } from '@tauri-apps/api/app';
 import {
+  Activity,
   AlertTriangle,
+  Camera,
   CheckCircle2,
   Download,
+  Languages,
+  Lightbulb,
   Loader2,
+  Minus,
+  Monitor,
+  Power,
   RotateCcw,
+  Square,
+  Volume2,
+  X,
 } from 'lucide-react';
-import { AccentCard } from './components/features/AccentCard';
-import { BrightnessCard } from './components/features/BrightnessCard';
-import { CaptureCard } from './components/features/CaptureCard';
-import { InfraCard } from './components/features/InfraCard';
-import { LightingCard } from './components/features/LightingCard';
-import { MetricsCard } from './components/features/MetricsCard';
-import { SoundCard } from './components/features/SoundCard';
-import { prepareCaptureWindows } from './lib/commands';
+import type { LucideIcon } from 'lucide-react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { AccentCard } from '@/components/features/AccentCard';
+import { BrightnessCard } from '@/components/features/BrightnessCard';
+import { CaptureCard } from '@/components/features/CaptureCard';
+import { InfraCard } from '@/components/features/InfraCard';
+import { LightingCard } from '@/components/features/LightingCard';
+import { MetricsCard } from '@/components/features/MetricsCard';
+import { SoundCard } from '@/components/features/SoundCard';
+import { Button } from '@/components/ui/button';
+import { prepareCaptureWindows } from '@/lib/commands';
 import {
   checkForUpdatesOnLaunch,
   installUpdate,
   restartToApplyUpdate,
   type PendingUpdate,
-} from './lib/updater';
+} from '@/lib/updater';
+
+const modules = [
+  {
+    path: '/capture',
+    label: 'Capture',
+    title: 'Capture',
+    description: 'Fullscreen and area capture with global shortcuts.',
+    icon: Camera,
+    component: CaptureCard,
+  },
+  {
+    path: '/display',
+    label: 'Display',
+    title: 'Display',
+    description: 'Monitor brightness and presets.',
+    icon: Monitor,
+    component: BrightnessCard,
+  },
+  {
+    path: '/sound',
+    label: 'Sound',
+    title: 'Sound',
+    description: 'Default devices and volume.',
+    icon: Volume2,
+    component: SoundCard,
+  },
+  {
+    path: '/lights',
+    label: 'Lights',
+    title: 'Lights',
+    description: 'Supported lighting hardware.',
+    icon: Lightbulb,
+    component: LightingCard,
+  },
+  {
+    path: '/accent',
+    label: 'Accents',
+    title: 'Accents',
+    description: 'Long-press letters for variants.',
+    icon: Languages,
+    component: AccentCard,
+  },
+  {
+    path: '/startup',
+    label: 'Startup',
+    title: 'Startup',
+    description: 'Background launch behavior.',
+    icon: Power,
+    component: InfraCard,
+  },
+  {
+    path: '/diagnostics',
+    label: 'Diagnostics',
+    title: 'Diagnostics',
+    description: 'Memory, startup timing, and process ID.',
+    icon: Activity,
+    component: MetricsCard,
+  },
+] satisfies readonly {
+  path: string;
+  label: string;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  component: ComponentType<{ className?: string }>;
+}[];
 
 type UpdateNoticeState =
   | { status: 'hidden' }
@@ -41,25 +122,43 @@ function formatBytes(bytes: number) {
 }
 
 export function App() {
+  const [isBooting, setIsBooting] = useState(true);
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const [updateNotice, setUpdateNotice] = useState<UpdateNoticeState>({
     status: 'hidden',
   });
 
   useEffect(() => {
-    const firstFrame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        void prepareCaptureWindows().catch((err) => {
-          console.error('Failed to prepare capture windows', err);
-        });
+    let cancelled = false;
+    let firstFrame = 0;
+    let secondFrame = 0;
+    let bootTimer = 0;
+
+    const afterFirstPaint = new Promise<void>((resolve) => {
+      firstFrame = requestAnimationFrame(() => {
+        secondFrame = requestAnimationFrame(() => resolve());
       });
     });
+    const minimumBoot = new Promise<void>((resolve) => {
+      bootTimer = window.setTimeout(resolve, 160);
+    });
 
-    void getVersion()
+    const versionTask = getVersion()
       .then(setAppVersion)
       .catch((err) => {
         console.error('Failed to load app version', err);
       });
+
+    void Promise.allSettled([afterFirstPaint, minimumBoot, versionTask]).then(
+      () => {
+        if (cancelled) return;
+        setIsBooting(false);
+
+        void prepareCaptureWindows().catch((err) => {
+          console.error('Failed to prepare capture windows', err);
+        });
+      },
+    );
 
     void checkForUpdatesOnLaunch().then((result) => {
       if (result.status === 'error') {
@@ -73,7 +172,12 @@ export function App() {
       }
     });
 
-    return () => cancelAnimationFrame(firstFrame);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+      window.clearTimeout(bootTimer);
+    };
   }, []);
 
   const handleInstallUpdate = async () => {
@@ -117,39 +221,184 @@ export function App() {
   };
 
   return (
-    <main className="bg-panel min-h-screen">
-      <div className="mx-auto max-w-5xl p-6">
-        <header className="border-line mb-6 border-b pb-6">
-          <div className="flex items-center gap-2">
-            <h1 className="text-ink text-2xl font-semibold">Pane</h1>
-            {import.meta.env.DEV ? (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold tracking-wide text-amber-800">
-                dev
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-1 text-sm text-slate-500">
-            Version {appVersion ?? 'unavailable'}
-          </p>
-        </header>
-
-        <UpdateNotice
-          state={updateNotice}
-          onInstall={handleInstallUpdate}
-          onRestart={() => void restartToApplyUpdate()}
+    <HashRouter>
+      {isBooting ? (
+        <BootScreen />
+      ) : (
+        <AppShell
+          appVersion={appVersion}
+          updateNotice={updateNotice}
+          onInstallUpdate={handleInstallUpdate}
         />
+      )}
+    </HashRouter>
+  );
+}
 
-        <div className="grid grid-cols-2 gap-4">
-          <MetricsCard />
-          <CaptureCard />
-          <InfraCard />
-          <LightingCard />
-          <BrightnessCard />
-          <SoundCard />
-          <AccentCard />
+function AppShell({
+  appVersion,
+  updateNotice,
+  onInstallUpdate,
+}: {
+  appVersion: string | null;
+  updateNotice: UpdateNoticeState;
+  onInstallUpdate: () => void;
+}) {
+  const contentScrollRef = useRef<HTMLDivElement>(null);
+  const { pathname } = useLocation();
+  const matchedModule = modules.find((module) => module.path === pathname);
+  const activeModule = matchedModule ?? modules[0];
+
+  useLayoutEffect(() => {
+    contentScrollRef.current?.scrollTo({ left: 0, top: 0 });
+  }, [pathname]);
+
+  return (
+    <main className="text-foreground grid h-screen grid-rows-[36px_minmax(0,1fr)] overflow-hidden bg-transparent">
+      <AppTitlebar />
+
+      <div className="grid min-h-0 md:grid-cols-[200px_minmax(0,1fr)]">
+        <aside className="app-sidebar px-4 py-5">
+          <nav
+            aria-label="Pane modules"
+            className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible"
+          >
+            {modules.map(({ path, label, icon: Icon }) => (
+              <NavLink
+                key={path}
+                to={path}
+                className={({ isActive }) =>
+                  [
+                    'flex min-w-max items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors md:min-w-0',
+                    isActive
+                      ? 'bg-white/10 text-white'
+                      : 'text-white/62 hover:bg-white/8 hover:text-white',
+                  ].join(' ')
+                }
+              >
+                <Icon aria-hidden="true" className="size-4 shrink-0" />
+                <span>{label}</span>
+              </NavLink>
+            ))}
+          </nav>
+        </aside>
+
+        <div
+          ref={contentScrollRef}
+          className="bg-background min-w-0 overflow-y-auto"
+        >
+          <header className="bg-background/92 sticky top-0 z-10 border-b px-8 py-5 backdrop-blur">
+            <div className="mx-auto flex max-w-[760px] items-start justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  {activeModule.title}
+                </h1>
+                <p className="text-muted-foreground text-sm">
+                  {activeModule.description}
+                </p>
+              </div>
+              <p className="bg-card/70 text-muted-foreground rounded-md border px-2 py-1 font-mono text-xs">
+                {appVersion ?? 'version unavailable'}
+              </p>
+            </div>
+          </header>
+
+          <div className="mx-auto max-w-[760px] space-y-5 px-8 py-6">
+            <UpdateNotice
+              state={updateNotice}
+              onInstall={onInstallUpdate}
+              onRestart={() => void restartToApplyUpdate()}
+            />
+
+            {!matchedModule && <Navigate to="/capture" replace />}
+            {modules.map(({ path, component: Module }) => {
+              const isActive = activeModule.path === path;
+
+              return (
+                <section key={path} hidden={!isActive}>
+                  <Module />
+                </section>
+              );
+            })}
+          </div>
         </div>
       </div>
     </main>
+  );
+}
+
+function BootScreen() {
+  return (
+    <main className="text-foreground grid h-screen grid-rows-[36px_minmax(0,1fr)] overflow-hidden bg-transparent">
+      <AppTitlebar />
+      <div className="bg-background grid place-items-center">
+        <output aria-label="Loading Pane" className="grid place-items-center">
+          <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+        </output>
+      </div>
+    </main>
+  );
+}
+
+function AppTitlebar() {
+  return (
+    <div
+      className="app-titlebar"
+      data-tauri-drag-region
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.button !== 0) return;
+        const target = event.target as HTMLElement;
+        if (target.closest('button')) return;
+        void getCurrentWindow().startDragging().catch(console.error);
+      }}
+    >
+      <div
+        className="flex min-w-0 items-center gap-2 px-3"
+        data-tauri-drag-region
+      >
+        <span className="bg-primary text-primary-foreground flex size-4 items-center justify-center rounded-[4px]">
+          <Camera aria-hidden="true" className="size-3" />
+        </span>
+        <span
+          className="truncate text-xs font-medium text-white/86"
+          data-tauri-drag-region
+        >
+          Pane
+        </span>
+      </div>
+
+      <div className="ml-auto flex h-full">
+        <button
+          aria-label="Minimize"
+          className="app-window-control"
+          type="button"
+          onClick={() =>
+            void getCurrentWindow().minimize().catch(console.error)
+          }
+        >
+          <Minus aria-hidden="true" className="size-3.5" />
+        </button>
+        <button
+          aria-label="Maximize or restore"
+          className="app-window-control"
+          type="button"
+          onClick={() =>
+            void getCurrentWindow().toggleMaximize().catch(console.error)
+          }
+        >
+          <Square aria-hidden="true" className="size-3" />
+        </button>
+        <button
+          aria-label="Close to tray"
+          className="app-window-control app-window-control-close"
+          type="button"
+          onClick={() => void getCurrentWindow().hide().catch(console.error)}
+        >
+          <X aria-hidden="true" className="size-3.5" />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -166,17 +415,11 @@ function UpdateNotice({
 
   if (state.status === 'error') {
     return (
-      <div
-        className="mb-4 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
-        role="alert"
-      >
-        <AlertTriangle
-          aria-hidden="true"
-          className="mt-0.5 size-4 shrink-0 text-red-600"
-        />
+      <div className="border-destructive/25 bg-destructive/10 text-destructive flex items-start gap-2 rounded-xl border p-3 text-sm">
+        <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
         <div>
           <p className="font-medium">Update failed</p>
-          <p className="mt-1 break-words text-red-800">{state.message}</p>
+          <p className="mt-1 break-words">{state.message}</p>
         </div>
       </div>
     );
@@ -184,25 +427,18 @@ function UpdateNotice({
 
   if (state.status === 'installed') {
     return (
-      <div className="mb-4 flex items-center justify-between gap-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-        <div className="flex min-w-0 items-start gap-3">
-          <CheckCircle2
-            aria-hidden="true"
-            className="mt-0.5 size-4 shrink-0 text-emerald-700"
-          />
+      <div className="bg-card flex items-center justify-between gap-3 rounded-xl border p-3 text-sm">
+        <div className="flex min-w-0 items-start gap-2">
+          <CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           <div className="min-w-0">
             <p className="font-medium">Pane {state.version} is installed</p>
-            <p className="mt-1 text-emerald-800">Restart when you are ready.</p>
+            <p className="text-muted-foreground">Restart when ready.</p>
           </div>
         </div>
-        <button
-          type="button"
-          className="inline-flex shrink-0 items-center gap-2 rounded-md border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-950 hover:bg-emerald-100"
-          onClick={onRestart}
-        >
-          <RotateCcw aria-hidden="true" className="size-3.5" />
+        <Button className="shrink-0" size="sm" onClick={onRestart}>
+          <RotateCcw aria-hidden="true" />
           Restart
-        </button>
+        </Button>
       </div>
     );
   }
@@ -222,53 +458,48 @@ function UpdateNotice({
     : null;
 
   return (
-    <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
+    <div className="bg-card rounded-xl border p-3 text-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2">
           {isInstalling ? (
             <Loader2
               aria-hidden="true"
-              className="mt-0.5 size-4 shrink-0 animate-spin text-amber-700"
+              className="mt-0.5 size-4 shrink-0 animate-spin"
             />
           ) : (
-            <Download
-              aria-hidden="true"
-              className="mt-0.5 size-4 shrink-0 text-amber-700"
-            />
+            <Download aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           )}
           <div className="min-w-0">
             <p className="font-medium">Pane {state.version} is available</p>
-            <p className="mt-1 text-amber-800">
-              {isInstalling
-                ? 'Installing update...'
-                : 'Update when you are ready.'}
+            <p className="text-muted-foreground">
+              {isInstalling ? 'Installing update...' : 'Update when ready.'}
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          className="inline-flex shrink-0 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-950 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+        <Button
+          className="shrink-0"
           disabled={isInstalling}
+          size="sm"
           onClick={onInstall}
         >
           {isInstalling ? (
-            <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+            <Loader2 aria-hidden="true" className="animate-spin" />
           ) : (
-            <Download aria-hidden="true" className="size-3.5" />
+            <Download aria-hidden="true" />
           )}
           {isInstalling ? 'Installing' : 'Update'}
-        </button>
+        </Button>
       </div>
 
       {isInstalling ? (
         <div className="mt-3 flex items-center gap-3">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-amber-100">
+          <div className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
             <div
-              className="h-full rounded-full bg-amber-500 transition-all"
+              className="bg-primary h-full rounded-full transition-all"
               style={{ width: `${progress ?? 10}%` }}
             />
           </div>
-          <span className="w-12 shrink-0 text-right text-xs font-medium text-amber-800">
+          <span className="text-muted-foreground w-12 shrink-0 text-right text-xs">
             {progressLabel}
           </span>
         </div>
