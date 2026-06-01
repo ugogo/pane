@@ -90,6 +90,25 @@ function Step($msg) {
     Write-Host "==> $msg" -ForegroundColor Cyan
 }
 
+function Test-NpmConfigFlag($name) {
+    $value = [Environment]::GetEnvironmentVariable("npm_config_$name")
+    return $value -and $value -ne "false"
+}
+
+if (-not $DryRun -and (Test-NpmConfigFlag "dryrun")) {
+    $DryRun = $true
+    Write-Host "notice: npm swallowed -DryRun; treating it as -DryRun. Prefer: npm run release -- -DryRun" -ForegroundColor Yellow
+}
+if (-not $NoPublish -and (Test-NpmConfigFlag "nopublish")) {
+    $NoPublish = $true
+    Write-Host "notice: npm swallowed -NoPublish; treating it as -NoPublish. Prefer: npm run release -- -NoPublish" -ForegroundColor Yellow
+}
+if (-not $Yes -and (Test-NpmConfigFlag "yes")) {
+    $Yes = $true
+    Write-Host "notice: npm swallowed -Yes; treating it as -Yes. Prefer: npm run release -- -Yes" -ForegroundColor Yellow
+}
+Remove-Item Env:npm_config_dryrun, Env:npm_config_nopublish, Env:npm_config_yes -ErrorAction SilentlyContinue
+
 # Replace the first regex match in a file, preserving its exact formatting and
 # line endings. Fails loudly if the pattern is not found.
 function Set-FirstMatch($path, $pattern, $replacement, $label) {

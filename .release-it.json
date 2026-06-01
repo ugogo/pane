@@ -1,0 +1,29 @@
+{
+  "$schema": "https://unpkg.com/release-it@20/schema/release-it.json",
+  "git": {
+    "changelog": "git log --pretty=format:\"- %s\" --no-merges ${from}...${to}",
+    "requireCleanWorkingDir": true,
+    "requireUpstream": false,
+    "commitMessage": "chore(release): v${version}",
+    "tagName": "v${version}",
+    "tagAnnotation": "Release v${version}",
+    "pushArgs": ["--follow-tags"]
+  },
+  "npm": {
+    "publish": false
+  },
+  "github": {
+    "release": true,
+    "releaseName": "Pane v${version}",
+    "makeLatest": true,
+    "assets": [
+      "src-tauri/target/release/bundle/nsis/Pane_${version}_x64-setup.exe",
+      "src-tauri/target/release/bundle/nsis/Pane_${version}_x64-setup.exe.sig",
+      "src-tauri/target/release/bundle/nsis/latest.json"
+    ]
+  },
+  "hooks": {
+    "after:npm:bump": "node scripts/sync-release-version.ts ${version}",
+    "before:git:beforeRelease": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/prepare-release-artifacts.ps1 -Version ${version} -Tag v${version}"
+  }
+}
