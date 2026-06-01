@@ -8,8 +8,7 @@
     "ios": {
       "bundleIdentifier": "dev.pane.companion",
       "infoPlist": {
-        "NSLocalNetworkUsageDescription": "Pane Companion finds and pairs with Pane on your local network.",
-        "ITSAppUsesNonExemptEncryption": false
+        "NSLocalNetworkUsageDescription": "Pane Companion finds and pairs with Pane on your local network."
       }
     },
     "android": {

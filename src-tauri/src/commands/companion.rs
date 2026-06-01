@@ -14,7 +14,7 @@ use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::{
     fs,
@@ -42,7 +42,7 @@ const HEADER_BODY_SHA256: &str = "x-pane-body-sha256";
 
 static ACTIVE_PAIRING: Lazy<Mutex<Option<CompanionPairingSession>>> =
     Lazy::new(|| Mutex::new(None));
-static REPLAY_NONCES: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+static REPLAY_NONCES: Lazy<Mutex<HashMap<String, u64>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 /// Handle to the running companion HTTP server. `None` when the companion is
 /// disabled. The Expo Go transport serves HTTP on the LAN; authenticated routes
@@ -405,12 +405,11 @@ fn authorize_request(
     method: &Method,
     uri: &Uri,
     body: &[u8],
-) -> Result<String, ApiError> {
+) -> Result<(), ApiError> {
     let token = bearer_token(headers).ok_or_else(ApiError::unauthorized)?;
     let settings = load_settings_at(&state.settings_path);
     let device = authorize_device(&settings, &token).ok_or_else(ApiError::unauthorized)?;
-    verify_signature(headers, method, uri, body, &device)?;
-    Ok(device.id)
+    verify_signature(headers, method, uri, body, &device)
 }
 
 /// Validate a device-supplied pairing token against the active session and, on
@@ -530,15 +529,10 @@ fn signing_message(
 fn reject_replay(device_id: &str, nonce: &str, timestamp: u64, now: u64) -> Result<(), ApiError> {
     let min_timestamp = now.saturating_sub(SIGNATURE_MAX_SKEW_SECONDS);
     let mut nonces = REPLAY_NONCES.lock().unwrap();
-    nonces.retain(|entry| {
-        entry
-            .rsplit_once(':')
-            .and_then(|(_, stored_timestamp)| stored_timestamp.parse::<u64>().ok())
-            .is_some_and(|stored_timestamp| stored_timestamp >= min_timestamp)
-    });
+    nonces.retain(|_, stored_timestamp| *stored_timestamp >= min_timestamp);
 
-    let key = format!("{device_id}:{nonce}:{timestamp}");
-    if !nonces.insert(key) {
+    let key = format!("{device_id}:{nonce}");
+    if nonces.insert(key, timestamp).is_some() {
         return Err(ApiError::unauthorized());
     }
     Ok(())
@@ -907,7 +901,8 @@ mod tests {
         let mut signed_device = device("d1", "secret");
         signed_device.public_key = public_key;
         let body = br#"{"type":"set_brightness","value":40}"#;
-        let timestamp = now_epoch_seconds().unwrap().to_string();
+        let timestamp_value = now_epoch_seconds().unwrap();
+        let timestamp = timestamp_value.to_string();
         let nonce = random_hex(16);
         let body_sha256 = sha256_hex(body);
         let method = Method::POST;
@@ -934,6 +929,25 @@ mod tests {
 
         REPLAY_NONCES.lock().unwrap().clear();
         assert!(verify_signature(&headers, &method, &uri, body, &signed_device).is_ok());
+        assert!(verify_signature(&headers, &method, &uri, body, &signed_device).is_err());
+
+        let fresh_timestamp = (timestamp_value + 1).to_string();
+        let message = signing_message(
+            method.as_str(),
+            "/v1/commands",
+            &fresh_timestamp,
+            &nonce,
+            &body_sha256,
+        );
+        let signature = signing_key.sign(message.as_bytes());
+        headers.insert(
+            HEADER_TIMESTAMP,
+            HeaderValue::from_str(&fresh_timestamp).unwrap(),
+        );
+        headers.insert(
+            HEADER_SIGNATURE,
+            HeaderValue::from_str(&general_purpose::STANDARD.encode(signature.to_bytes())).unwrap(),
+        );
         assert!(verify_signature(&headers, &method, &uri, body, &signed_device).is_err());
     }
 

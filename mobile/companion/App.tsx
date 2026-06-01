@@ -158,7 +158,7 @@ function randomNonce(): string {
   return bytesToHex(Crypto.getRandomBytes(16));
 }
 
-async function keyPair() {
+function keyPair() {
   const privateKey = Crypto.getRandomBytes(32);
   const publicKey = ed25519.getPublicKey(privateKey);
   return {
@@ -288,7 +288,7 @@ function PairScreen({ onPaired }: { onPaired: (pairing: Pairing) => void }) {
       setError(undefined);
 
       try {
-        const keys = await keyPair();
+        const keys = keyPair();
         const response = await fetch(`${baseUrl(parsed)}/v1/pair`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
