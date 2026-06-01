@@ -1,16 +1,16 @@
 # Build output & dependencies
 dist/
 node_modules/
-mobile/**/node_modules/
-mobile/**/.expo/
+apps/mobile/**/node_modules/
+apps/mobile/**/.expo/
 .claude/
 
 # Rust / Tauri (formatted by rustfmt, not Prettier)
-src-tauri/
+apps/windows/tauri/
 
 # Generated / vendored
 package-lock.json
-mobile/**/package-lock.json
+apps/mobile/**/package-lock.json
 assets/
 *.min.js
 *.min.css

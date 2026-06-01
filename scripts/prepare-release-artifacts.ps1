@@ -56,10 +56,17 @@ Step "building + signing Dynamic Lighting identity package"
 if ($LASTEXITCODE -ne 0) { Fail "identity package build failed." }
 
 Step "building + signing installer"
-npx tauri build --ci
+# Run from the Windows app dir so Tauri resolves apps/windows/tauri/tauri.conf.json
+# and runs beforeBuildCommand (npm run build) against apps/windows.
+Push-Location (Join-Path $root "apps/windows")
+try {
+    npx tauri build --ci
+} finally {
+    Pop-Location
+}
 if ($LASTEXITCODE -ne 0) { Fail "tauri build failed." }
 
-$nsisDir = Join-Path $root "src-tauri/target/release/bundle/nsis"
+$nsisDir = Join-Path $root "apps/windows/tauri/target/release/bundle/nsis"
 $installer = Get-ChildItem -LiteralPath $nsisDir -Filter "*$Version*-setup.exe" -ErrorAction SilentlyContinue |
     Select-Object -First 1
 if (-not $installer) { Fail "could not find the $Version installer in $nsisDir." }

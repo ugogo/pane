@@ -61,17 +61,21 @@ function Add-WebView2BrowserArgument {
 }
 
 function Invoke-TauriDev {
+    # The Tauri CLI is hoisted to the workspace-root node_modules, but it must
+    # run from the Windows app dir so it finds apps/windows/tauri/tauri.conf.json
+    # and runs the before-commands (npx vite) against apps/windows.
     $tauriCli = Join-Path $root "node_modules/@tauri-apps/cli/tauri.js"
     if (-not (Test-Path $tauriCli)) {
         Fail "Tauri CLI not installed. Run npm install first."
     }
+    $appDir = Join-Path $root "apps\windows"
 
     $node = Get-Command "node.exe" -ErrorAction SilentlyContinue
     if ($null -eq $node) {
         $node = Get-Command "node" -ErrorAction Stop
     }
 
-    $command = '"' + $node.Source + '" "' + $tauriCli + '" dev 2>&1'
+    $command = 'cd /d "' + $appDir + '" && "' + $node.Source + '" "' + $tauriCli + '" dev 2>&1'
     & cmd.exe /d /s /c $command | ForEach-Object {
         $line = $_.ToString()
         if ($line -notlike "*STATUS_CONTROL_C_EXIT*") {

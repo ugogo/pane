@@ -32,7 +32,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: apps/windows/tauri
 
       - name: Install npm dependencies
         run: npm ci
@@ -43,7 +43,7 @@ jobs:
         run: npm audit --omit=dev --audit-level=moderate
 
       - name: Type-check frontend
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Lint frontend (ESLint)
         run: npm run lint
@@ -52,21 +52,21 @@ jobs:
         run: npm run format:check
 
       - name: Build frontend
-        run: npx vite build
+        run: npm run build
 
       - name: Check Rust formatting (rustfmt)
-        working-directory: src-tauri
+        working-directory: apps/windows/tauri
         run: cargo fmt -- --check
 
       - name: Stage placeholder identity resources
         run: |
           # Release builds generate the signed identity artifacts before packaging; clippy only needs the configured resource paths to exist.
-          New-Item -ItemType Directory -Force src-tauri/resources/identity | Out-Null
-          New-Item -ItemType File -Force src-tauri/resources/identity/Pane-identity.msix | Out-Null
-          New-Item -ItemType File -Force src-tauri/resources/identity/pane-codesign.cer | Out-Null
+          New-Item -ItemType Directory -Force apps/windows/tauri/resources/identity | Out-Null
+          New-Item -ItemType File -Force apps/windows/tauri/resources/identity/Pane-identity.msix | Out-Null
+          New-Item -ItemType File -Force apps/windows/tauri/resources/identity/pane-codesign.cer | Out-Null
 
       - name: cargo clippy
-        working-directory: src-tauri
+        working-directory: apps/windows/tauri
         run: cargo clippy -- -D warnings
 
       - name: Check Tauri generated schemas match capabilities
@@ -76,7 +76,7 @@ jobs:
         run: cargo install cargo-audit --locked
 
       - name: Audit Rust dependencies (RustSec)
-        working-directory: src-tauri
+        working-directory: apps/windows/tauri
         # Non-blocking until the advisory baseline is confirmed clean; flip to a
         # hard gate (remove continue-on-error) once any existing advisories are
         # triaged or ignored via an audit.toml.

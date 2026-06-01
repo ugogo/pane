@@ -17,7 +17,7 @@ with more modules intended to fit into the same dashboard over time.
 
 - **Frontend**: TypeScript + React + shadcn/ui on Tailwind v4 (Vite)
 - **Backend**: Rust + Tauri 2
-- **Entry point**: `src/App.tsx` -> `src-tauri/src/lib.rs`
+- **Entry point**: `apps/windows/src/App.tsx` -> `apps/windows/tauri/src/lib.rs`
 
 ## Commands
 
@@ -47,17 +47,25 @@ npm run dev
 
 ## Project layout
 
-```
-src/                             # React + TypeScript frontend
-|-- App.tsx
-|-- components/features/         # One component per feature area
-`-- lib/commands.ts              # Typed invoke() wrappers for Rust commands
+npm-workspaces monorepo. `apps/windows` and `apps/mobile` both depend on the
+shared `@pane/protocol` contract, never on each other.
 
-src-tauri/                       # Rust backend
-|-- tauri.conf.json
-`-- src/
-    |-- lib.rs                   # Tauri builder + managed state
-    `-- commands/                # capture, hotkeys, lighting, metrics, startup, windows
+```
+apps/
+  windows/                       # Windows Tauri app (one app = FE + Rust)
+  |-- index.html, vite.config.ts, tsconfig.json, package.json
+  |-- src/                       # React + TypeScript frontend
+  |   |-- App.tsx
+  |   |-- components/features/   # One component per feature area
+  |   `-- lib/commands.ts        # Typed invoke() wrappers for Rust commands
+  `-- tauri/                     # Rust backend
+      |-- tauri.conf.json
+      `-- src/
+          |-- lib.rs             # Tauri builder + managed state
+          `-- commands/          # capture, hotkeys, lighting, metrics, startup, windows
+  mobile/                        # Expo / React Native phone companion (@pane/companion)
+packages/
+  protocol/                      # @pane/protocol — shared HTTP wire contract (plain .ts)
 ```
 
 ## Settings

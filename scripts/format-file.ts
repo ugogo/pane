@@ -45,7 +45,7 @@ async function main(): Promise<void> {
   }
 
   if (
-    filePath.replace(/\\/g, '/').includes('src-tauri/capabilities/') &&
+    filePath.replace(/\\/g, '/').includes('apps/windows/tauri/capabilities/') &&
     ext === '.json'
   ) {
     spawnSync('node', ['scripts/sync-tauri-gen.ts'], { stdio: 'ignore' });

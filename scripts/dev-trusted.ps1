@@ -43,7 +43,7 @@ Set-Location $root
 function Fail($m) { Write-Host "error: $m" -ForegroundColor Red; exit 1 }
 function Step($m) { Write-Host "==> $m" -ForegroundColor Cyan }
 
-$exe = Join-Path $root "src-tauri\target\release\pane.exe"
+$exe = Join-Path $root "apps\windows\tauri\target\release\pane.exe"
 
 # ---- stop running instance (releases the exe lock) -------------------------
 
@@ -54,7 +54,13 @@ Get-Process -Name pane -ErrorAction SilentlyContinue | Stop-Process -Force
 
 if (-not $SkipBuild) {
     Step "building pane.exe (release, no bundle)"
-    & npx tauri build --no-bundle
+    # Run from the Windows app dir so Tauri resolves apps/windows/tauri/tauri.conf.json.
+    Push-Location (Join-Path $root "apps/windows")
+    try {
+        & npx tauri build --no-bundle
+    } finally {
+        Pop-Location
+    }
     if ($LASTEXITCODE -ne 0) { Fail "tauri build failed." }
 }
 if (-not (Test-Path $exe)) { Fail "pane.exe not found at $exe (run without -SkipBuild first)." }
@@ -62,7 +68,7 @@ if (-not (Test-Path $exe)) { Fail "pane.exe not found at $exe (run without -Skip
 # ---- build + register identity package ------------------------------------
 
 Step "building + registering identity package against build dir"
-& (Join-Path $PSScriptRoot "build-identity-package.ps1") -DevSelfSigned -Register -ExternalLocation (Join-Path $root "src-tauri\target\release")
+& (Join-Path $PSScriptRoot "build-identity-package.ps1") -DevSelfSigned -Register -ExternalLocation (Join-Path $root "apps\windows\tauri\target\release")
 if ($LASTEXITCODE -ne 0) { Fail "identity package build/register failed." }
 
 Write-Host ""

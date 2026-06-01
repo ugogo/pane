@@ -11,7 +11,7 @@
     Steps:
       1. Resolve the app version (from tauri.conf.json unless -Version given) and
          rewrite the Version in a staged copy of identity/AppxManifest.xml.
-      2. Stage the manifest + logo assets (from src-tauri/icons) + the public
+      2. Stage the manifest + logo assets (from apps/windows/tauri/icons) + the public
          folder into a temp build dir.
       3. Pack it with MakeAppx into target/release/bundle/identity/Pane-<ver>.msix.
       4. Ensure a code-signing cert exists (self-signed for dev) whose subject
@@ -20,7 +20,7 @@
       5. Optionally register it against an install dir (-Register -ExternalLocation).
 
     The Publisher in identity/AppxManifest.xml and the publisher in
-    src-tauri/windows-app-manifest.xml must both equal the signing cert subject
+    apps/windows/tauri/windows-app-manifest.xml must both equal the signing cert subject
     (default CN=Pane). For distribution, replace the self-signed cert with a real
     code-signing certificate and keep all three in sync.
 
@@ -146,7 +146,7 @@ $signtool = Find-SdkTool "signtool.exe"
 # ---- resolve version -------------------------------------------------------
 
 if (-not $Version) {
-    $conf = Get-Content -Raw "src-tauri/tauri.conf.json" | ConvertFrom-Json
+    $conf = Get-Content -Raw "apps/windows/tauri/tauri.conf.json" | ConvertFrom-Json
     $Version = $conf.version
 }
 if ($Version -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') { Fail "bad version '$Version'." }
@@ -164,18 +164,18 @@ New-Item -ItemType Directory -Path (Join-Path $staging "Assets") | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $staging "public") | Out-Null
 
 Step "staging manifest (version $pkgVersion)"
-$manifest = Get-Content -Raw "src-tauri/identity/AppxManifest.xml"
+$manifest = Get-Content -Raw "apps/windows/tauri/identity/AppxManifest.xml"
 $manifest = [regex]::Replace($manifest, '(<Identity[^>]*\bVersion=")[^"]*(")', "`${1}$pkgVersion`${2}")
 [System.IO.File]::WriteAllText((Join-Path $staging "AppxManifest.xml"), $manifest)
 
-$icons = "src-tauri/icons"
+$icons = "apps/windows/tauri/icons"
 Copy-Item (Join-Path $icons "StoreLogo.png")        (Join-Path $staging "Assets\StoreLogo.png")
 Copy-Item (Join-Path $icons "Square150x150Logo.png") (Join-Path $staging "Assets\Square150x150Logo.png")
 Copy-Item (Join-Path $icons "Square44x44Logo.png")   (Join-Path $staging "Assets\Square44x44Logo.png")
 
 # ---- pack ------------------------------------------------------------------
 
-$outDir = Join-Path $root "src-tauri/target/release/bundle/identity"
+$outDir = Join-Path $root "apps/windows/tauri/target/release/bundle/identity"
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 $msix = Join-Path $outDir "Pane-$pkgVersion.msix"
 
@@ -223,11 +223,11 @@ Write-Host "Built + signed: $msix" -ForegroundColor Green
 
 # ---- optional stage for NSIS bundling --------------------------------------
 
-# Copy the signed package + public cert into src-tauri/resources/identity under
+# Copy the signed package + public cert into apps/windows/tauri/resources/identity under
 # stable names so `tauri build` bundles them and the installer hook can find
 # them. Must run before `tauri build` gathers resources.
 if ($StageBundle) {
-    $bundleDir = Join-Path $root "src-tauri/resources/identity"
+    $bundleDir = Join-Path $root "apps/windows/tauri/resources/identity"
     New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
     Copy-Item $msix    (Join-Path $bundleDir "Pane-identity.msix") -Force
     Copy-Item $cerPath (Join-Path $bundleDir "pane-codesign.cer")  -Force
@@ -238,7 +238,7 @@ if ($StageBundle) {
 
 if ($Register) {
     if (-not $ExternalLocation) {
-        $ExternalLocation = Join-Path $root "src-tauri/target/release"
+        $ExternalLocation = Join-Path $root "apps/windows/tauri/target/release"
     }
     $ExternalLocation = (Resolve-Path $ExternalLocation).Path
     Step "registering identity package -> $ExternalLocation"
@@ -247,5 +247,5 @@ if ($Register) {
 } else {
     Write-Host ""
     Write-Host "To register against a local build for testing:" -ForegroundColor Yellow
-    Write-Host "  .\scripts\build-identity-package.ps1 -Register -ExternalLocation `"$root\src-tauri\target\release`""
+    Write-Host "  .\scripts\build-identity-package.ps1 -Register -ExternalLocation `"$root\apps\windows\tauri\target\release`""
 }
