@@ -14,6 +14,11 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as SecureStore from 'expo-secure-store';
+import * as Crypto from 'expo-crypto';
+import * as ed25519 from '@noble/ed25519';
+import { sha512 } from '@noble/hashes/sha2.js';
+
+ed25519.hashes.sha512 = sha512;
 
 // Where the issued bearer credentials live between launches.
 const STORE_KEY = 'pane.pairing.v1';
@@ -42,13 +47,17 @@ async function fetchWithTimeout(
 }
 
 interface Pairing {
+  scheme: 'http';
   host: string;
   port: number;
   deviceToken: string;
+  privateKey: string;
+  publicKey: string;
   name: string;
 }
 
 interface ParsedUri {
+  scheme: 'http';
   host: string;
   port: number;
   token: string;
@@ -103,25 +112,96 @@ function parsePairingUri(data: string): ParsedUri | null {
   const host = params.get('host');
   const port = Number(params.get('port'));
   const token = params.get('token');
-  if (!host || !Number.isInteger(port) || !token) return null;
-  return { host, port, token };
+  const scheme = params.get('scheme');
+  if (scheme !== 'http' || !host || !Number.isInteger(port) || !token) {
+    return null;
+  }
+  return { scheme, host, port, token };
 }
 
 function baseUrl(pairing: Pick<Pairing, 'host' | 'port'>): string {
   return `http://${pairing.host}:${pairing.port}`;
 }
 
-function authHeaders(pairing: Pairing): HeadersInit {
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(
+    '',
+  );
+}
+
+function base64ToBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function isPairing(value: unknown): value is Pairing {
+  const candidate = value as Partial<Pairing>;
+  return (
+    candidate?.scheme === 'http' &&
+    typeof candidate.host === 'string' &&
+    typeof candidate.port === 'number' &&
+    typeof candidate.deviceToken === 'string' &&
+    typeof candidate.privateKey === 'string' &&
+    typeof candidate.publicKey === 'string'
+  );
+}
+
+function randomNonce(): string {
+  return bytesToHex(Crypto.getRandomBytes(16));
+}
+
+async function keyPair() {
+  const privateKey = Crypto.getRandomBytes(32);
+  const publicKey = ed25519.getPublicKey(privateKey);
+  return {
+    privateKey: bytesToBase64(privateKey),
+    publicKey: bytesToBase64(publicKey),
+  };
+}
+
+async function signedHeaders(
+  pairing: Pairing,
+  method: string,
+  path: string,
+  body = '',
+): Promise<HeadersInit> {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = randomNonce();
+  const bodySha256 = bytesToHex(
+    new Uint8Array(
+      await Crypto.digest(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        new TextEncoder().encode(body),
+      ),
+    ),
+  );
+  const message = `${method}\n${path}\n${timestamp}\n${nonce}\n${bodySha256}`;
+  const signature = ed25519.sign(
+    new TextEncoder().encode(message),
+    base64ToBytes(pairing.privateKey),
+  );
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${pairing.deviceToken}`,
+    'X-Pane-Timestamp': timestamp,
+    'X-Pane-Nonce': nonce,
+    'X-Pane-Body-Sha256': bodySha256,
+    'X-Pane-Signature': bytesToBase64(signature),
   };
 }
 
 async function fetchSnapshot(pairing: Pairing): Promise<CompanionSnapshot> {
   const response = await fetchWithTimeout(
     `${baseUrl(pairing)}/v1/snapshot`,
-    { headers: authHeaders(pairing) },
+    { headers: await signedHeaders(pairing, 'GET', '/v1/snapshot') },
     REQUEST_TIMEOUT_MS,
   );
   if (!response.ok) throw new Error(`snapshot ${response.status}`);
@@ -129,12 +209,18 @@ async function fetchSnapshot(pairing: Pairing): Promise<CompanionSnapshot> {
 }
 
 async function sendCommand(pairing: Pairing, body: CommandBody): Promise<void> {
+  const encodedBody = JSON.stringify(body);
   const response = await fetchWithTimeout(
     `${baseUrl(pairing)}/v1/commands`,
     {
       method: 'POST',
-      headers: authHeaders(pairing),
-      body: JSON.stringify(body),
+      headers: await signedHeaders(
+        pairing,
+        'POST',
+        '/v1/commands',
+        encodedBody,
+      ),
+      body: encodedBody,
     },
     REQUEST_TIMEOUT_MS,
   );
@@ -155,7 +241,12 @@ function AppContent() {
 
   useEffect(() => {
     void SecureStore.getItemAsync(STORE_KEY).then((raw) => {
-      setPairing(raw ? (JSON.parse(raw) as Pairing) : null);
+      if (!raw) {
+        setPairing(null);
+        return;
+      }
+      const saved = JSON.parse(raw) as unknown;
+      setPairing(isPairing(saved) ? saved : null);
     });
   }, []);
 
@@ -197,19 +288,27 @@ function PairScreen({ onPaired }: { onPaired: (pairing: Pairing) => void }) {
       setError(undefined);
 
       try {
+        const keys = await keyPair();
         const response = await fetch(`${baseUrl(parsed)}/v1/pair`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: parsed.token, name: DEVICE_NAME }),
+          body: JSON.stringify({
+            token: parsed.token,
+            name: DEVICE_NAME,
+            publicKey: keys.publicKey,
+          }),
         });
         if (!response.ok) {
           throw new Error(`Pairing rejected (${response.status})`);
         }
         const body = (await response.json()) as { deviceToken: string };
         onPaired({
+          scheme: parsed.scheme,
           host: parsed.host,
           port: parsed.port,
           deviceToken: body.deviceToken,
+          privateKey: keys.privateKey,
+          publicKey: keys.publicKey,
           name: DEVICE_NAME,
         });
       } catch (err) {
@@ -529,7 +628,7 @@ function ControlScreen({
         {offline ? (
           <Text style={styles.body}>
             Can&rsquo;t reach Pane. Make sure it&rsquo;s running on your desktop
-            and on the same Wi-Fi.
+            and on the same Wi-Fi. If your desktop IP changed, pair again.
           </Text>
         ) : null}
 

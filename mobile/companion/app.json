@@ -9,7 +9,7 @@
       "bundleIdentifier": "dev.pane.companion",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Pane Companion finds and pairs with Pane on your local network.",
-        "NSBonjourServices": ["_pane._tcp"]
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

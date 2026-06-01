@@ -10,8 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@noble/ed25519": "^3.1.0",
+    "@noble/hashes": "^2.2.0",
     "expo": "^54.0.0",
     "expo-camera": "~17.0.10",
+    "expo-crypto": "~15.0.9",
     "expo-secure-store": "~15.0.8",
     "react": "19.1.0",
     "react-native": "0.81.5",
