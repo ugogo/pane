@@ -77,6 +77,22 @@ Set-Location $root
 function Fail($m) { Write-Host "error: $m" -ForegroundColor Red; exit 1 }
 function Step($m) { Write-Host "==> $m" -ForegroundColor Cyan }
 
+function Use-WindowsPowerShellModulePath {
+    if ($PSVersionTable.PSEdition -ne "Desktop") { return }
+
+    $windowsModuleRoots = @(
+        (Join-Path $HOME "Documents\WindowsPowerShell\Modules"),
+        (Join-Path $env:ProgramFiles "WindowsPowerShell\Modules"),
+        (Join-Path $PSHOME "Modules")
+    )
+
+    $env:PSModulePath = ($windowsModuleRoots |
+        Where-Object { $_ -and (Test-Path -LiteralPath $_) } |
+        Select-Object -Unique) -join [System.IO.Path]::PathSeparator
+}
+
+Use-WindowsPowerShellModulePath
+
 # The self-signed cert path + password. The password is deliberately weak; it
 # only protects the local .pfx of a self-signed cert (which carries no trust of
 # its own). The production path (no -DevSelfSigned) rejects them so a release
