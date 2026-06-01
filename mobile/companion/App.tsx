@@ -282,7 +282,8 @@ function ControlScreen({
   onUnpair: () => void;
 }) {
   const [connected, setConnected] = useState<boolean | null>(null);
-  const [serverName, setServerName] = useState(pairing.name);
+  const [helloName, setHelloName] = useState<string | null>(null);
+  const displayName = helloName ?? pairing.name;
   const [snapshot, setSnapshot] = useState<CompanionSnapshot | null>(null);
   const [brightness, setBrightness] = useState(50);
   const [outputVolume, setOutputVolume] = useState(50);
@@ -306,7 +307,7 @@ function ControlScreen({
     );
     if (!response.ok) throw new Error(`hello ${response.status}`);
     const hello = (await response.json()) as { name: string };
-    setServerName(hello.name);
+    setHelloName(hello.name);
     const snap = await fetchSnapshot(pairing);
     applySnapshot(snap);
     setConnected(true);
@@ -369,14 +370,18 @@ function ControlScreen({
     connected === null ? '#a3a3a3' : offline ? '#f87171' : '#5ed6a8';
 
   return (
-    <SafeAreaView style={styles.shell}>
+    <View style={styles.shell}>
       <StatusBar barStyle="light-content" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.scrollContent}
+        style={styles.scroll}
+      >
         <View style={styles.header}>
           <Text style={[styles.eyebrow, { color: statusColor }]}>
             {statusLabel}
           </Text>
-          <Text style={styles.title}>{serverName}</Text>
+          <Text style={styles.title}>{displayName}</Text>
         </View>
 
         <View style={[styles.panel, offline && styles.panelOffline]}>
@@ -534,7 +539,7 @@ function ControlScreen({
           <Text style={styles.linkText}>Unpair this iPhone</Text>
         </Pressable>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -557,43 +562,36 @@ function Slider({
   const leftRef = useRef(0);
   const widthRef = useRef(0);
   const onValueChangeRef = useRef(onValueChange);
-  onValueChangeRef.current = onValueChange;
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-  // PanResponder is created once, so read `disabled` through a ref.
   const disabledRef = useRef(disabled);
+  onValueChangeRef.current = onValueChange;
+  onChangeRef.current = onChange;
   disabledRef.current = disabled;
 
-  const measure = useCallback(() => {
+  const measure = () => {
     trackRef.current?.measureInWindow((x, _y, width) => {
       leftRef.current = x;
       widthRef.current = width;
     });
-  }, []);
+  };
 
-  const valueFromTouch = useCallback((event: GestureResponderEvent) => {
+  const emitFromTouch = (event: GestureResponderEvent, commit: boolean) => {
     const width = widthRef.current;
-    if (width <= 0) return null;
+    if (width <= 0) return;
     const offset = event.nativeEvent.pageX - leftRef.current;
     const ratio = Math.max(0, Math.min(1, offset / width));
-    return Math.round(ratio * 100);
-  }, []);
+    const next = Math.round(ratio * 100);
+    onValueChangeRef.current?.(next);
+    if (commit) onChangeRef.current(next);
+  };
 
-  const emitFromTouch = useCallback(
-    (event: GestureResponderEvent, commit: boolean) => {
-      const next = valueFromTouch(event);
-      if (next === null) return;
-      onValueChangeRef.current?.(next);
-      if (commit) onChangeRef.current(next);
-    },
-    [valueFromTouch],
+  const responderRef = useRef<ReturnType<typeof PanResponder.create> | null>(
+    null,
   );
-
-  const responder = useRef(
-    PanResponder.create({
+  if (responderRef.current === null) {
+    responderRef.current = PanResponder.create({
       onStartShouldSetPanResponder: () => !disabledRef.current,
       onMoveShouldSetPanResponder: () => !disabledRef.current,
-      // Re-measure on grant so a scrolled/moved card still maps correctly.
       onPanResponderGrant: (event) => {
         measure();
         emitFromTouch(event, false);
@@ -601,8 +599,9 @@ function Slider({
       onPanResponderMove: (event) => emitFromTouch(event, false),
       onPanResponderRelease: (event) => emitFromTouch(event, true),
       onPanResponderTerminate: (event) => emitFromTouch(event, true),
-    }),
-  ).current;
+    });
+  }
+  const panHandlers = responderRef.current.panHandlers;
 
   return (
     <View
@@ -610,7 +609,7 @@ function Slider({
       hitSlop={16}
       style={styles.track}
       onLayout={measure}
-      {...responder.panHandlers}
+      {...panHandlers}
     >
       <View
         pointerEvents="none"
@@ -643,6 +642,9 @@ const styles = StyleSheet.create({
     gap: 20,
     justifyContent: 'center',
     padding: 24,
+  },
+  scroll: {
+    flex: 1,
   },
   scrollContent: {
     gap: 16,
