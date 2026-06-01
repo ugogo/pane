@@ -316,8 +316,8 @@ async fn pair_handler(
     State(state): State<CompanionState>,
     Json(request): Json<PairRequest>,
 ) -> Result<Json<PairResponse>, ApiError> {
-    consume_pairing_token(&request.token)?;
     validate_public_key(&request.public_key)?;
+    consume_pairing_token(&request.token)?;
 
     let mut settings = load_settings_at(&state.settings_path);
     let device_id = random_hex(8);
@@ -839,6 +839,32 @@ mod tests {
         set_pairing("stale", now - 1);
         assert!(consume_pairing_token("stale").is_err());
         assert!(ACTIVE_PAIRING.lock().unwrap().is_none());
+    }
+
+    #[test]
+    fn malformed_public_key_does_not_consume_pairing_token() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_io()
+            .build()
+            .unwrap();
+
+        runtime.block_on(async {
+            let now = now_epoch_seconds().unwrap();
+            set_pairing("good", now + 60);
+
+            let result = pair_handler(
+                State(test_state()),
+                Json(PairRequest {
+                    token: "good".to_string(),
+                    name: "iPhone".to_string(),
+                    public_key: "not-base64".to_string(),
+                }),
+            )
+            .await;
+
+            assert!(result.is_err());
+            assert!(consume_pairing_token("good").is_ok());
+        });
     }
 
     #[test]
