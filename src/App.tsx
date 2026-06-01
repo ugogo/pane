@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { ComponentType } from 'react';
+import { HashRouter, Navigate, NavLink, useLocation } from 'react-router';
 import { getVersion } from '@tauri-apps/api/app';
 import {
   Activity,
@@ -27,11 +29,6 @@ import { LightingCard } from '@/components/features/LightingCard';
 import { MetricsCard } from '@/components/features/MetricsCard';
 import { SoundCard } from '@/components/features/SoundCard';
 import { Button } from '@/components/ui/button';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { prepareCaptureWindows } from '@/lib/commands';
 import {
   checkForUpdatesOnLaunch,
@@ -41,14 +38,70 @@ import {
 } from '@/lib/updater';
 
 const modules = [
-  { id: 'capture', label: 'Capture', icon: Camera },
-  { id: 'display', label: 'Display', icon: Monitor },
-  { id: 'sound', label: 'Sound', icon: Volume2 },
-  { id: 'lights', label: 'Lights', icon: Lightbulb },
-  { id: 'accent', label: 'Accents', icon: Languages },
-  { id: 'startup', label: 'Startup', icon: Power },
-  { id: 'diagnostics', label: 'Diagnostics', icon: Activity },
-] satisfies readonly { id: string; label: string; icon: LucideIcon }[];
+  {
+    path: '/capture',
+    label: 'Capture',
+    title: 'Capture',
+    description: 'Fullscreen and area capture with global shortcuts.',
+    icon: Camera,
+    component: CaptureCard,
+  },
+  {
+    path: '/display',
+    label: 'Display',
+    title: 'Display',
+    description: 'Monitor brightness and presets.',
+    icon: Monitor,
+    component: BrightnessCard,
+  },
+  {
+    path: '/sound',
+    label: 'Sound',
+    title: 'Sound',
+    description: 'Default devices and volume.',
+    icon: Volume2,
+    component: SoundCard,
+  },
+  {
+    path: '/lights',
+    label: 'Lights',
+    title: 'Lights',
+    description: 'Supported lighting hardware.',
+    icon: Lightbulb,
+    component: LightingCard,
+  },
+  {
+    path: '/accent',
+    label: 'Accents',
+    title: 'Accents',
+    description: 'Long-press letters for variants.',
+    icon: Languages,
+    component: AccentCard,
+  },
+  {
+    path: '/startup',
+    label: 'Startup',
+    title: 'Startup',
+    description: 'Background launch behavior.',
+    icon: Power,
+    component: InfraCard,
+  },
+  {
+    path: '/diagnostics',
+    label: 'Diagnostics',
+    title: 'Diagnostics',
+    description: 'Memory, startup timing, and process ID.',
+    icon: Activity,
+    component: MetricsCard,
+  },
+] satisfies readonly {
+  path: string;
+  label: string;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  component: ComponentType<{ className?: string }>;
+}[];
 
 type UpdateNoticeState =
   | { status: 'hidden' }
@@ -69,35 +122,43 @@ function formatBytes(bytes: number) {
 }
 
 export function App() {
-  const contentScrollRef = useRef<HTMLDivElement>(null);
+  const [isBooting, setIsBooting] = useState(true);
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const [updateNotice, setUpdateNotice] = useState<UpdateNoticeState>({
     status: 'hidden',
   });
 
-  useLayoutEffect(() => {
-    const isOverlayView = new URL(window.location.href).searchParams.has(
-      'view',
-    );
-    if (!isOverlayView) {
-      contentScrollRef.current?.scrollTo({ left: 0, top: 0 });
-    }
-  }, []);
-
   useEffect(() => {
-    const firstFrame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        void prepareCaptureWindows().catch((err) => {
-          console.error('Failed to prepare capture windows', err);
-        });
+    let cancelled = false;
+    let firstFrame = 0;
+    let secondFrame = 0;
+    let bootTimer = 0;
+
+    const afterFirstPaint = new Promise<void>((resolve) => {
+      firstFrame = requestAnimationFrame(() => {
+        secondFrame = requestAnimationFrame(() => resolve());
       });
     });
+    const minimumBoot = new Promise<void>((resolve) => {
+      bootTimer = window.setTimeout(resolve, 160);
+    });
 
-    void getVersion()
+    const versionTask = getVersion()
       .then(setAppVersion)
       .catch((err) => {
         console.error('Failed to load app version', err);
       });
+
+    void Promise.allSettled([afterFirstPaint, minimumBoot, versionTask]).then(
+      () => {
+        if (cancelled) return;
+        setIsBooting(false);
+
+        void prepareCaptureWindows().catch((err) => {
+          console.error('Failed to prepare capture windows', err);
+        });
+      },
+    );
 
     void checkForUpdatesOnLaunch().then((result) => {
       if (result.status === 'error') {
@@ -111,7 +172,12 @@ export function App() {
       }
     });
 
-    return () => cancelAnimationFrame(firstFrame);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+      window.clearTimeout(bootTimer);
+    };
   }, []);
 
   const handleInstallUpdate = async () => {
@@ -155,6 +221,39 @@ export function App() {
   };
 
   return (
+    <HashRouter>
+      {isBooting ? (
+        <BootScreen />
+      ) : (
+        <AppShell
+          appVersion={appVersion}
+          updateNotice={updateNotice}
+          onInstallUpdate={handleInstallUpdate}
+        />
+      )}
+    </HashRouter>
+  );
+}
+
+function AppShell({
+  appVersion,
+  updateNotice,
+  onInstallUpdate,
+}: {
+  appVersion: string | null;
+  updateNotice: UpdateNoticeState;
+  onInstallUpdate: () => void;
+}) {
+  const contentScrollRef = useRef<HTMLDivElement>(null);
+  const { pathname } = useLocation();
+  const matchedModule = modules.find((module) => module.path === pathname);
+  const activeModule = matchedModule ?? modules[0];
+
+  useLayoutEffect(() => {
+    contentScrollRef.current?.scrollTo({ left: 0, top: 0 });
+  }, [pathname]);
+
+  return (
     <main className="text-foreground grid h-screen grid-rows-[36px_minmax(0,1fr)] overflow-hidden bg-transparent">
       <AppTitlebar />
 
@@ -164,80 +263,78 @@ export function App() {
             aria-label="Pane modules"
             className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible"
           >
-            {modules.map(({ id, label, icon: Icon }) => (
-              <a
-                key={id}
-                href={`#${id}`}
-                className="flex min-w-max items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-white/62 transition-colors hover:bg-white/8 hover:text-white md:min-w-0"
+            {modules.map(({ path, label, icon: Icon }) => (
+              <NavLink
+                key={path}
+                to={path}
+                className={({ isActive }) =>
+                  [
+                    'flex min-w-max items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors md:min-w-0',
+                    isActive
+                      ? 'bg-white/10 text-white'
+                      : 'text-white/62 hover:bg-white/8 hover:text-white',
+                  ].join(' ')
+                }
               >
                 <Icon aria-hidden="true" className="size-4 shrink-0" />
                 <span>{label}</span>
-              </a>
+              </NavLink>
             ))}
           </nav>
         </aside>
 
         <div
           ref={contentScrollRef}
-          className="bg-background min-w-0 overflow-y-auto p-8"
+          className="bg-background min-w-0 overflow-y-auto"
         >
-          <div className="mx-auto max-w-[760px] space-y-4">
-            <header className="flex items-start justify-between gap-4">
+          <header className="bg-background/92 sticky top-0 z-10 border-b px-8 py-5 backdrop-blur">
+            <div className="mx-auto flex max-w-[760px] items-start justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight">Pane</h1>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  {activeModule.title}
+                </h1>
                 <p className="text-muted-foreground text-sm">
-                  Windows utilities in one place.
+                  {activeModule.description}
                 </p>
               </div>
               <p className="bg-card/70 text-muted-foreground rounded-md border px-2 py-1 font-mono text-xs">
                 {appVersion ?? 'version unavailable'}
               </p>
-            </header>
+            </div>
+          </header>
 
+          <div className="mx-auto max-w-[760px] space-y-5 px-8 py-6">
             <UpdateNotice
               state={updateNotice}
-              onInstall={handleInstallUpdate}
+              onInstall={onInstallUpdate}
               onRestart={() => void restartToApplyUpdate()}
             />
 
-            <section id="capture" className="scroll-mt-4">
-              <CaptureCard />
-            </section>
+            {!matchedModule && <Navigate to="/capture" replace />}
+            {modules.map(({ path, component: Module }) => {
+              const isActive = activeModule.path === path;
 
-            <div className="grid gap-4">
-              <section id="display" className="scroll-mt-4">
-                <BrightnessCard />
-              </section>
-              <section id="sound" className="scroll-mt-4">
-                <SoundCard />
-              </section>
-              <section id="lights" className="scroll-mt-4">
-                <LightingCard />
-              </section>
-              <section id="accent" className="scroll-mt-4">
-                <AccentCard />
-              </section>
-              <section id="startup" className="scroll-mt-4">
-                <InfraCard />
-              </section>
-            </div>
-
-            <Collapsible defaultOpen={import.meta.env.DEV}>
-              <section
-                id="diagnostics"
-                className="bg-card/85 scroll-mt-4 rounded-xl border"
-              >
-                <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium">
-                  Diagnostics
-                  <span className="text-muted-foreground text-xs">Toggle</span>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="border-t p-4">
-                  <MetricsCard />
-                </CollapsibleContent>
-              </section>
-            </Collapsible>
+              return (
+                <section key={path} hidden={!isActive}>
+                  <Module />
+                </section>
+              );
+            })}
           </div>
         </div>
+      </div>
+    </main>
+  );
+}
+
+function BootScreen() {
+  return (
+    <main className="text-foreground grid h-screen grid-rows-[36px_minmax(0,1fr)] overflow-hidden bg-transparent">
+      <AppTitlebar />
+      <div className="bg-background grid place-items-center">
+        <output aria-label="Loading Pane" className="grid place-items-center">
+          <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+        </output>
       </div>
     </main>
   );

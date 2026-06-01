@@ -1,17 +1,9 @@
 import { useEffect, useState } from 'react';
 import { getAccentPopupEnabled, setAccentPopupEnabled } from '@/lib/commands';
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { StatusBadge, StatusText } from './status-ui';
-
-type ProbeStatus = 'idle' | 'pass' | 'fail';
+import { cn } from '@/lib/utils';
+import { PageSpinner } from './page-spinner';
+import { StatusText } from './status-ui';
 
 export function AccentCard({ className }: { className?: string }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
@@ -35,38 +27,27 @@ export function AccentCard({ className }: { className?: string }) {
     }
   }
 
-  const status: ProbeStatus = error
-    ? 'fail'
-    : enabled === null
-      ? 'idle'
-      : 'pass';
+  if (enabled === null && !error) {
+    return <PageSpinner className={className} />;
+  }
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle>Accent popup</CardTitle>
-        <CardDescription>Long-press letters for accents.</CardDescription>
-        <CardAction>
-          <StatusBadge status={status} />
-        </CardAction>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
-          <div>
-            <p className="text-sm font-medium">Enabled</p>
-            <p className="text-muted-foreground text-sm">
-              Choose variants with click, number keys, or Esc to dismiss.
-            </p>
-          </div>
-          <Switch
-            aria-label="Enable long-press accents"
-            disabled={enabled === null}
-            checked={enabled ?? false}
-            onCheckedChange={(checked) => void handleToggle(checked)}
-          />
+    <div className={cn('space-y-3', className)}>
+      <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+        <div>
+          <p className="text-sm font-medium">Enabled</p>
+          <p className="text-muted-foreground text-sm">
+            Choose variants with click, number keys, or Esc to dismiss.
+          </p>
         </div>
-        {error && <StatusText status="fail">{error}</StatusText>}
-      </CardContent>
-    </Card>
+        <Switch
+          aria-label="Enable long-press accents"
+          disabled={enabled === null}
+          checked={enabled ?? false}
+          onCheckedChange={(checked) => void handleToggle(checked)}
+        />
+      </div>
+      {error && <StatusText status="fail">{error}</StatusText>}
+    </div>
   );
 }

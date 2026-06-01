@@ -17,20 +17,14 @@ import {
   type MonitorPreset,
 } from '../../lib/commands';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { StatusBadge, StatusText } from './status-ui';
+import { PageSpinner } from './page-spinner';
+import { StatusText } from './status-ui';
 
 type ScanStatus = 'idle' | 'pass' | 'warn' | 'fail';
 
@@ -279,46 +273,41 @@ export function BrightnessCard({ className }: { className?: string }) {
     }
   }
 
+  if (busy && monitors.length === 0 && !scan.message) {
+    return <PageSpinner className={className} />;
+  }
+
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle>Display</CardTitle>
-        <CardDescription>Monitor brightness and presets.</CardDescription>
-        <CardAction>
-          <StatusBadge status={scan.status} />
-        </CardAction>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <PresetBar
-          presets={presets}
-          busy={busy}
-          hasMonitors={monitors.length > 0}
-          onRefresh={() => {
-            beginLoad();
-            void load(true);
-          }}
-          onApply={(name) => void onApplyPreset(name)}
-          onUpdate={(name) => void onUpdatePreset(name)}
-          onDelete={(name) => void onDeletePreset(name)}
-          onSave={() => void onSavePreset()}
-        />
+    <div className={cn('space-y-4', className)}>
+      <PresetBar
+        presets={presets}
+        busy={busy}
+        hasMonitors={monitors.length > 0}
+        onRefresh={() => {
+          beginLoad();
+          void load(true);
+        }}
+        onApply={(name) => void onApplyPreset(name)}
+        onUpdate={(name) => void onUpdatePreset(name)}
+        onDelete={(name) => void onDeletePreset(name)}
+        onSave={() => void onSavePreset()}
+      />
 
-        {scan.message && (
-          <StatusText status={scan.status}>{scan.message}</StatusText>
-        )}
+      {scan.message && (
+        <StatusText status={scan.status}>{scan.message}</StatusText>
+      )}
 
-        <div className="grid gap-3">
-          {monitors.map((m) => (
-            <MonitorRow
-              key={m.id}
-              monitor={m}
-              onSlide={onSlide}
-              onWarmth={onWarmth}
-            />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+      <div className="grid gap-3">
+        {monitors.map((m) => (
+          <MonitorRow
+            key={m.id}
+            monitor={m}
+            onSlide={onSlide}
+            onWarmth={onWarmth}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 

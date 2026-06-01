@@ -16,20 +16,14 @@ import {
   type VolumeInfo,
 } from '../../lib/commands';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { StatusBadge, StatusText } from './status-ui';
+import { PageSpinner } from './page-spinner';
+import { StatusText } from './status-ui';
 
 type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
 
@@ -293,57 +287,60 @@ export function SoundCard({ className }: { className?: string }) {
     });
   }
 
+  const isInitialLoad =
+    busy &&
+    !message &&
+    devices.output.length === 0 &&
+    devices.input.length === 0 &&
+    volumes.output === null &&
+    volumes.input === null;
+
+  if (isInitialLoad) {
+    return <PageSpinner className={className} />;
+  }
+
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle>Sound</CardTitle>
-        <CardDescription>Default devices and volume.</CardDescription>
-        <CardAction>
-          <StatusBadge status={status} />
-        </CardAction>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Button
-          disabled={busy}
-          size="sm"
-          onClick={() => {
-            dispatch({ type: 'beginLoad' });
-            void load();
-          }}
-        >
-          Refresh
-        </Button>
+    <div className={cn('space-y-4', className)}>
+      <Button
+        disabled={busy}
+        size="sm"
+        onClick={() => {
+          dispatch({ type: 'beginLoad' });
+          void load();
+        }}
+      >
+        Refresh
+      </Button>
 
-        {message && <StatusText status={status}>{message}</StatusText>}
+      {message && <StatusText status={status}>{message}</StatusText>}
 
-        <div className="grid gap-3">
-          <Section
-            kind="output"
-            label="Output"
-            devices={devices.output}
-            vol={volumes.output}
-            busy={busy}
-            favs={favorites.output}
-            onSelect={onSelectDevice}
-            onToggleMute={onToggleMute}
-            onVolume={onVolume}
-            onToggleFavorite={toggleFavorite}
-          />
-          <Section
-            kind="input"
-            label="Input"
-            devices={devices.input}
-            vol={volumes.input}
-            busy={busy}
-            favs={favorites.input}
-            onSelect={onSelectDevice}
-            onToggleMute={onToggleMute}
-            onVolume={onVolume}
-            onToggleFavorite={toggleFavorite}
-          />
-        </div>
-      </CardContent>
-    </Card>
+      <div className="grid gap-3">
+        <Section
+          kind="output"
+          label="Output"
+          devices={devices.output}
+          vol={volumes.output}
+          busy={busy}
+          favs={favorites.output}
+          onSelect={onSelectDevice}
+          onToggleMute={onToggleMute}
+          onVolume={onVolume}
+          onToggleFavorite={toggleFavorite}
+        />
+        <Section
+          kind="input"
+          label="Input"
+          devices={devices.input}
+          vol={volumes.input}
+          busy={busy}
+          favs={favorites.input}
+          onSelect={onSelectDevice}
+          onToggleMute={onToggleMute}
+          onVolume={onVolume}
+          onToggleFavorite={toggleFavorite}
+        />
+      </div>
+    </div>
   );
 }
 

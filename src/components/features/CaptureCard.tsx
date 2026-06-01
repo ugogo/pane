@@ -12,15 +12,9 @@ import {
 } from '../../lib/commands';
 import { ShortcutInput } from '../ShortcutInput';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { StatusBadge, StatusText } from './status-ui';
+import { cn } from '@/lib/utils';
+import { PageSpinner } from './page-spinner';
+import { StatusText } from './status-ui';
 
 type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
 
@@ -29,6 +23,7 @@ interface State {
   status: ProbeStatus;
   message: string;
   busy: boolean;
+  loadingHotkeys: boolean;
   previewVisible: boolean | null;
 }
 
@@ -45,6 +40,7 @@ const initialState: State = {
   status: 'idle',
   message: '',
   busy: false,
+  loadingHotkeys: true,
   previewVisible: null,
 };
 
@@ -56,7 +52,7 @@ const actionLabels: Record<CaptureAction, string> = {
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'hotkeysLoaded':
-      return { ...state, hotkeys: action.hotkeys };
+      return { ...state, hotkeys: action.hotkeys, loadingHotkeys: false };
     case 'bound':
       return {
         ...state,
@@ -83,7 +79,12 @@ function reducer(state: State, action: Action): State {
           : 'Floating preview is hidden.',
       };
     case 'notify':
-      return { ...state, status: action.status, message: action.message };
+      return {
+        ...state,
+        status: action.status,
+        message: action.message,
+        loadingHotkeys: false,
+      };
   }
 }
 
@@ -108,7 +109,8 @@ async function runArea(): Promise<string | null> {
 
 export function CaptureCard({ className }: { className?: string }) {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { hotkeys, status, message, busy, previewVisible } = state;
+  const { hotkeys, status, message, busy, loadingHotkeys, previewVisible } =
+    state;
 
   useEffect(() => {
     void getCaptureHotkeys()
@@ -168,59 +170,52 @@ export function CaptureCard({ className }: { className?: string }) {
     ? 'Hide floating preview'
     : 'Show floating preview';
 
-  return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle>Capture</CardTitle>
-        <CardDescription>
-          Fullscreen and area capture with global shortcuts.
-        </CardDescription>
-        <CardAction>
-          <StatusBadge status={status} />
-        </CardAction>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Row
-            label="Fullscreen capture"
-            actionLabel="Capture full screen"
-            shortcutLabel="Fullscreen capture shortcut"
-            hotkey={hotkeys.fullscreen}
-            onCommit={(a) => void bind('fullscreen', a)}
-            onClear={() => void clear('fullscreen')}
-            onTrigger={() => void trigger('fullscreen')}
-            busy={busy}
-          />
-          <Row
-            label="Area capture"
-            actionLabel="Select area"
-            shortcutLabel="Area capture shortcut"
-            hotkey={hotkeys.area}
-            onCommit={(a) => void bind('area', a)}
-            onClear={() => void clear('area')}
-            onTrigger={() => void trigger('area')}
-            busy={busy}
-          />
-        </div>
+  if (loadingHotkeys) {
+    return <PageSpinner className={className} />;
+  }
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Button
-            size="sm"
-            variant="secondary"
-            aria-pressed={previewVisible ?? undefined}
-            onClick={() => {
-              void toggleCapturePreview().then((visible) => {
-                dispatch({ type: 'previewToggled', visible });
-              });
-            }}
-          >
-            <Eye aria-hidden="true" className="size-3.5" />
-            {previewLabel}
-          </Button>
-          {message && <StatusText status={status}>{message}</StatusText>}
-        </div>
-      </CardContent>
-    </Card>
+  return (
+    <div className={cn('space-y-4', className)}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Row
+          label="Fullscreen capture"
+          actionLabel="Capture full screen"
+          shortcutLabel="Fullscreen capture shortcut"
+          hotkey={hotkeys.fullscreen}
+          onCommit={(a) => void bind('fullscreen', a)}
+          onClear={() => void clear('fullscreen')}
+          onTrigger={() => void trigger('fullscreen')}
+          busy={busy}
+        />
+        <Row
+          label="Area capture"
+          actionLabel="Select area"
+          shortcutLabel="Area capture shortcut"
+          hotkey={hotkeys.area}
+          onCommit={(a) => void bind('area', a)}
+          onClear={() => void clear('area')}
+          onTrigger={() => void trigger('area')}
+          busy={busy}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Button
+          size="sm"
+          variant="secondary"
+          aria-pressed={previewVisible ?? undefined}
+          onClick={() => {
+            void toggleCapturePreview().then((visible) => {
+              dispatch({ type: 'previewToggled', visible });
+            });
+          }}
+        >
+          <Eye aria-hidden="true" className="size-3.5" />
+          {previewLabel}
+        </Button>
+        {message && <StatusText status={status}>{message}</StatusText>}
+      </div>
+    </div>
   );
 }
 

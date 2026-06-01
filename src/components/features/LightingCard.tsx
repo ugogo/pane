@@ -15,14 +15,8 @@ import {
   type LightState,
 } from '../../lib/commands';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import { PageSpinner } from './page-spinner';
 import { StatusBadge, StatusText } from './status-ui';
 
 type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail' | 'disabled';
@@ -386,52 +380,47 @@ export function LightingCard({ className }: { className?: string }) {
   // Stable key list so React doesn't re-mount rows on every refresh.
   const keyedLights = lights.map((l) => ({ key: lightKey(l), light: l }));
 
+  if (busy && keyedLights.length === 0 && !scan.message) {
+    return <PageSpinner className={className} />;
+  }
+
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle>Lights</CardTitle>
-        <CardDescription>Supported lighting hardware.</CardDescription>
-        <CardAction>
-          <StatusBadge status={scan.status} />
-        </CardAction>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Button
-            disabled={busy}
-            size="sm"
-            onClick={() => {
-              beginRefresh();
-              void refresh();
-            }}
-          >
-            Refresh
-          </Button>
-          <Button
-            disabled={busy || keyedLights.length === 0}
-            size="sm"
-            variant="ghost"
-            onClick={() => void restore()}
-          >
-            Restore
-          </Button>
-        </div>
-        {scan.message && (
-          <StatusText status={scan.status}>{scan.message}</StatusText>
-        )}
-        <div className="grid gap-3">
-          {keyedLights.map(({ key, light }) => (
-            <LightRow
-              key={key}
-              light={light}
-              initialState={savedStates[key]}
-              disabledReason={
-                light.kind === 'dynamic' ? scan.disabledReason : undefined
-              }
-            />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <div className={cn('space-y-4', className)}>
+      <div className="flex items-center gap-2">
+        <Button
+          disabled={busy}
+          size="sm"
+          onClick={() => {
+            beginRefresh();
+            void refresh();
+          }}
+        >
+          Refresh
+        </Button>
+        <Button
+          disabled={busy || keyedLights.length === 0}
+          size="sm"
+          variant="ghost"
+          onClick={() => void restore()}
+        >
+          Restore
+        </Button>
+      </div>
+      {scan.message && (
+        <StatusText status={scan.status}>{scan.message}</StatusText>
+      )}
+      <div className="grid gap-3">
+        {keyedLights.map(({ key, light }) => (
+          <LightRow
+            key={key}
+            light={light}
+            initialState={savedStates[key]}
+            disabledReason={
+              light.kind === 'dynamic' ? scan.disabledReason : undefined
+            }
+          />
+        ))}
+      </div>
+    </div>
   );
 }
