@@ -53,9 +53,8 @@ pub fn run() {
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 let results = commands::light_state::restore_all().await;
                 for (key, res) in results {
-                    match res {
-                        Ok(()) => eprintln!("[startup] restored {key}"),
-                        Err(e) => eprintln!("[startup] failed to restore {key}: {e}"),
+                    if let Err(e) = res {
+                        eprintln!("[startup] failed to restore {key}: {e}");
                     }
                 }
             });
