@@ -401,6 +401,20 @@ function ControlScreen({
     setSnapshot(next);
     setBrightness(next.brightnessPct);
     setOutputVolume(Math.round(next.outputVolume.volume * 100));
+    setLightLevels((prev) => {
+      const nextLevels = { ...prev };
+      const snapshotIds = new Set(next.lights.map((light) => light.id));
+      for (const light of next.lights) {
+        const snapshotValue = Math.round(light.state.brightness * 100);
+        if (nextLevels[light.id] === snapshotValue) {
+          delete nextLevels[light.id];
+        }
+      }
+      for (const id of Object.keys(nextLevels)) {
+        if (!snapshotIds.has(id)) delete nextLevels[id];
+      }
+      return nextLevels;
+    });
   }, []);
 
   const refresh = useCallback(async () => {
@@ -555,55 +569,52 @@ function ControlScreen({
           </Pressable>
         </View>
 
-        {snapshot?.lights.map((light) => (
-          <View
-            key={light.id}
-            style={[styles.panel, offline && styles.panelOffline]}
-          >
-            <View style={styles.rowBetween}>
-              <Text style={styles.label}>{light.label}</Text>
-              <Text style={styles.value}>
-                {light.state.on
-                  ? `${Math.round(light.state.brightness * 100)}%`
-                  : 'Off'}
-              </Text>
-            </View>
-            <Slider
-              value={
-                lightLevels[light.id] ??
-                Math.round(light.state.brightness * 100)
-              }
-              onValueChange={(value) =>
-                setLightLevels((prev) => ({ ...prev, [light.id]: value }))
-              }
-              onChange={(value) => {
-                runCommand({
-                  type: 'set_light',
-                  light: light.id,
-                  r: light.state.r,
-                  g: light.state.g,
-                  b: light.state.b,
-                  brightness: value / 100,
-                });
-                setLightLevels((prev) => {
-                  const next = { ...prev };
-                  delete next[light.id];
-                  return next;
-                });
-              }}
-              disabled={offline}
-            />
-            <Pressable
-              disabled={offline}
-              style={styles.secondaryButton}
-              onPress={() =>
-                runCommandNow({ type: 'turn_light_off', light: light.id })
-              }
+        {snapshot?.lights.map((light) => {
+          const lightLevel =
+            lightLevels[light.id] ?? Math.round(light.state.brightness * 100);
+          const hasLocalLevel = lightLevels[light.id] !== undefined;
+
+          return (
+            <View
+              key={light.id}
+              style={[styles.panel, offline && styles.panelOffline]}
             >
-              <Text style={styles.secondaryButtonText}>Turn off</Text>
-            </Pressable>
-          </View>
-        )) ?? null}
+              <View style={styles.rowBetween}>
+                <Text style={styles.label}>{light.label}</Text>
+                <Text style={styles.value}>
+                  {light.state.on || hasLocalLevel ? `${lightLevel}%` : 'Off'}
+                </Text>
+              </View>
+              <Slider
+                value={lightLevel}
+                onValueChange={(value) =>
+                  setLightLevels((prev) => ({ ...prev, [light.id]: value }))
+                }
+                onChange={(value) => {
+                  setLightLevels((prev) => ({ ...prev, [light.id]: value }));
+                  runCommand({
+                    type: 'set_light',
+                    light: light.id,
+                    r: light.state.r,
+                    g: light.state.g,
+                    b: light.state.b,
+                    brightness: value / 100,
+                  });
+                }}
+                disabled={offline}
+              />
+              <Pressable
+                disabled={offline}
+                style={styles.secondaryButton}
+                onPress={() =>
+                  runCommandNow({ type: 'turn_light_off', light: light.id })
+                }
+              >
+                <Text style={styles.secondaryButtonText}>Turn off</Text>
+              </Pressable>
+            </View>
+          );
+        }) ?? null}
 
         {snapshot ? (
           <View style={[styles.panel, offline && styles.panelOffline]}>
