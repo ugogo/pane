@@ -17,6 +17,15 @@
     },
     "extra": {
       "pairingProtocolVersion": 1
-    }
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Pane Companion uses the camera to scan the pairing code shown in Pane."
+        }
+      ]
+    ]
   }
 }

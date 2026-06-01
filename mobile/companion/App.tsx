@@ -1,101 +1,547 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
+  ActivityIndicator,
+  PanResponder,
+  Pressable,
   StatusBar,
+  StyleSheet,
   Text,
-  TouchableOpacity,
   View,
+  type GestureResponderEvent,
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as SecureStore from 'expo-secure-store';
 
-const actions = [
-  'Scan pairing code',
-  'Lighting scenes',
-  'Brightness presets',
-  'Audio output',
-];
+// Where the issued bearer credentials live between launches.
+const STORE_KEY = 'pane.pairing.v1';
+// This device's display name shown in Pane's trusted-devices list.
+const DEVICE_NAME = 'iPhone';
+// Debounce command writes so dragging the slider doesn't flood the desktop.
+const WRITE_DEBOUNCE_MS = 120;
+// Poll the desktop so we notice it going away (server stopped, app closed).
+const HEARTBEAT_MS = 4000;
+// Cap each request so an unreachable host fails fast instead of hanging on the
+// TCP timeout (RN fetch has no default timeout).
+const REQUEST_TIMEOUT_MS = 4000;
+
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+interface Pairing {
+  host: string;
+  port: number;
+  deviceToken: string;
+  name: string;
+}
+
+interface ParsedUri {
+  host: string;
+  port: number;
+  token: string;
+}
+
+// Parse a `pane://pair?host=..&port=..&token=..` QR payload. Custom-scheme URLs
+// parse unreliably across platforms, so read the query string by hand.
+function parsePairingUri(data: string): ParsedUri | null {
+  if (!data.startsWith('pane://pair')) return null;
+  const query = data.slice(data.indexOf('?') + 1);
+  const params = new Map<string, string>();
+  for (const pair of query.split('&')) {
+    const [key, value] = pair.split('=');
+    if (key) params.set(key, decodeURIComponent(value ?? ''));
+  }
+  const host = params.get('host');
+  const port = Number(params.get('port'));
+  const token = params.get('token');
+  if (!host || !Number.isInteger(port) || !token) return null;
+  return { host, port, token };
+}
+
+function baseUrl(pairing: Pick<Pairing, 'host' | 'port'>): string {
+  return `http://${pairing.host}:${pairing.port}`;
+}
 
 export default function App() {
   return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
+  );
+}
+
+function AppContent() {
+  // `undefined` while we read SecureStore, then `null` (unpaired) or a Pairing.
+  const [pairing, setPairing] = useState<Pairing | null | undefined>(undefined);
+
+  useEffect(() => {
+    void SecureStore.getItemAsync(STORE_KEY).then((raw) => {
+      setPairing(raw ? (JSON.parse(raw) as Pairing) : null);
+    });
+  }, []);
+
+  const persist = useCallback(async (next: Pairing | null) => {
+    if (next) await SecureStore.setItemAsync(STORE_KEY, JSON.stringify(next));
+    else await SecureStore.deleteItemAsync(STORE_KEY);
+    setPairing(next);
+  }, []);
+
+  if (pairing === undefined) {
+    return (
+      <Screen>
+        <ActivityIndicator color="#fff" />
+      </Screen>
+    );
+  }
+
+  return pairing ? (
+    <ControlScreen pairing={pairing} onUnpair={() => void persist(null)} />
+  ) : (
+    <PairScreen onPaired={(next) => void persist(next)} />
+  );
+}
+
+function PairScreen({ onPaired }: { onPaired: (pairing: Pairing) => void }) {
+  const [permission, requestPermission] = useCameraPermissions();
+  const [error, setError] = useState<string>();
+  const [pairing, setPairing] = useState(false);
+  // Guard against the camera firing multiple scans for one code.
+  const handled = useRef(false);
+
+  const onScan = useCallback(
+    async (data: string) => {
+      if (handled.current) return;
+      const parsed = parsePairingUri(data);
+      if (!parsed) return;
+      handled.current = true;
+      setPairing(true);
+      setError(undefined);
+
+      try {
+        const response = await fetch(`${baseUrl(parsed)}/v1/pair`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: parsed.token, name: DEVICE_NAME }),
+        });
+        if (!response.ok) {
+          throw new Error(`Pairing rejected (${response.status})`);
+        }
+        const body = (await response.json()) as { deviceToken: string };
+        onPaired({
+          host: parsed.host,
+          port: parsed.port,
+          deviceToken: body.deviceToken,
+          name: DEVICE_NAME,
+        });
+      } catch (err) {
+        setError(String(err));
+        handled.current = false;
+        setPairing(false);
+      }
+    },
+    [onPaired],
+  );
+
+  if (!permission) {
+    return (
+      <Screen>
+        <ActivityIndicator color="#fff" />
+      </Screen>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <Screen>
+        <Text style={styles.title}>Pane Companion</Text>
+        <Text style={styles.body}>
+          Camera access is needed to scan the pairing code shown in Pane on your
+          desktop.
+        </Text>
+        <Pressable
+          style={styles.button}
+          onPress={() => void requestPermission()}
+        >
+          <Text style={styles.buttonText}>Allow camera</Text>
+        </Pressable>
+      </Screen>
+    );
+  }
+
+  return (
     <SafeAreaView style={styles.shell}>
-      <StatusBar barStyle="dark-content" />
-      <ScrollView contentContainerStyle={styles.content}>
+      <StatusBar barStyle="light-content" />
+      <View style={styles.scannerHeader}>
+        <Text style={styles.title}>Scan Pane</Text>
+        <Text style={styles.body}>
+          Point the camera at the QR code in Pane&rsquo;s Companion panel.
+        </Text>
+      </View>
+      <View style={styles.cameraWrap}>
+        <CameraView
+          style={StyleSheet.absoluteFill}
+          barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+          onBarcodeScanned={({ data }) => void onScan(data)}
+        />
+        {pairing ? (
+          <View style={styles.cameraOverlay}>
+            <ActivityIndicator color="#fff" />
+            <Text style={styles.body}>Pairing&hellip;</Text>
+          </View>
+        ) : null}
+      </View>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+    </SafeAreaView>
+  );
+}
+
+function ControlScreen({
+  pairing,
+  onUnpair,
+}: {
+  pairing: Pairing;
+  onUnpair: () => void;
+}) {
+  const [connected, setConnected] = useState<boolean | null>(null);
+  const [serverName, setServerName] = useState(pairing.name);
+  const [brightness, setBrightness] = useState(50);
+  const [error, setError] = useState<string>();
+  const writeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const ping = async () => {
+      try {
+        const response = await fetchWithTimeout(
+          `${baseUrl(pairing)}/v1/hello`,
+          {},
+          REQUEST_TIMEOUT_MS,
+        );
+        if (!response.ok) throw new Error(`hello ${response.status}`);
+        const hello = (await response.json()) as { name: string };
+        if (cancelled) return;
+        setServerName(hello.name);
+        setConnected(true);
+      } catch {
+        if (!cancelled) setConnected(false);
+      }
+    };
+
+    void ping();
+    const id = setInterval(() => void ping(), HEARTBEAT_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [pairing]);
+
+  const sendBrightness = useCallback(
+    (value: number) => {
+      if (writeTimer.current) clearTimeout(writeTimer.current);
+      writeTimer.current = setTimeout(() => {
+        void fetchWithTimeout(
+          `${baseUrl(pairing)}/v1/commands`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${pairing.deviceToken}`,
+            },
+            body: JSON.stringify({ type: 'set_brightness', value }),
+          },
+          REQUEST_TIMEOUT_MS,
+        )
+          .then((response) => {
+            if (!response.ok)
+              throw new Error(`Command failed (${response.status})`);
+            setError(undefined);
+            setConnected(true);
+          })
+          .catch((err) => {
+            setError(String(err));
+            setConnected(false);
+          });
+      }, WRITE_DEBOUNCE_MS);
+    },
+    [pairing],
+  );
+
+  const offline = connected === false;
+  const statusLabel =
+    connected === null ? 'CONNECTING' : offline ? 'OFFLINE' : 'CONNECTED';
+  const statusColor =
+    connected === null ? '#a3a3a3' : offline ? '#f87171' : '#5ed6a8';
+
+  return (
+    <SafeAreaView style={styles.shell}>
+      <StatusBar barStyle="light-content" />
+      <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Pane Companion</Text>
-          <Text style={styles.title}>Local controls for Pane</Text>
-          <Text style={styles.copy}>
-            Pair with the desktop app, then control trusted settings from your
-            iPhone.
+          <Text style={[styles.eyebrow, { color: statusColor }]}>
+            {statusLabel}
           </Text>
+          <Text style={styles.title}>{serverName}</Text>
         </View>
 
-        <View style={styles.panel}>
-          {actions.map((action) => (
-            <TouchableOpacity key={action} style={styles.row}>
-              <Text style={styles.rowText}>{action}</Text>
-              <Text style={styles.rowMeta}>v1</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={[styles.panel, offline && styles.panelOffline]}>
+          <View style={styles.rowBetween}>
+            <Text style={styles.label}>Brightness</Text>
+            <Text style={styles.value}>{brightness}%</Text>
+          </View>
+          <Slider
+            value={brightness}
+            onValueChange={setBrightness}
+            onChange={sendBrightness}
+            disabled={offline}
+          />
         </View>
-      </ScrollView>
+
+        {offline ? (
+          <Text style={styles.body}>
+            Can&rsquo;t reach Pane. Make sure it&rsquo;s running on your desktop
+            and on the same Wi-Fi.
+          </Text>
+        ) : null}
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <Pressable style={styles.linkButton} onPress={onUnpair}>
+          <Text style={styles.linkText}>Unpair this iPhone</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+// Core-RN slider (no native module) so it runs unmodified in Expo Go. Maps a
+// horizontal drag across the track to 0–100. Uses the touch's absolute `pageX`
+// against the track's measured window position — `locationX` is relative to
+// whichever child (fill/thumb) the finger lands on, which makes the value jump.
+function Slider({
+  value,
+  onValueChange,
+  onChange,
+  disabled = false,
+}: {
+  value: number;
+  onValueChange?: (value: number) => void;
+  onChange: (value: number) => void;
+  disabled?: boolean;
+}) {
+  const trackRef = useRef<View>(null);
+  const leftRef = useRef(0);
+  const widthRef = useRef(0);
+  const onValueChangeRef = useRef(onValueChange);
+  onValueChangeRef.current = onValueChange;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  // PanResponder is created once, so read `disabled` through a ref.
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
+
+  const measure = useCallback(() => {
+    trackRef.current?.measureInWindow((x, _y, width) => {
+      leftRef.current = x;
+      widthRef.current = width;
+    });
+  }, []);
+
+  const valueFromTouch = useCallback((event: GestureResponderEvent) => {
+    const width = widthRef.current;
+    if (width <= 0) return null;
+    const offset = event.nativeEvent.pageX - leftRef.current;
+    const ratio = Math.max(0, Math.min(1, offset / width));
+    return Math.round(ratio * 100);
+  }, []);
+
+  const emitFromTouch = useCallback(
+    (event: GestureResponderEvent, commit: boolean) => {
+      const next = valueFromTouch(event);
+      if (next === null) return;
+      onValueChangeRef.current?.(next);
+      if (commit) onChangeRef.current(next);
+    },
+    [valueFromTouch],
+  );
+
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !disabledRef.current,
+      onMoveShouldSetPanResponder: () => !disabledRef.current,
+      // Re-measure on grant so a scrolled/moved card still maps correctly.
+      onPanResponderGrant: (event) => {
+        measure();
+        emitFromTouch(event, false);
+      },
+      onPanResponderMove: (event) => emitFromTouch(event, false),
+      onPanResponderRelease: (event) => emitFromTouch(event, true),
+      onPanResponderTerminate: (event) => emitFromTouch(event, true),
+    }),
+  ).current;
+
+  return (
+    <View
+      ref={trackRef}
+      hitSlop={16}
+      style={styles.track}
+      onLayout={measure}
+      {...responder.panHandlers}
+    >
+      <View
+        pointerEvents="none"
+        style={[styles.fill, { width: `${value}%` }]}
+      />
+      <View
+        pointerEvents="none"
+        style={[styles.thumb, { left: `${value}%` }]}
+      />
+    </View>
+  );
+}
+
+function Screen({ children }: { children: React.ReactNode }) {
+  return (
+    <SafeAreaView style={styles.shell}>
+      <StatusBar barStyle="light-content" />
+      <View style={styles.content}>{children}</View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   shell: {
+    backgroundColor: '#0b0b0c',
     flex: 1,
-    backgroundColor: '#f5f5f4',
   },
   content: {
-    gap: 24,
+    flex: 1,
+    gap: 20,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  scannerHeader: {
+    gap: 8,
     padding: 24,
   },
   header: {
-    gap: 8,
-    paddingTop: 16,
+    gap: 6,
   },
   eyebrow: {
-    color: '#0d7a5f',
-    fontSize: 13,
+    color: '#5ed6a8',
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0,
-    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   title: {
-    color: '#0f172a',
-    fontSize: 32,
+    color: '#fafafa',
+    fontSize: 28,
     fontWeight: '700',
-    letterSpacing: 0,
   },
-  copy: {
-    color: '#525252',
+  body: {
+    color: '#a3a3a3',
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  label: {
+    color: '#fafafa',
     fontSize: 16,
-    lineHeight: 24,
+    fontWeight: '600',
+  },
+  value: {
+    color: '#a3a3a3',
+    fontSize: 16,
+    fontVariant: ['tabular-nums'],
   },
   panel: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
+    backgroundColor: '#161618',
+    borderColor: '#262629',
+    borderRadius: 16,
     borderWidth: 1,
-    overflow: 'hidden',
+    gap: 18,
+    padding: 20,
   },
-  row: {
+  panelOffline: {
+    opacity: 0.5,
+  },
+  rowBetween: {
     alignItems: 'center',
-    borderBottomColor: '#e5e7eb',
-    borderBottomWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 16,
   },
-  rowMeta: {
-    color: '#737373',
-    fontSize: 13,
-    fontWeight: '600',
+  track: {
+    backgroundColor: '#2a2a2e',
+    borderRadius: 999,
+    height: 8,
+    justifyContent: 'center',
+    marginVertical: 12,
   },
-  rowText: {
-    color: '#171717',
+  fill: {
+    backgroundColor: '#5ed6a8',
+    borderRadius: 999,
+    height: 8,
+  },
+  thumb: {
+    backgroundColor: '#fafafa',
+    borderRadius: 12,
+    height: 24,
+    marginLeft: -12,
+    position: 'absolute',
+    width: 24,
+  },
+  cameraWrap: {
+    aspectRatio: 1,
+    backgroundColor: '#000',
+    borderRadius: 24,
+    marginHorizontal: 24,
+    overflow: 'hidden',
+  },
+  cameraOverlay: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    bottom: 0,
+    gap: 12,
+    justifyContent: 'center',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  button: {
+    alignItems: 'center',
+    backgroundColor: '#5ed6a8',
+    borderRadius: 12,
+    paddingVertical: 14,
+  },
+  buttonText: {
+    color: '#0b0b0c',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  linkButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  linkText: {
+    color: '#a3a3a3',
+    fontSize: 15,
     fontWeight: '600',
+  },
+  error: {
+    color: '#f87171',
+    fontSize: 14,
   },
 });

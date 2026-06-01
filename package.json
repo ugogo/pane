@@ -18,6 +18,10 @@
     "rust:clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
     "release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release.ps1",
     "dev:trusted": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-trusted.ps1",
+    "companion": "npm --prefix mobile/companion start",
+    "companion:clear": "npm --prefix mobile/companion start -- --clear",
+    "companion:install": "npm --prefix mobile/companion install",
+    "companion:typecheck": "npm --prefix mobile/companion run typecheck",
     "tauri": "tauri",
     "prepare": "husky"
   },
@@ -42,6 +46,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.17.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19",
     "react-dom": "^19",
     "react-router": "^7.16.0",
