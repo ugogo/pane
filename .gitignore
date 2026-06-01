@@ -18,6 +18,6 @@ Thumbs.db
 
 # Generated + bundled identity package artifacts (rebuilt each release).
 # The register/unregister .ps1 scripts ARE committed; these are not.
-src-tauri/resources/identity/Pane-identity.msix
-src-tauri/resources/identity/pane-codesign.cer
+apps/windows/tauri/resources/identity/Pane-identity.msix
+apps/windows/tauri/resources/identity/pane-codesign.cer
 

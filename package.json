@@ -5,72 +5,48 @@
   "type": "module",
   "description": "Pane — Windows desktop utility suite (Tauri 2 + React + Rust)",
   "workspaces": [
-    "packages/*",
-    "mobile/companion"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev.ps1",
     "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/stop.ps1",
-    "build": "tsc && vite build",
-    "typecheck": "tsc --noEmit",
+    "build": "npm run build -w @pane/windows",
+    "typecheck": "npm run typecheck -w @pane/windows",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "rust:fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml",
-    "rust:fmt:check": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
-    "rust:clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
+    "rust:fmt": "cargo fmt --manifest-path apps/windows/tauri/Cargo.toml",
+    "rust:fmt:check": "cargo fmt --manifest-path apps/windows/tauri/Cargo.toml -- --check",
+    "rust:clippy": "cargo clippy --manifest-path apps/windows/tauri/Cargo.toml --all-targets -- -D warnings",
     "tauri:gen": "node scripts/sync-tauri-gen.ts",
     "tauri:gen:check": "node scripts/sync-tauri-gen.ts --check",
     "release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release-it.ps1",
     "release:legacy": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release.ps1",
     "dev:trusted": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-trusted.ps1",
-    "companion": "npm --prefix mobile/companion start",
-    "companion:clear": "npm --prefix mobile/companion start -- --clear",
-    "companion:install": "npm --prefix mobile/companion install",
-    "companion:typecheck": "npm --prefix mobile/companion run typecheck",
-    "tauri": "tauri",
+    "companion": "npm run start -w @pane/companion",
+    "companion:clear": "npm run start -w @pane/companion -- --clear",
+    "companion:install": "npm install -w @pane/companion",
+    "companion:typecheck": "npm run typecheck -w @pane/companion",
+    "tauri": "npm run tauri -w @pane/windows --",
     "prepare": "husky"
   },
   "lint-staged": {
-    "{src,mobile}/**/*.{ts,tsx}": [
+    "{apps,packages}/**/*.{ts,tsx}": [
       "eslint --fix --max-warnings 0 --no-warn-ignored",
       "prettier --write"
     ],
     "*.{js,jsx,css,json,md,html,yml,yaml}": [
       "prettier --write"
     ],
-    "src-tauri/**/*.rs": [
+    "apps/windows/tauri/**/*.rs": [
       "rustfmt --edition 2021"
     ]
   },
-  "dependencies": {
-    "@base-ui/react": "^1.5.0",
-    "@fontsource-variable/geist": "^5.2.9",
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-process": "^2.3.1",
-    "@tauri-apps/plugin-updater": "^2.10.1",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.17.0",
-    "qrcode.react": "^4.2.0",
-    "react": "^19",
-    "react-dom": "^19",
-    "react-router": "^7.16.0",
-    "shadcn": "^4.9.0",
-    "tailwind-merge": "^3.6.0",
-    "tw-animate-css": "^1.4.0"
-  },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@tailwindcss/postcss": "^4",
-    "@tauri-apps/cli": "^2",
     "@types/node": "^25.9.1",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^6",
-    "babel-plugin-react-compiler": "1.0.0",
-    "esbuild": "^0.28.0",
     "eslint": "10.4.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-react-doctor": "0.2.16",
@@ -81,13 +57,10 @@
     "husky": "9.1.7",
     "lint-staged": "17.0.6",
     "oxc-parser": "0.133.0",
-    "postcss": "^8",
     "prettier": "3.8.3",
     "prettier-plugin-tailwindcss": "0.8.0",
     "release-it": "^20.2.0",
-    "tailwindcss": "^4",
     "typescript": "^6",
-    "typescript-eslint": "8.60.0",
-    "vite": "^8"
+    "typescript-eslint": "8.60.0"
   }
 }

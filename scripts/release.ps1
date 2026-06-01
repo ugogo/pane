@@ -6,8 +6,8 @@
 .DESCRIPTION
     Replaces the old tag-triggered CI workflow with a single local script:
 
-      1. Bumps the version across package.json (+lockfile), src-tauri/Cargo.toml,
-         src-tauri/Cargo.lock, and src-tauri/tauri.conf.json.
+      1. Bumps the version across package.json (+lockfile), apps/windows/tauri/Cargo.toml,
+         apps/windows/tauri/Cargo.lock, and apps/windows/tauri/tauri.conf.json.
       2. Builds the signed NSIS installer via `tauri build` (the build also runs
          tsc + vite, so it doubles as the verification gate).
 
@@ -235,23 +235,23 @@ Step "bumping package.json + package-lock.json"
 npm version $new --no-git-tag-version | Out-Null
 if ($LASTEXITCODE -ne 0) { Fail "npm version failed." }
 
-Step "bumping src-tauri/Cargo.toml"
-Set-FirstMatch "src-tauri/Cargo.toml" '(?m)^version\s*=\s*"[^"]*"' ('version = "{0}"' -f $new) "Cargo.toml"
+Step "bumping apps/windows/tauri/Cargo.toml"
+Set-FirstMatch "apps/windows/tauri/Cargo.toml" '(?m)^version\s*=\s*"[^"]*"' ('version = "{0}"' -f $new) "Cargo.toml"
 
-Step "bumping src-tauri/tauri.conf.json"
-Set-FirstMatch "src-tauri/tauri.conf.json" '"version"\s*:\s*"[^"]*"' ('"version": "{0}"' -f $new) "tauri.conf.json"
+Step "bumping apps/windows/tauri/tauri.conf.json"
+Set-FirstMatch "apps/windows/tauri/tauri.conf.json" '"version"\s*:\s*"[^"]*"' ('"version": "{0}"' -f $new) "tauri.conf.json"
 
 # Scope the lockfile edit to the entry matching the OLD version so we never
 # touch an unrelated crate that also happens to be named "pane".
-Step "bumping src-tauri/Cargo.lock"
-Set-FirstMatch "src-tauri/Cargo.lock" `
+Step "bumping apps/windows/tauri/Cargo.lock"
+Set-FirstMatch "apps/windows/tauri/Cargo.lock" `
     ('(name = "pane"\r?\nversion = ")' + [regex]::Escape($current) + '(")') `
     ('${1}' + $new + '${2}') "Cargo.lock"
 
 # ---- stage Dynamic Lighting identity package --------------------------------
 
 # Build + sign the sparse identity package and stage it (with its public cert)
-# into src-tauri/resources/identity so `tauri build` bundles it. The installer
+# into apps/windows/tauri/resources/identity so `tauri build` bundles it. The installer
 # hook registers it on install, giving pane.exe package identity for background
 # Dynamic Lighting control. Runs after the version bump so the package version
 # (read from tauri.conf.json) matches the release.
@@ -265,12 +265,19 @@ if ($LASTEXITCODE -ne 0) { Fail "identity package build failed." }
 # ---- build + sign -----------------------------------------------------------
 
 Step "building + signing installer (npx tauri build)"
-npx tauri build --ci
+# Run from the Windows app dir so Tauri resolves apps/windows/tauri/tauri.conf.json
+# and runs beforeBuildCommand (npm run build) against apps/windows.
+Push-Location (Join-Path $root "apps/windows")
+try {
+    npx tauri build --ci
+} finally {
+    Pop-Location
+}
 if ($LASTEXITCODE -ne 0) {
-    Fail "tauri build failed. Version files left modified; run 'git checkout -- package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json' to revert."
+    Fail "tauri build failed. Version files left modified; run 'git checkout -- package.json package-lock.json apps/windows/tauri/Cargo.toml apps/windows/tauri/Cargo.lock apps/windows/tauri/tauri.conf.json' to revert."
 }
 
-$nsisDir = Join-Path $root "src-tauri/target/release/bundle/nsis"
+$nsisDir = Join-Path $root "apps/windows/tauri/target/release/bundle/nsis"
 $installer = Get-ChildItem -LiteralPath $nsisDir -Filter "*$new*-setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $installer) { Fail "could not find the $new installer in $nsisDir." }
 $sigPath = "$($installer.FullName).sig"
@@ -302,9 +309,9 @@ Step "committing release"
 $files = @(
     "package.json",
     "package-lock.json",
-    "src-tauri/Cargo.toml",
-    "src-tauri/Cargo.lock",
-    "src-tauri/tauri.conf.json"
+    "apps/windows/tauri/Cargo.toml",
+    "apps/windows/tauri/Cargo.lock",
+    "apps/windows/tauri/tauri.conf.json"
 ) | Where-Object { Test-Path $_ }
 git add -- $files
 if ($LASTEXITCODE -ne 0) { Fail "git add failed." }

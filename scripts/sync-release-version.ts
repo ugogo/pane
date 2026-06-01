@@ -31,17 +31,17 @@ if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
 }
 
 replaceFirst(
-  'src-tauri/Cargo.toml',
+  'apps/windows/tauri/Cargo.toml',
   /(^version\s*=\s*")[^"]*(")/m,
   (before, after) => `${before}${version}${after}`,
 );
 replaceFirst(
-  'src-tauri/tauri.conf.json',
+  'apps/windows/tauri/tauri.conf.json',
   /("version"\s*:\s*")[^"]*(")/,
   (before, after) => `${before}${version}${after}`,
 );
 replaceFirst(
-  'src-tauri/Cargo.lock',
+  'apps/windows/tauri/Cargo.lock',
   /(name = "pane"\r?\nversion = ")[^"]*(")/,
   (before, after) => {
     return `${before}${version}${after}`;

@@ -17,9 +17,9 @@
     "releaseName": "Pane v${version}",
     "makeLatest": true,
     "assets": [
-      "src-tauri/target/release/bundle/nsis/Pane_${version}_x64-setup.exe",
-      "src-tauri/target/release/bundle/nsis/Pane_${version}_x64-setup.exe.sig",
-      "src-tauri/target/release/bundle/nsis/latest.json"
+      "apps/windows/tauri/target/release/bundle/nsis/Pane_${version}_x64-setup.exe",
+      "apps/windows/tauri/target/release/bundle/nsis/Pane_${version}_x64-setup.exe.sig",
+      "apps/windows/tauri/target/release/bundle/nsis/latest.json"
     ]
   },
   "hooks": {

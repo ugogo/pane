@@ -1,7 +1,7 @@
 // Single source of truth for the companion HTTP contract.
 //
 // These values are mirrored on the Rust side in
-// `src-tauri/src/commands/companion.rs` (paths, header names, TTLs, service
+// `apps/windows/tauri/src/commands/companion.rs` (paths, header names, TTLs, service
 // type). If you change one here, change it there too — pairing breaks silently
 // otherwise. Phase 3 of the monorepo plan replaces the hand-mirrored *types*
 // with codegen, but these constants stay hand-maintained on both sides.

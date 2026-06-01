@@ -72,7 +72,9 @@ export interface SignRequestParams {
  * Build the full set of request headers (auth + signature) for a companion
  * request. Returns a plain header map suitable for `fetch`.
  */
-export function signedHeaders(params: SignRequestParams): Record<string, string> {
+export function signedHeaders(
+  params: SignRequestParams,
+): Record<string, string> {
   const timestamp = (
     params.timestampSeconds ?? Math.floor(Date.now() / 1000)
   ).toString();

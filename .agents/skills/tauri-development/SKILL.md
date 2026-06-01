@@ -31,7 +31,7 @@ src/
 ├── hooks/             # Custom React hooks
 ├── lib/               # Utility functions
 ├── styles/            # Global styles
-src-tauri/
+apps/windows/tauri/
 ├── src/               # Rust source code
 │   ├── main.rs       # Entry point
 │   └── commands/     # Tauri commands

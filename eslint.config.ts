@@ -8,18 +8,20 @@ import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
 /** Desktop (Vite) and Expo companion React sources. */
-const reactSourceFiles = ['src/**/*.{ts,tsx}', 'mobile/**/*.{ts,tsx}'];
+const reactSourceFiles = [
+  'apps/windows/src/**/*.{ts,tsx}',
+  'apps/mobile/**/*.{ts,tsx}',
+];
 
 export default tseslint.config(
   // Ignore build output and generated/vendored trees.
   {
     ignores: [
-      'dist/',
-      'node_modules/',
-      'mobile/**/node_modules/',
-      'mobile/**/.expo/',
-      'mobile/**/metro.config.js',
-      'src-tauri/',
+      '**/dist/',
+      '**/node_modules/',
+      'apps/mobile/**/.expo/',
+      'apps/**/metro.config.js',
+      'apps/windows/tauri/',
       'assets/',
       '.claude/',
       '*.config.{js,ts}',
@@ -32,7 +34,7 @@ export default tseslint.config(
 
   // Desktop app: React + browser globals + Vite fast refresh.
   {
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['apps/windows/src/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2021,
       globals: globals.browser,
@@ -58,7 +60,7 @@ export default tseslint.config(
 
   // Expo companion: same React hooks rules; fetch/timer globals from browser set.
   {
-    files: ['mobile/**/*.{ts,tsx}'],
+    files: ['apps/mobile/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2021,
       globals: globals.browser,
@@ -84,14 +86,14 @@ export default tseslint.config(
   // React Doctor — desktop (includes React Compiler heuristics).
   {
     ...reactDoctor.configs.recommended,
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['apps/windows/src/**/*.{ts,tsx}'],
   },
 
   // React Doctor — Expo companion (recommended + react-native preset).
   {
     ...reactDoctor.configs.recommended,
     ...reactDoctor.configs['react-native'],
-    files: ['mobile/**/*.{ts,tsx}'],
+    files: ['apps/mobile/**/*.{ts,tsx}'],
     rules: {
       ...reactDoctor.configs.recommended.rules,
       ...reactDoctor.configs['react-native'].rules,

@@ -16,7 +16,7 @@ the **same Wi-Fi network**.
    npm run companion:install
    npm run companion
    ```
-   (Or run `npm install` / `npm start` directly inside `mobile/companion`.)
+   (Or run `npm install` / `npm start` directly inside `apps/mobile`.)
 3. Scan the QR shown in the terminal with the iPhone **Camera** app to open the
    project in Expo Go. (This is the _dev-server_ QR — different from Pane's
    _pairing_ QR below.)
@@ -24,7 +24,7 @@ the **same Wi-Fi network**.
 
 If Metro serves a stale bundle (or after upgrading the SDK), start with a clean
 cache — `npm run companion:clear` from the repo root. Do **not** use
-`npm --prefix mobile/companion exec -- expo start -c`: `npm exec` keeps the
+`npm exec -w @pane/companion -- expo start -c`: `npm exec` keeps the
 repo-root working directory, so Expo inspects the root project (which has no
 `expo` dependency) and fails with _"module `expo` is not installed."_
 
