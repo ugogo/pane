@@ -18,6 +18,7 @@ export default tseslint.config(
       'node_modules/',
       'mobile/**/node_modules/',
       'mobile/**/.expo/',
+      'mobile/**/metro.config.js',
       'src-tauri/',
       'assets/',
       '.claude/',

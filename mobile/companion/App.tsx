@@ -18,10 +18,15 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as SecureStore from 'expo-secure-store';
 import * as Crypto from 'expo-crypto';
-import * as ed25519 from '@noble/ed25519';
-import { sha512 } from '@noble/hashes/sha2.js';
-
-ed25519.hashes.sha512 = sha512;
+import {
+  ENDPOINTS,
+  generateKeyPair,
+  signedHeaders,
+  type CompanionCommand,
+  type CompanionSnapshot,
+  type HelloResponse,
+  type PairResponse,
+} from '@pane/protocol';
 
 // Where the issued bearer credentials live between launches.
 const STORE_KEY = 'pane.pairing.v1';
@@ -66,42 +71,6 @@ interface ParsedUri {
   token: string;
 }
 
-interface VolumeInfo {
-  volume: number;
-  muted: boolean;
-}
-
-interface PresetInfo {
-  name: string;
-}
-
-interface LightSnapshot {
-  id: string;
-  label: string;
-  kind: string;
-  state: { r: number; g: number; b: number; brightness: number; on: boolean };
-}
-
-interface AudioDeviceInfo {
-  id: string;
-  name: string;
-  isDefault: boolean;
-}
-
-interface CompanionSnapshot {
-  brightnessPct: number;
-  presets: PresetInfo[];
-  lights: LightSnapshot[];
-  outputDevices: AudioDeviceInfo[];
-  inputDevices: AudioDeviceInfo[];
-  outputVolume: VolumeInfo;
-  inputVolume: VolumeInfo;
-  accentPopupEnabled: boolean;
-  runAtStartup: boolean;
-}
-
-type CommandBody = Record<string, unknown> & { type: string };
-
 // Parse a `pane://pair?host=..&port=..&token=..` QR payload. Custom-scheme URLs
 // parse unreliably across platforms, so read the query string by hand.
 function parsePairingUri(data: string): ParsedUri | null {
@@ -126,23 +95,10 @@ function baseUrl(pairing: Pick<Pairing, 'host' | 'port'>): string {
   return `http://${pairing.host}:${pairing.port}`;
 }
 
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
-
 function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(
     '',
   );
-}
-
-function base64ToBytes(value: string): Uint8Array {
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return bytes;
 }
 
 function isPairing(value: unknown): value is Pairing {
@@ -161,68 +117,44 @@ function randomNonce(): string {
   return bytesToHex(Crypto.getRandomBytes(16));
 }
 
-function keyPair() {
-  const privateKey = Crypto.getRandomBytes(32);
-  const publicKey = ed25519.getPublicKey(privateKey);
-  return {
-    privateKey: bytesToBase64(privateKey),
-    publicKey: bytesToBase64(publicKey),
-  };
-}
-
-async function signedHeaders(
+// Adapt the platform-agnostic @pane/protocol signer to this device's keys,
+// supplying a fresh expo-crypto nonce per request.
+function headersFor(
   pairing: Pairing,
   method: string,
   path: string,
   body = '',
-): Promise<HeadersInit> {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const nonce = randomNonce();
-  const bodySha256 = bytesToHex(
-    new Uint8Array(
-      await Crypto.digest(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        new TextEncoder().encode(body),
-      ),
-    ),
-  );
-  const message = `${method}\n${path}\n${timestamp}\n${nonce}\n${bodySha256}`;
-  const signature = ed25519.sign(
-    new TextEncoder().encode(message),
-    base64ToBytes(pairing.privateKey),
-  );
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${pairing.deviceToken}`,
-    'X-Pane-Timestamp': timestamp,
-    'X-Pane-Nonce': nonce,
-    'X-Pane-Body-Sha256': bodySha256,
-    'X-Pane-Signature': bytesToBase64(signature),
-  };
+): Record<string, string> {
+  return signedHeaders({
+    privateKey: pairing.privateKey,
+    deviceToken: pairing.deviceToken,
+    method,
+    path,
+    body,
+    nonce: randomNonce(),
+  });
 }
 
 async function fetchSnapshot(pairing: Pairing): Promise<CompanionSnapshot> {
   const response = await fetchWithTimeout(
-    `${baseUrl(pairing)}/v1/snapshot`,
-    { headers: await signedHeaders(pairing, 'GET', '/v1/snapshot') },
+    `${baseUrl(pairing)}${ENDPOINTS.snapshot}`,
+    { headers: headersFor(pairing, 'GET', ENDPOINTS.snapshot) },
     REQUEST_TIMEOUT_MS,
   );
   if (!response.ok) throw new Error(`snapshot ${response.status}`);
   return (await response.json()) as CompanionSnapshot;
 }
 
-async function sendCommand(pairing: Pairing, body: CommandBody): Promise<void> {
+async function sendCommand(
+  pairing: Pairing,
+  body: CompanionCommand,
+): Promise<void> {
   const encodedBody = JSON.stringify(body);
   const response = await fetchWithTimeout(
-    `${baseUrl(pairing)}/v1/commands`,
+    `${baseUrl(pairing)}${ENDPOINTS.commands}`,
     {
       method: 'POST',
-      headers: await signedHeaders(
-        pairing,
-        'POST',
-        '/v1/commands',
-        encodedBody,
-      ),
+      headers: headersFor(pairing, 'POST', ENDPOINTS.commands, encodedBody),
       body: encodedBody,
     },
     REQUEST_TIMEOUT_MS,
@@ -293,8 +225,8 @@ function PairScreen({ onPaired }: { onPaired: (pairing: Pairing) => void }) {
       setError(undefined);
 
       try {
-        const keys = keyPair();
-        const response = await fetch(`${baseUrl(parsed)}/v1/pair`, {
+        const keys = generateKeyPair(Crypto.getRandomBytes(32));
+        const response = await fetch(`${baseUrl(parsed)}${ENDPOINTS.pair}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -306,7 +238,7 @@ function PairScreen({ onPaired }: { onPaired: (pairing: Pairing) => void }) {
         if (!response.ok) {
           throw new Error(`Pairing rejected (${response.status})`);
         }
-        const body = (await response.json()) as { deviceToken: string };
+        const body = (await response.json()) as PairResponse;
         onPaired({
           scheme: parsed.scheme,
           host: parsed.host,
@@ -419,12 +351,12 @@ function ControlScreen({
 
   const refresh = useCallback(async () => {
     const response = await fetchWithTimeout(
-      `${baseUrl(pairing)}/v1/hello`,
+      `${baseUrl(pairing)}${ENDPOINTS.hello}`,
       {},
       REQUEST_TIMEOUT_MS,
     );
     if (!response.ok) throw new Error(`hello ${response.status}`);
-    const hello = (await response.json()) as { name: string };
+    const hello = (await response.json()) as HelloResponse;
     setHelloName(hello.name);
     const snap = await fetchSnapshot(pairing);
     applySnapshot(snap);
@@ -455,7 +387,7 @@ function ControlScreen({
   }, [refresh]);
 
   const runCommand = useCallback(
-    (body: CommandBody) => {
+    (body: CompanionCommand) => {
       if (writeTimer.current) clearTimeout(writeTimer.current);
       writeTimer.current = setTimeout(() => {
         void sendCommand(pairing, body)
@@ -470,7 +402,7 @@ function ControlScreen({
   );
 
   const runCommandNow = useCallback(
-    (body: CommandBody) => {
+    (body: CompanionCommand) => {
       void sendCommand(pairing, body)
         .then(() => refresh())
         .catch((err) => {

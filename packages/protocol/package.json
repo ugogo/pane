@@ -1,0 +1,16 @@
+{
+  "name": "@pane/protocol",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared HTTP wire contract between Pane (desktop) and the phone companion. Plain TypeScript source — no build step.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^3.1.0",
+    "@noble/hashes": "^2.2.0"
+  }
+}
