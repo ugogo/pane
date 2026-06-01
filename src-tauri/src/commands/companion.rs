@@ -1,6 +1,7 @@
 use axum::{
+    body::Bytes,
     extract::State,
-    http::{header::AUTHORIZATION, HeaderMap, StatusCode},
+    http::{header::AUTHORIZATION, HeaderMap, Method, StatusCode, Uri},
     response::{
         sse::{Event, KeepAlive, Sse},
         IntoResponse, Response,
@@ -8,8 +9,12 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use base64::{engine::general_purpose, Engine as _};
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::{
     fs,
@@ -29,13 +34,19 @@ use crate::commands::require_window;
 
 const PAIRING_TTL_SECONDS: u64 = 120;
 const SERVICE_TYPE: &str = "_pane._tcp.local";
+const SIGNATURE_MAX_SKEW_SECONDS: u64 = 300;
+const HEADER_SIGNATURE: &str = "x-pane-signature";
+const HEADER_TIMESTAMP: &str = "x-pane-timestamp";
+const HEADER_NONCE: &str = "x-pane-nonce";
+const HEADER_BODY_SHA256: &str = "x-pane-body-sha256";
 
 static ACTIVE_PAIRING: Lazy<Mutex<Option<CompanionPairingSession>>> =
     Lazy::new(|| Mutex::new(None));
+static REPLAY_NONCES: Lazy<Mutex<HashMap<String, u64>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 /// Handle to the running companion HTTP server. `None` when the companion is
-/// disabled. Slice 1 serves only the unauthenticated `GET /v1/hello` probe over
-/// plain HTTP on the LAN; TLS and authenticated routes land in later slices.
+/// disabled. The Expo Go transport serves HTTP on the LAN; authenticated routes
+/// still require the paired device's signed request envelope.
 static SERVER: Lazy<Mutex<Option<ServerHandle>>> = Lazy::new(|| Mutex::new(None));
 
 struct ServerHandle {
@@ -62,6 +73,8 @@ struct CompanionDevice {
     paired_at: u64,
     #[serde(default)]
     auth_token: String,
+    #[serde(default)]
+    public_key: String,
 }
 
 /// The public view of a paired device shown in the desktop UI. Deliberately
@@ -137,6 +150,21 @@ fn random_hex(bytes: usize) -> String {
     }
 
     out
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    let digest = Sha256::digest(bytes);
+    let mut out = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        out.push_str(&format!("{byte:02x}"));
+    }
+    out
+}
+
+fn base64_decode(value: &str) -> Result<Vec<u8>, String> {
+    general_purpose::STANDARD
+        .decode(value)
+        .map_err(|e| e.to_string())
 }
 
 fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
@@ -252,6 +280,7 @@ struct CompanionState {
 struct PairRequest {
     token: String,
     name: String,
+    public_key: String,
 }
 
 #[derive(Serialize)]
@@ -288,6 +317,7 @@ async fn pair_handler(
     Json(request): Json<PairRequest>,
 ) -> Result<Json<PairResponse>, ApiError> {
     consume_pairing_token(&request.token)?;
+    validate_public_key(&request.public_key)?;
 
     let mut settings = load_settings_at(&state.settings_path);
     let device_id = random_hex(8);
@@ -298,6 +328,7 @@ async fn pair_handler(
         role: "settings".to_string(),
         paired_at: now_epoch_seconds().map_err(ApiError::internal)?,
         auth_token: device_token.clone(),
+        public_key: request.public_key,
     });
     save_settings_at(&state.settings_path, &settings).map_err(ApiError::internal)?;
 
@@ -310,9 +341,13 @@ async fn pair_handler(
 async fn commands_handler(
     State(state): State<CompanionState>,
     headers: HeaderMap,
-    Json(command): Json<CompanionCommand>,
+    method: Method,
+    uri: Uri,
+    body: Bytes,
 ) -> Result<Json<CommandResponse>, ApiError> {
-    authorize_request(&state, &headers)?;
+    authorize_request(&state, &headers, &method, &uri, &body)?;
+    let command = serde_json::from_slice::<CompanionCommand>(&body)
+        .map_err(|_| ApiError::bad_request("invalid command body"))?;
     let ctx = companion_ctx(&state);
     tokio::task::spawn_blocking(move || run_command(&ctx, command))
         .await
@@ -325,8 +360,10 @@ async fn commands_handler(
 async fn snapshot_handler(
     State(state): State<CompanionState>,
     headers: HeaderMap,
+    method: Method,
+    uri: Uri,
 ) -> Result<Json<CompanionSnapshot>, ApiError> {
-    authorize_request(&state, &headers)?;
+    authorize_request(&state, &headers, &method, &uri, &Bytes::new())?;
     let ctx = companion_ctx(&state);
     let snapshot = tokio::task::spawn_blocking(move || build_snapshot(&ctx))
         .await
@@ -337,8 +374,10 @@ async fn snapshot_handler(
 async fn events_handler(
     State(state): State<CompanionState>,
     headers: HeaderMap,
+    method: Method,
+    uri: Uri,
 ) -> Result<Sse<impl futures_core::Stream<Item = Result<Event, Infallible>>>, ApiError> {
-    authorize_request(&state, &headers)?;
+    authorize_request(&state, &headers, &method, &uri, &Bytes::new())?;
     let mut rx = state.event_tx.subscribe();
     let ctx = companion_ctx(&state);
     let stream = async_stream::stream! {
@@ -360,13 +399,17 @@ fn companion_ctx(state: &CompanionState) -> CompanionContext {
     }
 }
 
-fn authorize_request(state: &CompanionState, headers: &HeaderMap) -> Result<(), ApiError> {
+fn authorize_request(
+    state: &CompanionState,
+    headers: &HeaderMap,
+    method: &Method,
+    uri: &Uri,
+    body: &[u8],
+) -> Result<(), ApiError> {
     let token = bearer_token(headers).ok_or_else(ApiError::unauthorized)?;
     let settings = load_settings_at(&state.settings_path);
-    if authorize_device(&settings, &token).is_none() {
-        return Err(ApiError::unauthorized());
-    }
-    Ok(())
+    let device = authorize_device(&settings, &token).ok_or_else(ApiError::unauthorized)?;
+    verify_signature(headers, method, uri, body, &device)
 }
 
 /// Validate a device-supplied pairing token against the active session and, on
@@ -393,7 +436,7 @@ fn consume_pairing_token(token: &str) -> Result<(), ApiError> {
 
 /// Return the paired device id for a bearer token, or `None` if no enabled
 /// device matches. Empty tokens never match (guards legacy records).
-fn authorize_device(settings: &CompanionSettings, token: &str) -> Option<String> {
+fn authorize_device(settings: &CompanionSettings, token: &str) -> Option<CompanionDevice> {
     if token.is_empty() {
         return None;
     }
@@ -401,7 +444,98 @@ fn authorize_device(settings: &CompanionSettings, token: &str) -> Option<String>
         .paired_devices
         .iter()
         .find(|device| device.auth_token == token)
-        .map(|device| device.id.clone())
+        .cloned()
+}
+
+fn validate_public_key(public_key: &str) -> Result<(), ApiError> {
+    let bytes =
+        base64_decode(public_key).map_err(|_| ApiError::bad_request("invalid public key"))?;
+    let key: [u8; 32] = bytes
+        .try_into()
+        .map_err(|_| ApiError::bad_request("invalid public key"))?;
+    VerifyingKey::from_bytes(&key).map_err(|_| ApiError::bad_request("invalid public key"))?;
+    Ok(())
+}
+
+fn verify_signature(
+    headers: &HeaderMap,
+    method: &Method,
+    uri: &Uri,
+    body: &[u8],
+    device: &CompanionDevice,
+) -> Result<(), ApiError> {
+    let timestamp = signed_header(headers, HEADER_TIMESTAMP)?;
+    let nonce = signed_header(headers, HEADER_NONCE)?;
+    let body_sha256 = signed_header(headers, HEADER_BODY_SHA256)?;
+    let signature = signed_header(headers, HEADER_SIGNATURE)?;
+
+    let now = now_epoch_seconds().map_err(ApiError::internal)?;
+    let timestamp_value = timestamp
+        .parse::<u64>()
+        .map_err(|_| ApiError::unauthorized())?;
+    if timestamp_value + SIGNATURE_MAX_SKEW_SECONDS < now
+        || timestamp_value > now + SIGNATURE_MAX_SKEW_SECONDS
+    {
+        return Err(ApiError::unauthorized());
+    }
+    if nonce.len() < 16 || nonce.len() > 128 {
+        return Err(ApiError::unauthorized());
+    }
+
+    let expected_body_hash = sha256_hex(body);
+    if body_sha256 != expected_body_hash {
+        return Err(ApiError::unauthorized());
+    }
+
+    let public_key = base64_decode(&device.public_key).map_err(ApiError::internal)?;
+    let public_key: [u8; 32] = public_key
+        .try_into()
+        .map_err(|_| ApiError::internal("stored public key is invalid"))?;
+    let verifying_key = VerifyingKey::from_bytes(&public_key)
+        .map_err(|_| ApiError::internal("stored public key is invalid"))?;
+    let signature = base64_decode(&signature).map_err(|_| ApiError::unauthorized())?;
+    let signature: [u8; 64] = signature.try_into().map_err(|_| ApiError::unauthorized())?;
+    let signature = Signature::from_bytes(&signature);
+    let path = uri
+        .path_and_query()
+        .map(|value| value.as_str())
+        .unwrap_or_else(|| uri.path());
+    let message = signing_message(method.as_str(), path, &timestamp, &nonce, &body_sha256);
+
+    verifying_key
+        .verify(message.as_bytes(), &signature)
+        .map_err(|_| ApiError::unauthorized())?;
+    reject_replay(&device.id, &nonce, timestamp_value, now)
+}
+
+fn signed_header(headers: &HeaderMap, name: &'static str) -> Result<String, ApiError> {
+    headers
+        .get(name)
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_string)
+        .ok_or_else(ApiError::unauthorized)
+}
+
+fn signing_message(
+    method: &str,
+    path: &str,
+    timestamp: &str,
+    nonce: &str,
+    body_sha256: &str,
+) -> String {
+    format!("{method}\n{path}\n{timestamp}\n{nonce}\n{body_sha256}")
+}
+
+fn reject_replay(device_id: &str, nonce: &str, timestamp: u64, now: u64) -> Result<(), ApiError> {
+    let min_timestamp = now.saturating_sub(SIGNATURE_MAX_SKEW_SECONDS);
+    let mut nonces = REPLAY_NONCES.lock().unwrap();
+    nonces.retain(|_, stored_timestamp| *stored_timestamp >= min_timestamp);
+
+    let key = format!("{device_id}:{nonce}");
+    if nonces.insert(key, timestamp).is_some() {
+        return Err(ApiError::unauthorized());
+    }
+    Ok(())
 }
 
 fn bearer_token(headers: &HeaderMap) -> Option<String> {
@@ -461,6 +595,8 @@ fn start_server(app: &AppHandle) -> Result<u16, String> {
     listener.set_nonblocking(true).map_err(|e| e.to_string())?;
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
 
+    let settings = load_or_create_settings(app)?;
+    let instance = service_name(&settings);
     let settings_path = settings_path(app)?;
     let config_dir = settings_path
         .parent()
@@ -469,7 +605,7 @@ fn start_server(app: &AppHandle) -> Result<u16, String> {
     let (event_tx, _) = broadcast::channel(16);
     let state = CompanionState {
         hello: HelloResponse {
-            name: service_name(&load_settings(app)),
+            name: instance,
             version: app.package_info().version.to_string(),
         },
         settings_path,
@@ -567,7 +703,7 @@ pub fn start_companion_pairing(
     let expires_at = now_epoch_seconds()? + PAIRING_TTL_SECONDS;
     let instance = service_name(&settings);
     let pairing_uri = format!(
-        "pane://pair?v=1&transport=lan&service={SERVICE_TYPE}&instance={instance}&host={host}&port={port}&pairingId={pairing_id}&token={token}&expiresAt={expires_at}"
+        "pane://pair?v=1&transport=lan&scheme=http&service={SERVICE_TYPE}&instance={instance}&host={host}&port={port}&pairingId={pairing_id}&token={token}&expiresAt={expires_at}"
     );
 
     *ACTIVE_PAIRING.lock().unwrap() = Some(CompanionPairingSession {
@@ -611,6 +747,8 @@ pub fn revoke_companion_device(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::http::HeaderValue;
+    use ed25519_dalek::{Signer, SigningKey};
     use std::io::{Read, Write};
     use std::net::TcpStream;
 
@@ -637,6 +775,7 @@ mod tests {
             role: "settings".to_string(),
             paired_at: 0,
             auth_token: token.to_string(),
+            public_key: String::new(),
         }
     }
 
@@ -711,12 +850,23 @@ mod tests {
         };
 
         assert_eq!(
-            authorize_device(&settings, "secret"),
+            authorize_device(&settings, "secret").map(|device| device.id),
             Some("d1".to_string())
         );
         assert!(authorize_device(&settings, "wrong").is_none());
         // An empty bearer must never match a legacy record with an empty token.
         assert!(authorize_device(&settings, "").is_none());
+    }
+
+    #[test]
+    fn revoked_devices_do_not_authorize() {
+        let settings = CompanionSettings {
+            enabled: true,
+            install_id: Some("id".to_string()),
+            paired_devices: Vec::new(),
+        };
+
+        assert!(authorize_device(&settings, "secret").is_none());
     }
 
     #[test]
@@ -742,6 +892,105 @@ mod tests {
             preset,
             CompanionCommand::ApplyMonitorPreset { name } if name == "Night"
         ));
+    }
+
+    #[test]
+    fn signed_requests_verify_and_reject_replay() {
+        let signing_key = SigningKey::from_bytes(&[7; 32]);
+        let public_key = general_purpose::STANDARD.encode(signing_key.verifying_key().to_bytes());
+        let mut signed_device = device("d1", "secret");
+        signed_device.public_key = public_key;
+        let body = br#"{"type":"set_brightness","value":40}"#;
+        let timestamp_value = now_epoch_seconds().unwrap();
+        let timestamp = timestamp_value.to_string();
+        let nonce = random_hex(16);
+        let body_sha256 = sha256_hex(body);
+        let method = Method::POST;
+        let uri = Uri::from_static("/v1/commands");
+        let message = signing_message(
+            method.as_str(),
+            "/v1/commands",
+            &timestamp,
+            &nonce,
+            &body_sha256,
+        );
+        let signature = signing_key.sign(message.as_bytes());
+        let mut headers = HeaderMap::new();
+        headers.insert(HEADER_TIMESTAMP, HeaderValue::from_str(&timestamp).unwrap());
+        headers.insert(HEADER_NONCE, HeaderValue::from_str(&nonce).unwrap());
+        headers.insert(
+            HEADER_BODY_SHA256,
+            HeaderValue::from_str(&body_sha256).unwrap(),
+        );
+        headers.insert(
+            HEADER_SIGNATURE,
+            HeaderValue::from_str(&general_purpose::STANDARD.encode(signature.to_bytes())).unwrap(),
+        );
+
+        REPLAY_NONCES.lock().unwrap().clear();
+        assert!(verify_signature(&headers, &method, &uri, body, &signed_device).is_ok());
+        assert!(verify_signature(&headers, &method, &uri, body, &signed_device).is_err());
+
+        let fresh_timestamp = (timestamp_value + 1).to_string();
+        let message = signing_message(
+            method.as_str(),
+            "/v1/commands",
+            &fresh_timestamp,
+            &nonce,
+            &body_sha256,
+        );
+        let signature = signing_key.sign(message.as_bytes());
+        headers.insert(
+            HEADER_TIMESTAMP,
+            HeaderValue::from_str(&fresh_timestamp).unwrap(),
+        );
+        headers.insert(
+            HEADER_SIGNATURE,
+            HeaderValue::from_str(&general_purpose::STANDARD.encode(signature.to_bytes())).unwrap(),
+        );
+        assert!(verify_signature(&headers, &method, &uri, body, &signed_device).is_err());
+    }
+
+    #[test]
+    fn signed_requests_reject_tampered_body_hash() {
+        let signing_key = SigningKey::from_bytes(&[8; 32]);
+        let public_key = general_purpose::STANDARD.encode(signing_key.verifying_key().to_bytes());
+        let mut signed_device = device("d1", "secret");
+        signed_device.public_key = public_key;
+        let timestamp = now_epoch_seconds().unwrap().to_string();
+        let nonce = random_hex(16);
+        let signed_body_hash = sha256_hex(br#"{"type":"set_brightness","value":40}"#);
+        let method = Method::POST;
+        let uri = Uri::from_static("/v1/commands");
+        let message = signing_message(
+            method.as_str(),
+            "/v1/commands",
+            &timestamp,
+            &nonce,
+            &signed_body_hash,
+        );
+        let signature = signing_key.sign(message.as_bytes());
+        let mut headers = HeaderMap::new();
+        headers.insert(HEADER_TIMESTAMP, HeaderValue::from_str(&timestamp).unwrap());
+        headers.insert(HEADER_NONCE, HeaderValue::from_str(&nonce).unwrap());
+        headers.insert(
+            HEADER_BODY_SHA256,
+            HeaderValue::from_str(&signed_body_hash).unwrap(),
+        );
+        headers.insert(
+            HEADER_SIGNATURE,
+            HeaderValue::from_str(&general_purpose::STANDARD.encode(signature.to_bytes())).unwrap(),
+        );
+
+        REPLAY_NONCES.lock().unwrap().clear();
+        assert!(verify_signature(
+            &headers,
+            &method,
+            &uri,
+            br#"{"type":"set_brightness","value":41}"#,
+            &signed_device
+        )
+        .is_err());
     }
 
     fn http_get(port: u16, path: &str) -> String {

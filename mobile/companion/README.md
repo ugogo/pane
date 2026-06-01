@@ -7,8 +7,8 @@ for the full plan and slice roadmap.
 ## Run it on your iPhone (Expo Go)
 
 Dev iteration uses [Expo Go](https://expo.dev/go) — free, no Apple Developer
-account, hot reload on a physical device. The phone and PC must be on the **same
-Wi-Fi network**.
+Program membership, hot reload on a physical device. The phone and PC must be on
+the **same Wi-Fi network**.
 
 1. Install **Expo Go** from the App Store on your iPhone.
 2. Start the bundler — from the **repo root** (no `cd` needed):
@@ -31,14 +31,16 @@ repo-root working directory, so Expo inspects the root project (which has no
 ## Pairing flow
 
 The desktop app owns pairing. In Pane: **Companion** panel → enable → **Pair**,
-which shows a `pane://pair` QR containing the LAN host, port, and a one-time
-token.
+which shows a `pane://pair` QR containing the LAN host, port, and a short-lived
+one-time token.
 
 In the companion app: allow camera access → scan Pane's pairing QR. The app calls
-`POST /v1/pair`, receives a bearer device token, and stores it in
-`expo-secure-store`. The control screen then confirms the link via `/v1/hello`
-and drives `set_brightness` commands from the slider. **Unpair** clears the
-stored credentials.
+`POST /v1/pair`, sends this phone's Ed25519 public key, receives a bearer device
+token, and stores the token + private signing key in `expo-secure-store`.
+Authenticated requests include timestamp, nonce, method/path/body hash, and an
+Ed25519 signature. The control screen confirms the link via `/v1/hello` and
+drives the allowlisted settings commands. **Unpair** clears the stored
+credentials.
 
 ### Expected prompts
 
@@ -49,23 +51,14 @@ stored credentials.
 
 ## Status & caveats
 
-- Implemented: QR scan → pair → brightness control (plan slices 1–3).
-- **Dev-only transport:** plain HTTP + bearer token over the LAN. Fine on a
-  trusted home network for testing; TLS pinning and request signing (plan slices
-  4–5) are required before any TestFlight build.
-- The native-only features — Bonjour/mDNS discovery, certificate pinning, custom
-  permission copy — need an [EAS](https://docs.expo.dev/build/introduction/) dev
-  build and are not part of the Expo Go flow (plan slice 6).
-
-## Later: dev build
-
-Once the native slices land, build a dev client with EAS (cloud builds, no Mac
-required; a free Apple account covers device provisioning):
-
-```powershell
-cd mobile/companion
-npx eas-cli build --profile development --platform ios
-```
-
-(Run from inside `mobile/companion` — unlike `npm run`, `npm exec`/`npx` use the
-current directory, not the package, to resolve the project.)
+- Implemented: QR scan → pair → signed commands → brightness, presets, volume,
+  lighting, accent popup, startup, snapshot, and events.
+- **Expo Go transport:** HTTP over the LAN plus signed authenticated requests.
+  This preserves the free iPhone workflow, but it is still a trusted-network
+  transport because the pairing token and bearer token are not encrypted on the
+  wire.
+- Native-only features — Bonjour/mDNS discovery, certificate pinning, and custom
+  iOS permission copy — are deferred because they require a custom iOS native
+  build, which in practice requires Apple signing credentials for physical-device
+  testing.
+- If the desktop IP changes, pair again from Pane's Companion panel.
