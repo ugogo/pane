@@ -3,8 +3,10 @@ import {
   ActivityIndicator,
   PanResponder,
   Pressable,
+  ScrollView,
   StatusBar,
   StyleSheet,
+  Switch,
   Text,
   View,
   type GestureResponderEvent,
@@ -52,6 +54,42 @@ interface ParsedUri {
   token: string;
 }
 
+interface VolumeInfo {
+  volume: number;
+  muted: boolean;
+}
+
+interface PresetInfo {
+  name: string;
+}
+
+interface LightSnapshot {
+  id: string;
+  label: string;
+  kind: string;
+  state: { r: number; g: number; b: number; brightness: number; on: boolean };
+}
+
+interface AudioDeviceInfo {
+  id: string;
+  name: string;
+  isDefault: boolean;
+}
+
+interface CompanionSnapshot {
+  brightnessPct: number;
+  presets: PresetInfo[];
+  lights: LightSnapshot[];
+  outputDevices: AudioDeviceInfo[];
+  inputDevices: AudioDeviceInfo[];
+  outputVolume: VolumeInfo;
+  inputVolume: VolumeInfo;
+  accentPopupEnabled: boolean;
+  runAtStartup: boolean;
+}
+
+type CommandBody = Record<string, unknown> & { type: string };
+
 // Parse a `pane://pair?host=..&port=..&token=..` QR payload. Custom-scheme URLs
 // parse unreliably across platforms, so read the query string by hand.
 function parsePairingUri(data: string): ParsedUri | null {
@@ -71,6 +109,36 @@ function parsePairingUri(data: string): ParsedUri | null {
 
 function baseUrl(pairing: Pick<Pairing, 'host' | 'port'>): string {
   return `http://${pairing.host}:${pairing.port}`;
+}
+
+function authHeaders(pairing: Pairing): HeadersInit {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${pairing.deviceToken}`,
+  };
+}
+
+async function fetchSnapshot(pairing: Pairing): Promise<CompanionSnapshot> {
+  const response = await fetchWithTimeout(
+    `${baseUrl(pairing)}/v1/snapshot`,
+    { headers: authHeaders(pairing) },
+    REQUEST_TIMEOUT_MS,
+  );
+  if (!response.ok) throw new Error(`snapshot ${response.status}`);
+  return (await response.json()) as CompanionSnapshot;
+}
+
+async function sendCommand(pairing: Pairing, body: CommandBody): Promise<void> {
+  const response = await fetchWithTimeout(
+    `${baseUrl(pairing)}/v1/commands`,
+    {
+      method: 'POST',
+      headers: authHeaders(pairing),
+      body: JSON.stringify(body),
+    },
+    REQUEST_TIMEOUT_MS,
+  );
+  if (!response.ok) throw new Error(`Command failed (${response.status})`);
 }
 
 export default function App() {
@@ -215,69 +283,83 @@ function ControlScreen({
 }) {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [serverName, setServerName] = useState(pairing.name);
+  const [snapshot, setSnapshot] = useState<CompanionSnapshot | null>(null);
   const [brightness, setBrightness] = useState(50);
+  const [outputVolume, setOutputVolume] = useState(50);
+  const [lightLevels, setLightLevels] = useState<Record<string, number>>({});
   const [error, setError] = useState<string>();
   const writeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
 
+  const applySnapshot = useCallback((next: CompanionSnapshot) => {
+    setSnapshot(next);
+    setBrightness(next.brightnessPct);
+    setOutputVolume(Math.round(next.outputVolume.volume * 100));
+  }, []);
+
+  const refresh = useCallback(async () => {
+    const response = await fetchWithTimeout(
+      `${baseUrl(pairing)}/v1/hello`,
+      {},
+      REQUEST_TIMEOUT_MS,
+    );
+    if (!response.ok) throw new Error(`hello ${response.status}`);
+    const hello = (await response.json()) as { name: string };
+    setServerName(hello.name);
+    const snap = await fetchSnapshot(pairing);
+    applySnapshot(snap);
+    setConnected(true);
+    setError(undefined);
+  }, [applySnapshot, pairing]);
+
   useEffect(() => {
     let cancelled = false;
 
-    const ping = async () => {
+    const tick = async () => {
       try {
-        const response = await fetchWithTimeout(
-          `${baseUrl(pairing)}/v1/hello`,
-          {},
-          REQUEST_TIMEOUT_MS,
-        );
-        if (!response.ok) throw new Error(`hello ${response.status}`);
-        const hello = (await response.json()) as { name: string };
-        if (cancelled) return;
-        setServerName(hello.name);
-        setConnected(true);
-      } catch {
-        if (!cancelled) setConnected(false);
+        await refresh();
+      } catch (err) {
+        if (!cancelled) {
+          setConnected(false);
+          setError(String(err));
+        }
       }
     };
 
-    void ping();
-    const id = setInterval(() => void ping(), HEARTBEAT_MS);
+    void tick();
+    const id = setInterval(() => void tick(), HEARTBEAT_MS);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
-  }, [pairing]);
+  }, [refresh]);
 
-  const sendBrightness = useCallback(
-    (value: number) => {
+  const runCommand = useCallback(
+    (body: CommandBody) => {
       if (writeTimer.current) clearTimeout(writeTimer.current);
       writeTimer.current = setTimeout(() => {
-        void fetchWithTimeout(
-          `${baseUrl(pairing)}/v1/commands`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${pairing.deviceToken}`,
-            },
-            body: JSON.stringify({ type: 'set_brightness', value }),
-          },
-          REQUEST_TIMEOUT_MS,
-        )
-          .then((response) => {
-            if (!response.ok)
-              throw new Error(`Command failed (${response.status})`);
-            setError(undefined);
-            setConnected(true);
-          })
+        void sendCommand(pairing, body)
+          .then(() => refresh())
           .catch((err) => {
             setError(String(err));
             setConnected(false);
           });
       }, WRITE_DEBOUNCE_MS);
     },
-    [pairing],
+    [pairing, refresh],
+  );
+
+  const runCommandNow = useCallback(
+    (body: CommandBody) => {
+      void sendCommand(pairing, body)
+        .then(() => refresh())
+        .catch((err) => {
+          setError(String(err));
+          setConnected(false);
+        });
+    },
+    [pairing, refresh],
   );
 
   const offline = connected === false;
@@ -289,7 +371,7 @@ function ControlScreen({
   return (
     <SafeAreaView style={styles.shell}>
       <StatusBar barStyle="light-content" />
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={[styles.eyebrow, { color: statusColor }]}>
             {statusLabel}
@@ -305,10 +387,139 @@ function ControlScreen({
           <Slider
             value={brightness}
             onValueChange={setBrightness}
-            onChange={sendBrightness}
+            onChange={(value) => runCommand({ type: 'set_brightness', value })}
             disabled={offline}
           />
         </View>
+
+        {snapshot && snapshot.presets.length > 0 ? (
+          <View style={[styles.panel, offline && styles.panelOffline]}>
+            <Text style={styles.label}>Monitor presets</Text>
+            <View style={styles.chipRow}>
+              {snapshot.presets.map((preset) => (
+                <Pressable
+                  key={preset.name}
+                  disabled={offline}
+                  style={styles.chip}
+                  onPress={() =>
+                    runCommandNow({
+                      type: 'apply_monitor_preset',
+                      name: preset.name,
+                    })
+                  }
+                >
+                  <Text style={styles.chipText}>{preset.name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        <View style={[styles.panel, offline && styles.panelOffline]}>
+          <View style={styles.rowBetween}>
+            <Text style={styles.label}>Output volume</Text>
+            <Text style={styles.value}>
+              {snapshot?.outputVolume.muted ? 'Muted' : `${outputVolume}%`}
+            </Text>
+          </View>
+          <Slider
+            value={outputVolume}
+            onValueChange={setOutputVolume}
+            onChange={(value) =>
+              runCommand({ type: 'set_output_volume', volume: value / 100 })
+            }
+            disabled={offline || snapshot?.outputVolume.muted}
+          />
+          <Pressable
+            disabled={offline}
+            style={styles.secondaryButton}
+            onPress={() =>
+              runCommandNow({
+                type: 'set_output_mute',
+                muted: !snapshot?.outputVolume.muted,
+              })
+            }
+          >
+            <Text style={styles.secondaryButtonText}>
+              {snapshot?.outputVolume.muted ? 'Unmute output' : 'Mute output'}
+            </Text>
+          </Pressable>
+        </View>
+
+        {snapshot?.lights.map((light) => (
+          <View
+            key={light.id}
+            style={[styles.panel, offline && styles.panelOffline]}
+          >
+            <View style={styles.rowBetween}>
+              <Text style={styles.label}>{light.label}</Text>
+              <Text style={styles.value}>
+                {light.state.on
+                  ? `${Math.round(light.state.brightness * 100)}%`
+                  : 'Off'}
+              </Text>
+            </View>
+            <Slider
+              value={
+                lightLevels[light.id] ??
+                Math.round(light.state.brightness * 100)
+              }
+              onValueChange={(value) =>
+                setLightLevels((prev) => ({ ...prev, [light.id]: value }))
+              }
+              onChange={(value) => {
+                runCommand({
+                  type: 'set_light',
+                  light: light.id,
+                  r: light.state.r,
+                  g: light.state.g,
+                  b: light.state.b,
+                  brightness: value / 100,
+                });
+                setLightLevels((prev) => {
+                  const next = { ...prev };
+                  delete next[light.id];
+                  return next;
+                });
+              }}
+              disabled={offline}
+            />
+            <Pressable
+              disabled={offline}
+              style={styles.secondaryButton}
+              onPress={() =>
+                runCommandNow({ type: 'turn_light_off', light: light.id })
+              }
+            >
+              <Text style={styles.secondaryButtonText}>Turn off</Text>
+            </Pressable>
+          </View>
+        )) ?? null}
+
+        {snapshot ? (
+          <View style={[styles.panel, offline && styles.panelOffline]}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.label}>Accent popup</Text>
+              <Switch
+                disabled={offline}
+                value={snapshot.accentPopupEnabled}
+                onValueChange={(enabled) =>
+                  runCommandNow({ type: 'set_accent_popup_enabled', enabled })
+                }
+              />
+            </View>
+            <View style={styles.rowBetween}>
+              <Text style={styles.label}>Run at startup</Text>
+              <Switch
+                disabled={offline}
+                value={snapshot.runAtStartup}
+                onValueChange={(enabled) =>
+                  runCommandNow({ type: 'set_run_at_startup', enabled })
+                }
+              />
+            </View>
+          </View>
+        ) : null}
 
         {offline ? (
           <Text style={styles.body}>
@@ -322,7 +533,7 @@ function ControlScreen({
         <Pressable style={styles.linkButton} onPress={onUnpair}>
           <Text style={styles.linkText}>Unpair this iPhone</Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -432,6 +643,40 @@ const styles = StyleSheet.create({
     gap: 20,
     justifyContent: 'center',
     padding: 24,
+  },
+  scrollContent: {
+    gap: 16,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  chip: {
+    backgroundColor: '#2a2a2e',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  chipText: {
+    color: '#fafafa',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    backgroundColor: '#2a2a2e',
+    borderRadius: 10,
+    marginTop: 8,
+    paddingVertical: 10,
+  },
+  secondaryButtonText: {
+    color: '#fafafa',
+    fontSize: 14,
+    fontWeight: '600',
   },
   scannerHeader: {
     gap: 8,

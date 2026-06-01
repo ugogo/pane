@@ -38,6 +38,11 @@ pub fn get_run_at_startup() -> Result<bool, String> {
     is_enabled()
 }
 
+/// Window-free entry for the companion HTTP command path.
+pub fn set_run_at_startup_enabled(enabled: bool) -> Result<(), String> {
+    apply(enabled)
+}
+
 #[cfg(windows)]
 fn apply(enabled: bool) -> Result<(), String> {
     use winreg::{enums::HKEY_CURRENT_USER, RegKey};

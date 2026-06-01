@@ -20,7 +20,7 @@ Built as thin vertical slices so each one is independently testable and de-risks
 | 4     | Replace plain HTTP with TLS + QR-pinned certificate (`rcgen`/`rustls`)                                                                                                            | ⏳ Required before TestFlight |
 | 5     | Replace bearer token with Ed25519 request signing (timestamp + nonce + body hash; replay rejection); DPAPI-protected key storage                                                  | ⏳ Required before TestFlight |
 | 6     | mDNS/Bonjour discovery (`_pane._tcp`) so the phone finds Pane without a typed host; move app to an EAS dev build for the native bits                                              | ⏳ Nice-to-have               |
-| 7     | Remaining allowlisted commands (lighting, audio, presets, accent, startup), `GET /v1/snapshot`, `GET /v1/events`                                                                  | ⏳ In progress                |
+| 7     | Remaining allowlisted commands (lighting, audio, presets, accent, startup), `GET /v1/snapshot`, `GET /v1/events`                                                                  | ✅ Done                       |
 
 > **Current transport is dev-only.** Slices 1–3 run plain HTTP with a bearer token over the LAN. That is safe enough on a trusted home network for testing, but **slices 4–5 (TLS pinning + signing) are mandatory before any TestFlight build** — until then the companion should stay behind a dev/trusted-network assumption.
 
@@ -35,7 +35,7 @@ Built as thin vertical slices so each one is independently testable and de-risks
   - [x] random local port (plain HTTP today; HTTPS in slice 4)
   - [ ] mDNS/Bonjour service `_pane._tcp.local` (slice 6)
   - [x] unauthenticated `GET /v1/hello` only returns instance/version/public pairing metadata
-  - [x] authenticated `POST /v1/commands` today; [ ] `GET /v1/snapshot` and [ ] `GET /v1/events` in slice 7
+  - [x] authenticated `POST /v1/commands`; [x] `GET /v1/snapshot` and [x] `GET /v1/events` (SSE)
 - [ ] Add pairing:
   - [x] Pane generates install ID and short-lived one-time pairing token (QR over LAN)
   - [ ] QR includes pinned TLS certificate fingerprint/public key (slice 4)
@@ -49,7 +49,7 @@ Built as thin vertical slices so each one is independently testable and de-risks
 - [x] Add a React Native / Expo app under `mobile/companion`:
   - [x] QR scanner onboarding (`expo-camera`)
   - [x] device bearer token stored in `expo-secure-store`
-  - [x] brightness control; [ ] Lighting, Audio, and other settings screens (slice 7)
+  - [x] brightness control; [x] presets, output volume, lighting, accent, and startup controls (slice 7)
   - [ ] later (dev build): local-network permission copy, Bonjour discovery, certificate pinning from QR material
 
 ## Public Interfaces
@@ -65,17 +65,16 @@ Built as thin vertical slices so each one is independently testable and de-risks
   - [x] `GET /v1/hello` (implemented)
   - [x] `POST /v1/pair` (implemented)
   - [x] `POST /v1/commands` (implemented)
-  - [ ] `GET /v1/snapshot` (slice 7)
-  - [ ] `GET /v1/events` (slice 7)
+  - [x] `GET /v1/snapshot`
+  - [x] `GET /v1/events`
 - Allowed mobile commands (`CompanionCommand` enum):
   - [x] set brightness 0–100 across all monitors (implemented)
-  - [ ] the following are planned for slice 7:
-    - [ ] apply light color/brightness or turn light off
-    - [ ] apply monitor preset
-    - [ ] set default output/input audio device
-    - [ ] set output/input volume and mute
-    - [ ] set accent popup enabled
-    - [ ] set run-at-startup enabled
+  - [x] apply light color/brightness or turn light off
+  - [x] apply monitor preset
+  - [x] set default output/input audio device
+  - [x] set output/input volume and mute
+  - [x] set accent popup enabled
+  - [x] set run-at-startup enabled
 - Explicitly excluded from v1:
   - [x] screenshots/capture (not in allowlist)
   - [x] clipboard writes (not in allowlist)

@@ -1,12 +1,16 @@
 use axum::{
     extract::State,
     http::{header::AUTHORIZATION, HeaderMap, StatusCode},
-    response::{IntoResponse, Response},
+    response::{
+        sse::{Event, KeepAlive, Sse},
+        IntoResponse, Response,
+    },
     routing::{get, post},
     Json, Router,
 };
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
 use std::{
     fs,
     net::{TcpListener, UdpSocket},
@@ -15,8 +19,12 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 use tauri::{AppHandle, Manager, WebviewWindow};
+use tokio::sync::broadcast;
 use tokio::sync::oneshot;
 
+use super::companion_snapshot::{
+    build_snapshot, run_command, CompanionCommand, CompanionContext, CompanionSnapshot,
+};
 use crate::commands::require_window;
 
 const PAIRING_TTL_SECONDS: u64 = 120;
@@ -232,16 +240,11 @@ fn server_port() -> Option<u16> {
 struct CompanionState {
     hello: HelloResponse,
     settings_path: PathBuf,
-}
-
-/// Transport-neutral command envelope. HTTP, and later the relay, both decode
-/// requests into this so the desktop applies the same allowlisted operations
-/// regardless of how they arrived.
-#[derive(Debug, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-enum CompanionCommand {
-    /// Absolute brightness, 0–100, applied to every capable monitor.
-    SetBrightness { value: u8 },
+    config_dir: PathBuf,
+    /// Required at runtime for accent toggles; `None` only in unit tests.
+    app: Option<AppHandle>,
+    /// Bumped after each successful command so `/v1/events` clients refetch.
+    event_tx: broadcast::Sender<u64>,
 }
 
 #[derive(Deserialize)]
@@ -271,6 +274,8 @@ fn build_router(state: CompanionState) -> Router {
         .route("/v1/hello", get(hello_handler))
         .route("/v1/pair", post(pair_handler))
         .route("/v1/commands", post(commands_handler))
+        .route("/v1/snapshot", get(snapshot_handler))
+        .route("/v1/events", get(events_handler))
         .with_state(state)
 }
 
@@ -307,19 +312,61 @@ async fn commands_handler(
     headers: HeaderMap,
     Json(command): Json<CompanionCommand>,
 ) -> Result<Json<CommandResponse>, ApiError> {
-    let token = bearer_token(&headers).ok_or_else(ApiError::unauthorized)?;
+    authorize_request(&state, &headers)?;
+    let ctx = companion_ctx(&state);
+    tokio::task::spawn_blocking(move || run_command(&ctx, command))
+        .await
+        .map_err(ApiError::internal)?
+        .map_err(ApiError::bad_request)?;
+    let _ = state.event_tx.send(now_epoch_seconds().unwrap_or(0));
+    Ok(Json(CommandResponse { ok: true }))
+}
+
+async fn snapshot_handler(
+    State(state): State<CompanionState>,
+    headers: HeaderMap,
+) -> Result<Json<CompanionSnapshot>, ApiError> {
+    authorize_request(&state, &headers)?;
+    let ctx = companion_ctx(&state);
+    let snapshot = tokio::task::spawn_blocking(move || build_snapshot(&ctx))
+        .await
+        .map_err(ApiError::internal)?;
+    Ok(Json(snapshot))
+}
+
+async fn events_handler(
+    State(state): State<CompanionState>,
+    headers: HeaderMap,
+) -> Result<Sse<impl futures_core::Stream<Item = Result<Event, Infallible>>>, ApiError> {
+    authorize_request(&state, &headers)?;
+    let mut rx = state.event_tx.subscribe();
+    let ctx = companion_ctx(&state);
+    let stream = async_stream::stream! {
+        yield Ok(Event::default().json_data(build_snapshot(&ctx)).unwrap());
+        while let Ok(_) | Err(broadcast::error::RecvError::Lagged(_)) = rx.recv().await {
+            yield Ok(Event::default().json_data(build_snapshot(&ctx)).unwrap());
+        }
+    };
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
+}
+
+fn companion_ctx(state: &CompanionState) -> CompanionContext {
+    CompanionContext {
+        config_dir: state.config_dir.clone(),
+        app: state
+            .app
+            .clone()
+            .expect("companion server started without AppHandle"),
+    }
+}
+
+fn authorize_request(state: &CompanionState, headers: &HeaderMap) -> Result<(), ApiError> {
+    let token = bearer_token(headers).ok_or_else(ApiError::unauthorized)?;
     let settings = load_settings_at(&state.settings_path);
     if authorize_device(&settings, &token).is_none() {
         return Err(ApiError::unauthorized());
     }
-
-    // Commands touch the monitors over DDC/CI, which is blocking I2C I/O that can
-    // take 100ms+ per round-trip. Run it off the async executor so a slider drag
-    // can't stall the other routes.
-    tokio::task::spawn_blocking(move || run_command(command))
-        .await
-        .map_err(ApiError::internal)?;
-    Ok(Json(CommandResponse { ok: true }))
+    Ok(())
 }
 
 /// Validate a device-supplied pairing token against the active session and, on
@@ -355,14 +402,6 @@ fn authorize_device(settings: &CompanionSettings, token: &str) -> Option<String>
         .iter()
         .find(|device| device.auth_token == token)
         .map(|device| device.id.clone())
-}
-
-fn run_command(command: CompanionCommand) {
-    match command {
-        CompanionCommand::SetBrightness { value } => {
-            crate::commands::brightness::set_all_brightness_pct(value.min(100));
-        }
-    }
 }
 
 fn bearer_token(headers: &HeaderMap) -> Option<String> {
@@ -422,12 +461,21 @@ fn start_server(app: &AppHandle) -> Result<u16, String> {
     listener.set_nonblocking(true).map_err(|e| e.to_string())?;
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
 
+    let settings_path = settings_path(app)?;
+    let config_dir = settings_path
+        .parent()
+        .ok_or_else(|| "companion settings path has no parent".to_string())?
+        .to_path_buf();
+    let (event_tx, _) = broadcast::channel(16);
     let state = CompanionState {
         hello: HelloResponse {
             name: service_name(&load_settings(app)),
             version: app.package_info().version.to_string(),
         },
-        settings_path: settings_path(app)?,
+        settings_path,
+        config_dir,
+        app: Some(app.clone()),
+        event_tx,
     };
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
 
@@ -567,12 +615,18 @@ mod tests {
     use std::net::TcpStream;
 
     fn test_state() -> CompanionState {
+        let settings_path = std::env::temp_dir().join("pane-companion-test-hello.json");
+        let config_dir = settings_path.parent().unwrap().to_path_buf();
+        let (event_tx, _) = broadcast::channel(1);
         CompanionState {
             hello: HelloResponse {
                 name: "Pane-testbed".to_string(),
                 version: "9.9.9".to_string(),
             },
-            settings_path: std::env::temp_dir().join("pane-companion-test-hello.json"),
+            settings_path,
+            config_dir,
+            app: None,
+            event_tx,
         }
     }
 
@@ -681,6 +735,13 @@ mod tests {
             r#"{"type":"clipboard_write","text":"x"}"#
         )
         .is_err());
+
+        let preset: CompanionCommand =
+            serde_json::from_str(r#"{"type":"apply_monitor_preset","name":"Night"}"#).unwrap();
+        assert!(matches!(
+            preset,
+            CompanionCommand::ApplyMonitorPreset { name } if name == "Night"
+        ));
     }
 
     fn http_get(port: u16, path: &str) -> String {
