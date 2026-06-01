@@ -452,6 +452,108 @@ mod watch {
     }
 }
 
+// ── Companion (window-free) ───────────────────────────────────────────────────
+
+#[cfg(windows)]
+pub fn companion_list_output_devices() -> Result<Vec<AudioDevice>, String> {
+    imp::enumerate(imp::RENDER)
+}
+
+#[cfg(not(windows))]
+pub fn companion_list_output_devices() -> Result<Vec<AudioDevice>, String> {
+    Err(NOT_WINDOWS.into())
+}
+
+#[cfg(windows)]
+pub fn companion_list_input_devices() -> Result<Vec<AudioDevice>, String> {
+    imp::enumerate(imp::CAPTURE)
+}
+
+#[cfg(not(windows))]
+pub fn companion_list_input_devices() -> Result<Vec<AudioDevice>, String> {
+    Err(NOT_WINDOWS.into())
+}
+
+#[cfg(windows)]
+pub fn companion_get_output_volume() -> Result<VolumeInfo, String> {
+    imp::read_volume(imp::RENDER)
+}
+
+#[cfg(not(windows))]
+pub fn companion_get_output_volume() -> Result<VolumeInfo, String> {
+    Err(NOT_WINDOWS.into())
+}
+
+#[cfg(windows)]
+pub fn companion_get_input_volume() -> Result<VolumeInfo, String> {
+    imp::read_volume(imp::CAPTURE)
+}
+
+#[cfg(not(windows))]
+pub fn companion_get_input_volume() -> Result<VolumeInfo, String> {
+    Err(NOT_WINDOWS.into())
+}
+
+#[cfg(windows)]
+pub fn companion_set_output_volume(volume: f64) -> Result<(), String> {
+    imp::write_volume(imp::RENDER, volume)
+}
+
+#[cfg(not(windows))]
+pub fn companion_set_output_volume(_volume: f64) -> Result<(), String> {
+    Err(NOT_WINDOWS.into())
+}
+
+#[cfg(windows)]
+pub fn companion_set_input_volume(volume: f64) -> Result<(), String> {
+    imp::write_volume(imp::CAPTURE, volume)
+}
+
+#[cfg(not(windows))]
+pub fn companion_set_input_volume(_volume: f64) -> Result<(), String> {
+    Err(NOT_WINDOWS.into())
+}
+
+#[cfg(windows)]
+pub fn companion_set_output_mute(muted: bool) -> Result<(), String> {
+    imp::write_mute(imp::RENDER, muted)
+}
+
+#[cfg(not(windows))]
+pub fn companion_set_output_mute(_muted: bool) -> Result<(), String> {
+    Err(NOT_WINDOWS.into())
+}
+
+#[cfg(windows)]
+pub fn companion_set_input_mute(muted: bool) -> Result<(), String> {
+    imp::write_mute(imp::CAPTURE, muted)
+}
+
+#[cfg(not(windows))]
+pub fn companion_set_input_mute(_muted: bool) -> Result<(), String> {
+    Err(NOT_WINDOWS.into())
+}
+
+#[cfg(windows)]
+pub fn companion_set_default_output(device_id: &str) -> Result<(), String> {
+    imp::set_default(device_id)
+}
+
+#[cfg(not(windows))]
+pub fn companion_set_default_output(_device_id: &str) -> Result<(), String> {
+    Err(NOT_WINDOWS.into())
+}
+
+#[cfg(windows)]
+pub fn companion_set_default_input(device_id: &str) -> Result<(), String> {
+    imp::set_default(device_id)
+}
+
+#[cfg(not(windows))]
+pub fn companion_set_default_input(_device_id: &str) -> Result<(), String> {
+    Err(NOT_WINDOWS.into())
+}
+
 // ── Tauri commands ────────────────────────────────────────────────────────────
 
 #[tauri::command]

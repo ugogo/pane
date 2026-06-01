@@ -1,6 +1,13 @@
 # Frontend: Prettier + ESLint --fix on staged JS/TS, rustfmt on staged Rust.
 npx lint-staged
 
+# Tauri: refresh tracked gen/schemas when capability manifests change.
+if git diff --cached --name-only | grep -q '^src-tauri/capabilities/'; then
+  echo "↳ Capability manifest changed — syncing src-tauri/gen/schemas"
+  npm run tauri:gen --silent
+  git add src-tauri/gen/schemas/
+fi
+
 # Rust: run clippy when any Rust source is staged. lint-staged has already
 # run rustfmt and re-staged the results above; this gates the lint pass.
 if git diff --cached --name-only --diff-filter=ACMR | grep -q '^src-tauri/.*\.rs$'; then

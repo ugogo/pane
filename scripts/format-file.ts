@@ -44,6 +44,14 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (
+    filePath.replace(/\\/g, '/').includes('src-tauri/capabilities/') &&
+    ext === '.json'
+  ) {
+    spawnSync('node', ['scripts/sync-tauri-gen.ts'], { stdio: 'ignore' });
+    return;
+  }
+
   // Everything Prettier understands; it consults .prettierignore for us.
   const prettier = await import('prettier');
   const info = await prettier.getFileInfo(filePath, {

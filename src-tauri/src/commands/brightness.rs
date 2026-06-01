@@ -19,7 +19,7 @@
 //! ranges. They persist to `monitor-presets.json` in the app config dir.
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
@@ -267,6 +267,39 @@ pub fn adjust_all(delta: i32) -> Vec<MonitorInfo> {
     out
 }
 
+/// Set every brightness-capable monitor to an absolute `pct` (0–100). Window-
+/// free so both the Tauri command path and the companion HTTP handler share one
+/// implementation. Returns the refreshed monitor list.
+#[cfg(windows)]
+pub fn set_all_brightness_pct(pct: u8) -> Vec<MonitorInfo> {
+    let mut cache = CACHE.lock().unwrap();
+    if cache.is_empty() {
+        drop(cache);
+        read_seed();
+        cache = CACHE.lock().unwrap();
+    }
+
+    let mut monitors = enumerate();
+    let mut out = Vec::with_capacity(cache.len());
+    for (index, entry) in cache.iter_mut().enumerate() {
+        if entry.brightness.supported {
+            let target = pct_to_value(pct, entry.brightness.max);
+            if let Some(mon) = monitors.get_mut(index) {
+                if mon.set_vcp_feature(VCP_BRIGHTNESS, target).is_ok() {
+                    entry.brightness.value = target;
+                }
+            }
+        }
+        out.push(cached_to_info(index, entry));
+    }
+    out
+}
+
+#[cfg(not(windows))]
+pub fn set_all_brightness_pct(_pct: u8) -> Vec<MonitorInfo> {
+    Vec::new()
+}
+
 #[cfg(windows)]
 fn pct_to_value(pct: u8, max: u16) -> u16 {
     let pct = pct.min(100) as u32;
@@ -350,13 +383,72 @@ fn default_presets() -> Vec<Preset> {
 }
 
 fn load_presets(app: &AppHandle) -> Vec<Preset> {
-    let Ok(path) = presets_path(app) else {
-        return default_presets();
-    };
+    match presets_path(app) {
+        Ok(path) => load_presets_at(&path),
+        Err(_) => default_presets(),
+    }
+}
+
+/// Load monitor presets from the app config directory (companion-safe, no
+/// `AppHandle`).
+pub fn load_presets_at(path: &Path) -> Vec<Preset> {
     let Ok(text) = fs::read_to_string(path) else {
         return default_presets();
     };
     serde_json::from_str(&text).unwrap_or_else(|_| default_presets())
+}
+
+/// Mean brightness across capable monitors, as 0–100. Returns 50 when none
+/// report brightness.
+pub fn average_brightness_pct(monitors: &[MonitorInfo]) -> u8 {
+    let mut count = 0u32;
+    let mut sum = 0u32;
+    for monitor in monitors {
+        if monitor.brightness.supported && monitor.brightness.max > 0 {
+            count += 1;
+            let pct = (monitor.brightness.value as u32 * 100 + monitor.brightness.max as u32 / 2)
+                / monitor.brightness.max as u32;
+            sum += pct.min(100);
+        }
+    }
+    if count == 0 {
+        50
+    } else {
+        sum.checked_div(count).unwrap_or(50).min(100) as u8
+    }
+}
+
+#[cfg(windows)]
+pub fn list_monitors_snapshot() -> Vec<MonitorInfo> {
+    read_seed()
+}
+
+#[cfg(not(windows))]
+pub fn list_monitors_snapshot() -> Vec<MonitorInfo> {
+    Vec::new()
+}
+
+#[cfg(windows)]
+pub fn apply_preset_at(path: &Path, name: &str) -> Result<Vec<MonitorInfo>, String> {
+    let presets = load_presets_at(path);
+    let preset = presets
+        .into_iter()
+        .find(|p| p.name.eq_ignore_ascii_case(name))
+        .ok_or_else(|| format!("preset '{name}' not found"))?;
+    Ok(apply_pcts(
+        preset.brightness_pct,
+        preset.contrast_pct,
+        preset.red_gain_pct,
+        preset.green_gain_pct,
+        preset.blue_gain_pct,
+    ))
+}
+
+#[cfg(not(windows))]
+pub fn apply_preset_at(_path: &Path, name: &str) -> Result<Vec<MonitorInfo>, String> {
+    Err(format!(
+        "preset '{name}' cannot be applied: brightness control is only implemented on Windows"
+    ))
 }
 
 fn store_presets(app: &AppHandle, presets: &[Preset]) -> Result<(), String> {

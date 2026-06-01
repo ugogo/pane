@@ -36,6 +36,50 @@ export function setRunAtStartup(enabled: boolean) {
   return invoke<StartupResult>('set_run_at_startup', { enabled });
 }
 
+// ── Mobile companion ─────────────────────────────────────────────────────────
+
+export interface CompanionDevice {
+  id: string;
+  name: string;
+  role: string;
+  pairedAt: number;
+}
+
+export interface CompanionPairingSession {
+  pairingId: string;
+  pairingUri: string;
+  expiresAt: number;
+}
+
+export interface CompanionStatus {
+  enabled: boolean;
+  serviceName: string;
+  serviceType: string;
+  port: number | null;
+  pairedDevices: CompanionDevice[];
+  activePairing: CompanionPairingSession | null;
+}
+
+export function getCompanionStatus() {
+  return invoke<CompanionStatus>('get_companion_status');
+}
+
+export function setCompanionEnabled(enabled: boolean) {
+  return invoke<CompanionStatus>('set_companion_enabled', { enabled });
+}
+
+export function startCompanionPairing() {
+  return invoke<CompanionStatus>('start_companion_pairing');
+}
+
+export function cancelCompanionPairing() {
+  return invoke<CompanionStatus>('cancel_companion_pairing');
+}
+
+export function revokeCompanionDevice(deviceId: string) {
+  return invoke<CompanionStatus>('revoke_companion_device', { deviceId });
+}
+
 // ── Capture ───────────────────────────────────────────────────────────────────
 
 export interface CaptureResult {

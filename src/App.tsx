@@ -15,6 +15,7 @@ import {
   Monitor,
   Power,
   RotateCcw,
+  Smartphone,
   Square,
   Volume2,
   X,
@@ -24,6 +25,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { AccentCard } from '@/components/features/AccentCard';
 import { BrightnessCard } from '@/components/features/BrightnessCard';
 import { CaptureCard } from '@/components/features/CaptureCard';
+import { CompanionCard } from '@/components/features/CompanionCard';
 import { InfraCard } from '@/components/features/InfraCard';
 import { LightingCard } from '@/components/features/LightingCard';
 import { MetricsCard } from '@/components/features/MetricsCard';
@@ -85,6 +87,14 @@ const modules = [
     description: 'Background launch behavior.',
     icon: Power,
     component: InfraCard,
+  },
+  {
+    path: '/companion',
+    label: 'Companion',
+    title: 'Companion',
+    description: 'Control Pane settings from your iPhone.',
+    icon: Smartphone,
+    component: CompanionCard,
   },
   {
     path: '/diagnostics',

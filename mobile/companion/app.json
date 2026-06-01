@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Pane Companion",
+    "slug": "pane-companion",
+    "scheme": "pane",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "ios": {
+      "bundleIdentifier": "dev.pane.companion",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Pane Companion finds and pairs with Pane on your local network.",
+        "NSBonjourServices": ["_pane._tcp"]
+      }
+    },
+    "android": {
+      "package": "dev.pane.companion"
+    },
+    "extra": {
+      "pairingProtocolVersion": 1
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Pane Companion uses the camera to scan the pairing code shown in Pane."
+        }
+      ]
+    ]
+  }
+}

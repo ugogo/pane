@@ -44,6 +44,7 @@ pub fn run() {
             brightness_keys::register(app.handle().clone());
             accent_popup::register(app.handle().clone());
             commands::audio::start_watch(app.handle().clone());
+            commands::companion::init(app.handle());
             // Push persisted color/brightness back to each device so the
             // hardware matches what the UI displays. Cold-boot launches may
             // race USB enumeration, so give devices a moment to settle —
@@ -74,6 +75,11 @@ pub fn run() {
             commands::metrics::get_process_metrics,
             commands::startup::get_run_at_startup,
             commands::startup::set_run_at_startup,
+            commands::companion::get_companion_status,
+            commands::companion::set_companion_enabled,
+            commands::companion::start_companion_pairing,
+            commands::companion::cancel_companion_pairing,
+            commands::companion::revoke_companion_device,
             commands::capture::capture_fullscreen,
             commands::capture::capture_region,
             commands::capture::take_latest_capture,

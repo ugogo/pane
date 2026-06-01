@@ -111,6 +111,19 @@ Orchestrate from Rust, not JS. If JS calls `await closeWindowA()` and then `awai
 
 Drop the `Monitor` before any `.await`. Tauri async commands need everything held across an await to be `Send`.
 
+### Capability manifests and generated schemas
+
+Edit permissions in `src-tauri/capabilities/*.json` (source of truth), not by hand in `src-tauri/gen/schemas/`.
+
+After changing any capability manifest, regenerate and **commit** the tracked output:
+
+```powershell
+npm run tauri:gen
+git add src-tauri/gen/schemas/
+```
+
+`npm run tauri:gen` runs `cargo build`, which invokes `tauri_build` and refreshes `capabilities.json`, `acl-manifests.json`, and the desktop/windows schema JSON under `src-tauri/gen/schemas/`. Pre-commit runs this automatically when a staged diff touches `src-tauri/capabilities/`; CI enforces a clean tree via `npm run tauri:gen:check`.
+
 ### Common dev signals
 
 - Vite frontend: `http://localhost:1420`

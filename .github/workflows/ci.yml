@@ -69,6 +69,9 @@ jobs:
         working-directory: src-tauri
         run: cargo clippy -- -D warnings
 
+      - name: Check Tauri generated schemas match capabilities
+        run: npm run tauri:gen:check
+
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
 
