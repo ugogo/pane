@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Copy, QrCode, Wifi, X } from 'lucide-react';
 import {
   cancelCompanionPairing,
@@ -39,6 +40,20 @@ export function CompanionCard({ className }: { className?: string }) {
         setLoadState('error');
       });
   }, []);
+
+  // While a pairing window is open the phone pairs over HTTP on its own — the
+  // desktop has no push channel, so poll until the session is consumed (the new
+  // device appears and activePairing clears) or it expires.
+  const pairingActive = status?.activePairing != null;
+  useEffect(() => {
+    if (!pairingActive) return;
+    const id = setInterval(() => {
+      void getCompanionStatus()
+        .then(setStatus)
+        .catch(() => {});
+    }, 2000);
+    return () => clearInterval(id);
+  }, [pairingActive]);
 
   async function update(action: () => Promise<CompanionStatus>) {
     setLoadState('busy');
@@ -121,8 +136,8 @@ export function CompanionCard({ className }: { className?: string }) {
 
         {pairing ? (
           <div className="bg-muted rounded-md p-3">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-sm font-medium">Pairing URI</p>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-sm font-medium">Scan to pair</p>
               <Button
                 size="sm"
                 variant="outline"
@@ -131,11 +146,21 @@ export function CompanionCard({ className }: { className?: string }) {
                 }
               >
                 <Copy aria-hidden="true" />
-                Copy
+                Copy URI
               </Button>
             </div>
-            <p className="text-muted-foreground font-mono text-[11px] leading-5 break-all">
-              {pairing.pairingUri}
+            <div className="flex justify-center">
+              <div className="rounded-md bg-white p-3">
+                <QRCodeSVG
+                  value={pairing.pairingUri}
+                  size={176}
+                  level="M"
+                  marginSize={0}
+                />
+              </div>
+            </div>
+            <p className="text-muted-foreground mt-3 text-center text-xs">
+              Open Pane Companion on your iPhone and scan this code.
             </p>
           </div>
         ) : null}

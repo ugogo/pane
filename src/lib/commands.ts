@@ -55,6 +55,7 @@ export interface CompanionStatus {
   enabled: boolean;
   serviceName: string;
   serviceType: string;
+  port: number | null;
   pairedDevices: CompanionDevice[];
   activePairing: CompanionPairingSession | null;
 }

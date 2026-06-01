@@ -267,6 +267,39 @@ pub fn adjust_all(delta: i32) -> Vec<MonitorInfo> {
     out
 }
 
+/// Set every brightness-capable monitor to an absolute `pct` (0–100). Window-
+/// free so both the Tauri command path and the companion HTTP handler share one
+/// implementation. Returns the refreshed monitor list.
+#[cfg(windows)]
+pub fn set_all_brightness_pct(pct: u8) -> Vec<MonitorInfo> {
+    let mut cache = CACHE.lock().unwrap();
+    if cache.is_empty() {
+        drop(cache);
+        read_seed();
+        cache = CACHE.lock().unwrap();
+    }
+
+    let mut monitors = enumerate();
+    let mut out = Vec::with_capacity(cache.len());
+    for (index, entry) in cache.iter_mut().enumerate() {
+        if entry.brightness.supported {
+            let target = pct_to_value(pct, entry.brightness.max);
+            if let Some(mon) = monitors.get_mut(index) {
+                if mon.set_vcp_feature(VCP_BRIGHTNESS, target).is_ok() {
+                    entry.brightness.value = target;
+                }
+            }
+        }
+        out.push(cached_to_info(index, entry));
+    }
+    out
+}
+
+#[cfg(not(windows))]
+pub fn set_all_brightness_pct(_pct: u8) -> Vec<MonitorInfo> {
+    Vec::new()
+}
+
 #[cfg(windows)]
 fn pct_to_value(pct: u8, max: u16) -> u16 {
     let pct = pct.min(100) as u32;
