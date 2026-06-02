@@ -18,9 +18,9 @@
          CurrentUser trust - no admin needed) bound to the build dir.
       4. Optionally launch the freshly registered exe (-Run).
 
-    This is a DEV loop. The shipping path is scripts/release.ps1 (per-machine
-    NSIS installer). Identity-gated features will NOT work under `npm run dev`
-    (unpackaged).
+    This is a DEV loop. The shipping path is `npm run release` (per-machine
+    NSIS installer, via scripts/prepare-release-artifacts.ps1). Identity-gated
+    features will NOT work under `npm run dev` (unpackaged).
 
 .PARAMETER SkipBuild
     Skip the tauri build; just (re)register the existing target/release/pane.exe.

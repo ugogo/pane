@@ -23,7 +23,6 @@
     "tauri:gen": "node scripts/sync-tauri-gen.ts",
     "tauri:gen:check": "node scripts/sync-tauri-gen.ts --check",
     "release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release-it.ps1",
-    "release:legacy": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release.ps1",
     "dev:trusted": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-trusted.ps1",
     "companion": "npm run start -w @pane/companion",
     "companion:prod": "npm run start:prod -w @pane/companion",

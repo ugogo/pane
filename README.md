@@ -84,12 +84,13 @@ https://github.com/ugogo/pane/releases/latest/download/latest.json
 Two independent signatures are involved, and they must not be conflated:
 
 - **Updater signing** (minisign): signs `latest.json` / the installer artifact
-  so the Tauri updater accepts it. Configured by `scripts/release.ps1`.
+  so the Tauri updater accepts it. Configured by
+  `scripts/prepare-release-artifacts.ps1`.
 - **Authenticode / code signing** (Windows cert): signs the sparse identity
   MSIX so Windows registers package identity. Configured by
   `scripts/build-identity-package.ps1`. Pane is a personal app and ships
-  **self-signed** releases — `scripts/release.ps1` does this automatically with
-  no cert or flag, and the installer's POSTINSTALL hook trusts the bundled
+  **self-signed** releases — `scripts/prepare-release-artifacts.ps1` does this
+  automatically with no cert or flag, and the installer's POSTINSTALL hook trusts the bundled
   public cert per-machine so the package registers. The tradeoff is that each
   installing machine trusts a cert generated on the build host. (For a real CA
   cert later, call `build-identity-package.ps1` directly without
