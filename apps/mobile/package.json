@@ -6,6 +6,8 @@
   "scripts": {
     "start": "cross-env APP_VARIANT=dev expo start",
     "start:prod": "cross-env APP_VARIANT=prod expo start --no-dev --minify",
+    "clear": "cross-env APP_VARIANT=dev expo start --clear",
+    "clear:prod": "cross-env APP_VARIANT=prod expo start --no-dev --minify --clear",
     "ios": "expo run:ios --device",
     "android": "expo run:android",
     "typecheck": "tsc --noEmit"

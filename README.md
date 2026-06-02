@@ -70,8 +70,8 @@ packages/
 
 ## Settings
 
-- Capture hotkeys: `%APPDATA%\prod.pane\capture-hotkeys.json` (released build; the `npm run dev` build uses `%APPDATA%\dev.pane\`)
-- Light state: `%LOCALAPPDATA%\prod.pane\lights.json` (released build; `npm run dev` uses `%LOCALAPPDATA%\dev.pane\`)
+- Capture hotkeys: `%APPDATA%\pane.prod\capture-hotkeys.json` (released build; the `npm run dev` build uses `%APPDATA%\pane.dev\`)
+- Light state: `%LOCALAPPDATA%\pane.prod\lights.json` (released build; `npm run dev` uses `%LOCALAPPDATA%\pane.dev\`)
 
 ## Releases
 
@@ -99,7 +99,7 @@ Two independent signatures are involved, and they must not be conflated:
 ### Build identities
 
 Dev (`npm run dev`) and the installed release use distinct Tauri identifiers —
-`dev.pane` and `prod.pane` — so they can run side by side (the single-instance
+`pane.dev` and `pane.prod` — so they can run side by side (the single-instance
 lock keys on the identifier). Every per-identifier store (`companion.json`,
 `capture-hotkeys.json`, brightness presets, accent setting, `lights.json`) is
 scoped under the identifier, so the two builds never share settings.
