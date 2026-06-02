@@ -19,6 +19,9 @@ pub struct StoredCapture {
     pub rgba: Vec<u8>,
     pub width: u32,
     pub height: u32,
+    /// Lazily-encoded data URL for the enlarged preview, cached so the (heavy)
+    /// PNG encode happens once per capture rather than on every Space press.
+    pub full_data_url: Option<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -101,20 +104,28 @@ pub fn force_opaque(img: &mut ImageBuffer<Rgba<u8>, Vec<u8>>) {
     }
 }
 
-fn preview_image(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
-    const PREVIEW_MAX_EDGE: u32 = 320;
-
+/// Downscale so the longest edge is at most `max_edge`, preserving aspect ratio.
+/// Returns a clone untouched when already within bounds.
+fn scale_to_max_edge(
+    img: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    max_edge: u32,
+    filter: FilterType,
+) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     let width = img.width();
     let height = img.height();
-    let max_edge = width.max(height);
-    if max_edge <= PREVIEW_MAX_EDGE {
+    let longest = width.max(height);
+    if longest <= max_edge {
         return img.clone();
     }
+    let scale = max_edge as f64 / longest as f64;
+    let w = ((width as f64 * scale).round() as u32).max(1);
+    let h = ((height as f64 * scale).round() as u32).max(1);
+    image::imageops::resize(img, w, h, filter)
+}
 
-    let scale = PREVIEW_MAX_EDGE as f64 / max_edge as f64;
-    let preview_w = ((width as f64 * scale).round() as u32).max(1);
-    let preview_h = ((height as f64 * scale).round() as u32).max(1);
-    image::imageops::resize(img, preview_w, preview_h, FilterType::Nearest)
+fn preview_image(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
+    // Nearest is fine for the tiny 320px card thumbnail.
+    scale_to_max_edge(img, 320, FilterType::Nearest)
 }
 
 pub fn make_stored_capture(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<StoredCapture, String> {
@@ -130,6 +141,7 @@ pub fn make_stored_capture(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<Store
         rgba: img.as_raw().clone(),
         width: img.width(),
         height: img.height(),
+        full_data_url: None,
     })
 }
 
@@ -140,6 +152,27 @@ fn latest_capture(latest: State<'_, LatestCapture>) -> Result<StoredCapture, Str
         .unwrap()
         .clone()
         .ok_or_else(|| "No capture available.".into())
+}
+
+/// Data URL for the enlarged preview: the capture downscaled to at most
+/// `ENLARGED_MAX_EDGE` (plenty crisp on screen, far lighter than a raw 4K PNG to
+/// encode, transfer, and composite) and PNG-encoded.
+fn enlarged_data_url(capture: &StoredCapture) -> Result<String, String> {
+    const ENLARGED_MAX_EDGE: u32 = 2560;
+
+    let img = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(
+        capture.width,
+        capture.height,
+        capture.rgba.clone(),
+    )
+    .ok_or_else(|| "Latest capture pixels are invalid.".to_string())?;
+    // Triangle keeps downscaled text/edges readable without Lanczos' cost.
+    let scaled = scale_to_max_edge(&img, ENLARGED_MAX_EDGE, FilterType::Triangle);
+    let mut buf = Vec::new();
+    scaled
+        .write_to(&mut Cursor::new(&mut buf), ImageFormat::Png)
+        .map_err(|e| e.to_string())?;
+    Ok(format!("data:image/png;base64,{}", B64.encode(&buf)))
 }
 
 fn encode_png_bytes(capture: &StoredCapture) -> Result<Vec<u8>, String> {
@@ -217,6 +250,29 @@ pub fn take_latest_capture(latest: State<'_, LatestCapture>) -> Option<CaptureRe
         .unwrap()
         .as_ref()
         .map(|capture| capture.result.clone())
+}
+
+/// Full-resolution capture as a PNG data URL, for the enlarged preview. The card
+/// uses the cheap downscaled preview; the enlarged view fetches this on demand so
+/// it stays crisp when scaled up.
+#[tauri::command]
+pub fn take_latest_capture_full(
+    window: tauri::WebviewWindow,
+    latest: State<'_, LatestCapture>,
+) -> Result<CaptureResult, String> {
+    crate::commands::require_window(&window, &["capture-zoom", "capture-preview", "main"])?;
+    let mut guard = latest.0.lock().unwrap();
+    let capture = guard
+        .as_mut()
+        .ok_or_else(|| "No capture available.".to_string())?;
+    if capture.full_data_url.is_none() {
+        capture.full_data_url = Some(enlarged_data_url(capture)?);
+    }
+    Ok(CaptureResult {
+        data_url: capture.full_data_url.clone().unwrap_or_default(),
+        width: capture.width,
+        height: capture.height,
+    })
 }
 
 #[tauri::command]

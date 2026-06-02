@@ -380,3 +380,47 @@
 .preview-card-animated {
   transform-origin: 50% 50%;
 }
+
+.capture-zoom-card {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-card);
+  box-shadow: 0 8px 24px var(--app-shadow-strong);
+}
+
+.capture-zoom-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--app-preview-control);
+  color: var(--app-foreground);
+  box-shadow: 0 4px 12px var(--app-shadow);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.capture-zoom-close:hover {
+  background: var(--app-panel-hover);
+}
+
+.capture-zoom-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  color: var(--app-destructive);
+  font-size: 12px;
+  text-align: center;
+}

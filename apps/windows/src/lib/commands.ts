@@ -131,6 +131,11 @@ export function takeLatestCapture() {
   return invoke<CaptureResult | null>('take_latest_capture');
 }
 
+/** Full-resolution capture for the enlarged preview (crisp when scaled up). */
+export function takeLatestCaptureFull() {
+  return invoke<CaptureResult>('take_latest_capture_full');
+}
+
 export function copyLatestCaptureToClipboard() {
   return invoke<void>('copy_latest_capture_to_clipboard');
 }
@@ -180,6 +185,20 @@ export function commitRegionCapture(
 
 export function toggleCapturePreview() {
   return invoke<boolean>('toggle_capture_preview');
+}
+
+/** Show the separate enlarged-preview window (controls-free, centered). */
+export function showCaptureZoom() {
+  return invoke<void>('show_capture_zoom');
+}
+
+export function hideCaptureZoom() {
+  return invoke<void>('hide_capture_zoom');
+}
+
+/** Toggle the enlarged-preview window; resolves to its new visibility. */
+export function toggleCaptureZoom() {
+  return invoke<boolean>('toggle_capture_zoom');
 }
 
 // ── Hotkeys ───────────────────────────────────────────────────────────────────
