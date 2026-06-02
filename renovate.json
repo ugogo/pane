@@ -1,0 +1,29 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "schedule": ["before 9am on monday"],
+  "labels": ["dependencies"],
+  "semanticCommits": "enabled",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "packageRules": [
+    {
+      "description": "One grouped PR per ecosystem (mirrors the previous Dependabot grouping). Renovate auto-discovers the root npm workspace and apps/windows/tauri/Cargo.toml.",
+      "matchManagers": ["npm"],
+      "groupName": "npm"
+    },
+    {
+      "matchManagers": ["cargo"],
+      "groupName": "cargo"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions"
+    },
+    {
+      "description": "Pin the Expo companion to its Expo Go supported SDK (currently 54). These deps must be bumped together via `expo install`/an SDK upgrade, not piecemeal by Renovate.",
+      "matchFileNames": ["apps/mobile/package.json"],
+      "enabled": false
+    }
+  ]
+}
