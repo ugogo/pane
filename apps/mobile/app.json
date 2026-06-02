@@ -1,19 +1,14 @@
 {
   "expo": {
-    "name": "Pane Companion",
-    "slug": "pane-companion",
     "scheme": "pane",
     "version": "0.1.0",
     "orientation": "portrait",
     "ios": {
-      "bundleIdentifier": "dev.pane.companion",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Pane Companion finds and pairs with Pane on your local network."
       }
     },
-    "android": {
-      "package": "dev.pane.companion"
-    },
+    "android": {},
     "extra": {
       "pairingProtocolVersion": 1
     },

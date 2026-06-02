@@ -4,7 +4,8 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "start": "expo start",
+    "start": "cross-env APP_VARIANT=dev expo start",
+    "start:prod": "cross-env APP_VARIANT=prod expo start --no-dev --minify",
     "ios": "expo run:ios --device",
     "android": "expo run:android",
     "typecheck": "tsc --noEmit"
