@@ -12,7 +12,7 @@
 //! Storage: `%LocalAppData%\{identifier}\lights.json` — identifier-scoped like
 //! the companion + capture hotkeys, but in `app_local_data_dir` (Local) rather
 //! than their `app_config_dir` (Roaming), preserving the original `%LocalAppData%`
-//! location. So dev (`dev.pane`) and prod (`prod.pane`) keep separate state. The dir
+//! location. So dev (`pane.dev`) and prod (`pane.prod`) keep separate state. The dir
 //! is bound once from Tauri `setup` via [`init_storage`]; before that (or in
 //! unit tests) it falls back to the legacy `%LocalAppData%\Pane\lights.json`.
 
@@ -71,7 +71,7 @@ static STATE_DIR: OnceCell<PathBuf> = OnceCell::new();
 
 /// Bind light-state storage to the identifier-scoped local data dir
 /// (`%LocalAppData%\{identifier}`). Called once from Tauri `setup` before any
-/// light command can run, so `dev.pane` and `prod.pane` stay isolated.
+/// light command can run, so `pane.dev` and `pane.prod` stay isolated.
 pub fn init_storage(app: &AppHandle) {
     match app.path().app_local_data_dir() {
         Ok(dir) => {

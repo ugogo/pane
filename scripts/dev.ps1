@@ -70,8 +70,8 @@ function Invoke-TauriDev {
     }
     $appDir = Join-Path $root "apps\windows"
 
-    # Merge a dev-only identifier override (dev.pane) over the base config
-    # (prod.pane). The single-instance lock keys on the identifier, so a distinct
+    # Merge a dev-only identifier override (pane.dev) over the base config
+    # (pane.prod). The single-instance lock keys on the identifier, so a distinct
     # dev identity lets the dev build run alongside an installed release.
     $devConfig = Join-Path $appDir "tauri\tauri.conf.dev.json"
 

@@ -56,7 +56,7 @@ if (-not $SkipBuild) {
     Step "building pane.exe (release, no bundle)"
     # Run from the Windows app dir so Tauri resolves apps/windows/tauri/tauri.conf.json.
     # This is a prod-identity packaged-build test loop, so merge the prod overlay
-    # (prod.pane) — same identity the released installer ships.
+    # (pane.prod) — same identity the released installer ships.
     $prodConfig = Join-Path $root "apps/windows/tauri/tauri.conf.prod.json"
     Push-Location (Join-Path $root "apps/windows")
     try {
