@@ -1,3 +1,8 @@
+---
+title: Pane Tauri Migration Feasibility Spike
+status: shipped
+---
+
 # Pane Tauri Migration Feasibility Spike
 
 This historical spike records the decision to move Pane from WinUI 3 to

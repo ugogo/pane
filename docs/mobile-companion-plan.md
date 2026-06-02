@@ -1,3 +1,8 @@
+---
+title: Pane iPhone Companion Plan
+status: shipped
+---
+
 # Pane iPhone Companion Plan
 
 ## Summary
