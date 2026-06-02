@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import { getRunAtStartup, setRunAtStartup } from '@/lib/commands';
+import { Moon } from 'lucide-react';
+import {
+  getRunAtStartup,
+  setRunAtStartup,
+  sleepComputer,
+} from '@/lib/commands';
+import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { PageSpinner } from './page-spinner';
@@ -9,6 +15,7 @@ export function InfraCard({ className }: { className?: string }) {
   const [runAtStartup, setRunAtStartupState] = useState<boolean | null>(null);
   const [saved, setSaved] = useState(false);
   const [startupError, setStartupError] = useState<string>();
+  const [sleepError, setSleepError] = useState<string>();
 
   useEffect(() => {
     void getRunAtStartup()
@@ -25,6 +32,15 @@ export function InfraCard({ className }: { className?: string }) {
       setSaved(true);
     } catch (err) {
       setStartupError(String(err));
+    }
+  }
+
+  async function handleSleep() {
+    setSleepError(undefined);
+    try {
+      await sleepComputer();
+    } catch (err) {
+      setSleepError(String(err));
     }
   }
 
@@ -54,6 +70,25 @@ export function InfraCard({ className }: { className?: string }) {
         <StatusText status="pass">Startup preference saved.</StatusText>
       )}
       {startupError && <StatusText status="fail">{startupError}</StatusText>}
+
+      <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+        <div>
+          <p className="text-sm font-medium">Sleep computer</p>
+          <p className="text-muted-foreground text-sm">
+            Put Windows into sleep mode now.
+          </p>
+        </div>
+        <Button
+          aria-label="Sleep computer"
+          size="sm"
+          variant="secondary"
+          onClick={() => void handleSleep()}
+        >
+          <Moon aria-hidden="true" />
+          Sleep
+        </Button>
+      </div>
+      {sleepError && <StatusText status="fail">{sleepError}</StatusText>}
     </div>
   );
 }

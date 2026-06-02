@@ -57,6 +57,10 @@ export function setRunAtStartup(enabled: boolean) {
   return invoke<StartupResult>('set_run_at_startup', { enabled });
 }
 
+export function sleepComputer() {
+  return invoke<void>('sleep_computer');
+}
+
 // ── Mobile companion ─────────────────────────────────────────────────────────
 
 export interface CompanionDevice {

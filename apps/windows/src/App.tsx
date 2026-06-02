@@ -83,9 +83,9 @@ const modules = [
   },
   {
     path: '/startup',
-    label: 'Startup',
-    title: 'Startup',
-    description: 'Background launch behavior.',
+    label: 'System',
+    title: 'System',
+    description: 'Windows launch and power commands.',
     icon: Power,
     component: InfraCard,
   },
