@@ -85,6 +85,7 @@ pub fn run() {
             commands::metrics::get_process_metrics,
             commands::startup::get_run_at_startup,
             commands::startup::set_run_at_startup,
+            commands::system::sleep_computer,
             commands::companion::get_companion_status,
             commands::companion::set_companion_enabled,
             commands::companion::start_companion_pairing,

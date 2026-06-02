@@ -12,6 +12,7 @@ pub mod light_state;
 pub mod lighting;
 pub mod metrics;
 pub mod startup;
+pub mod system;
 pub mod windows;
 
 /// Reject IPC calls that don't originate from an allowlisted window.
