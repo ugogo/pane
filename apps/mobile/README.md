@@ -1,7 +1,7 @@
 # Pane Companion
 
 React Native / Expo companion app for controlling a paired Pane desktop instance
-from an iPhone. See [`docs/mobile-companion-plan.md`](../../docs/mobile-companion-plan.md)
+from an iPhone. See [`docs/2026-06-01-mobile-companion-plan.md`](../../docs/2026-06-01-mobile-companion-plan.md)
 for the full plan and slice roadmap.
 
 ## Run it on your iPhone (Expo Go)

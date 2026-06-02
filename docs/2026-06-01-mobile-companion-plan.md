@@ -1,6 +1,9 @@
 ---
 title: Pane iPhone Companion Plan
+type: plan
 status: shipped
+created: 2026-06-01
+updated: 2026-06-01
 ---
 
 # Pane iPhone Companion Plan
