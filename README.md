@@ -70,8 +70,8 @@ packages/
 
 ## Settings
 
-- Capture hotkeys: `%APPDATA%\dev.pane.app\capture-hotkeys.json`
-- Light state: `%LOCALAPPDATA%\Pane\lights.json`
+- Capture hotkeys: `%APPDATA%\prod.pane\capture-hotkeys.json` (released build; the `npm run dev` build uses `%APPDATA%\dev.pane\`)
+- Light state: `%LOCALAPPDATA%\prod.pane\lights.json` (released build; `npm run dev` uses `%LOCALAPPDATA%\dev.pane\`)
 
 ## Releases
 
