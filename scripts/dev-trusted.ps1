@@ -14,8 +14,9 @@
       1. Stop any running pane.exe (it would lock target/release/pane.exe).
       2. Build pane.exe (release profile, so the embedded <msix> identity
          manifest from build.rs is present). Skippable with -SkipBuild.
-      3. Build + sign the identity package and register it (per-user,
-         CurrentUser trust - no admin needed) bound to the build dir.
+      3. Build + sign the identity package and register it bound to the build
+         dir. With the default self-signed cert, this requires an elevated shell
+         so Windows AppX deployment trusts the cert in the machine root store.
       4. Optionally launch the freshly registered exe (-Run).
 
     This is a DEV loop. The shipping path is `npm run release` (per-machine
