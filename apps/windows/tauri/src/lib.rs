@@ -32,6 +32,9 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            // Bind identifier-scoped storage before anything can read/write light
+            // state (the restore spawn below, brightness keys, etc.).
+            commands::light_state::init_storage(app.handle());
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_decorations(false);
                 let _ = window.set_theme(Some(tauri::Theme::Dark));

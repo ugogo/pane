@@ -266,10 +266,12 @@ if ($LASTEXITCODE -ne 0) { Fail "identity package build failed." }
 
 Step "building + signing installer (npx tauri build)"
 # Run from the Windows app dir so Tauri resolves apps/windows/tauri/tauri.conf.json
-# and runs beforeBuildCommand (npm run build) against apps/windows.
+# and runs beforeBuildCommand (npm run build) against apps/windows. Merge the
+# prod overlay explicitly so the released identity (prod.pane) is never implicit.
+$prodConfig = Join-Path $root "apps/windows/tauri/tauri.conf.prod.json"
 Push-Location (Join-Path $root "apps/windows")
 try {
-    npx tauri build --ci
+    npx tauri build --ci --config $prodConfig
 } finally {
     Pop-Location
 }

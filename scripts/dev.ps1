@@ -70,12 +70,17 @@ function Invoke-TauriDev {
     }
     $appDir = Join-Path $root "apps\windows"
 
+    # Merge a dev-only identifier override (dev.pane) over the base config
+    # (prod.pane). The single-instance lock keys on the identifier, so a distinct
+    # dev identity lets the dev build run alongside an installed release.
+    $devConfig = Join-Path $appDir "tauri\tauri.conf.dev.json"
+
     $node = Get-Command "node.exe" -ErrorAction SilentlyContinue
     if ($null -eq $node) {
         $node = Get-Command "node" -ErrorAction Stop
     }
 
-    $command = 'cd /d "' + $appDir + '" && "' + $node.Source + '" "' + $tauriCli + '" dev 2>&1'
+    $command = 'cd /d "' + $appDir + '" && "' + $node.Source + '" "' + $tauriCli + '" dev --config "' + $devConfig + '" 2>&1'
     & cmd.exe /d /s /c $command | ForEach-Object {
         $line = $_.ToString()
         if ($line -notlike "*STATUS_CONTROL_C_EXIT*") {

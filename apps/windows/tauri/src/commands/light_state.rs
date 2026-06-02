@@ -9,17 +9,20 @@
 //!   that power-cycled during sleep (notably the DX Light strip over USB)
 //!   come back to the user's last selection instead of the firmware default.
 //!
-//! Storage: `%LocalAppData%\Pane\lights.json`. For packaged apps Windows
-//! redirects `LOCALAPPDATA` to the package's LocalState dir automatically,
-//! so installed and unpackaged-dev builds keep their state separate.
+//! Storage: `%LocalAppData%\{identifier}\lights.json` — identifier-scoped, the
+//! same pattern as the companion (`app_config_dir`) and capture hotkeys, so dev
+//! (`dev.pane`) and prod (`prod.pane`) builds keep their state separate. The dir
+//! is bound once from Tauri `setup` via [`init_storage`]; before that (or in
+//! unit tests) it falls back to the legacy `%LocalAppData%\Pane\lights.json`.
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use once_cell::sync::Lazy;
+use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Manager};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -60,7 +63,28 @@ impl Default for LightState {
 static STATE: Lazy<Mutex<HashMap<String, LightState>>> =
     Lazy::new(|| Mutex::new(load_from_disk().unwrap_or_default()));
 
+/// Identifier-scoped storage dir, bound once at startup. `None` until
+/// [`init_storage`] runs (tests / pre-setup), where `state_path` falls back to
+/// the legacy unscoped location.
+static STATE_DIR: OnceCell<PathBuf> = OnceCell::new();
+
+/// Bind light-state storage to the identifier-scoped local data dir
+/// (`%LocalAppData%\{identifier}`). Called once from Tauri `setup` before any
+/// light command can run, so `dev.pane` and `prod.pane` stay isolated.
+pub fn init_storage(app: &AppHandle) {
+    match app.path().app_local_data_dir() {
+        Ok(dir) => {
+            let _ = STATE_DIR.set(dir);
+        }
+        Err(e) => eprintln!("[light_state] could not resolve local data dir: {e}"),
+    }
+}
+
 fn state_path() -> Option<PathBuf> {
+    if let Some(dir) = STATE_DIR.get() {
+        return Some(dir.join("lights.json"));
+    }
+    // Pre-init or unit tests: legacy unscoped location.
     let local = std::env::var_os("LOCALAPPDATA")?;
     Some(PathBuf::from(local).join("Pane").join("lights.json"))
 }
