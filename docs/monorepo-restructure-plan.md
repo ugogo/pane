@@ -1,6 +1,10 @@
+---
+title: Monorepo Restructure & Shared Protocol — Implementation Plan
+status: shipped
+---
+
 # Monorepo Restructure & Shared Protocol — Implementation Plan
 
-> Status: **proposed / not started**
 > Audience: a cloud agent executing this cold. Everything needed is in this file.
 > Author context: solo personal project (`pane`). Favor pragmatic, low-overhead
 > solutions; do **not** add Turborepo/Nx or any build orchestrator — npm
