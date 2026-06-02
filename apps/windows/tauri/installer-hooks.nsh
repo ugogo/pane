@@ -8,10 +8,10 @@
 ; trapped in NSIS string-escaping. We locate those scripts recursively under
 ; $INSTDIR to stay independent of exactly where Tauri lays out resources.
 ;
-; Trusting the self-signed cert writes to LocalMachine\TrustedPeople, which is
-; why bundle.windows.nsis.installMode must be "perMachine" (admin). Both hooks
-; swallow errors: Dynamic Lighting is optional and must not block install or
-; uninstall.
+; Trusting the self-signed cert writes to LocalMachine\TrustedPeople and
+; LocalMachine\Root, which is why bundle.windows.nsis.installMode must be
+; "perMachine" (admin). Both hooks swallow errors: Dynamic Lighting is optional
+; and must not block install or uninstall.
 
 !macro NSIS_HOOK_POSTINSTALL
   DetailPrint "Registering Pane Dynamic Lighting identity package..."

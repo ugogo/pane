@@ -43,9 +43,10 @@
     Opt in to generating/using a self-signed certificate. Pane currently ships
     self-signed releases as a deliberate cost tradeoff: the installer's
     POSTINSTALL hook (register-identity.ps1) imports the bundled public cert
-    into LocalMachine\TrustedPeople, so the sparse package registers on end-user
-    machines without a paid CA cert — at the cost of each machine trusting a
-    cert generated on the build host. Without this switch the script requires an
+    into LocalMachine\TrustedPeople and, for self-signed certs, LocalMachine\Root,
+    so the sparse package registers on end-user machines without a paid CA cert
+    - at the cost of each machine trusting a cert generated on the build host.
+    Without this switch the script requires an
     externally supplied signing certificate + password and fails closed on the
     dev cert/password/default path, so a release can't be cut self-signed by
     mistake.
@@ -76,6 +77,27 @@ Set-Location $root
 
 function Fail($m) { Write-Host "error: $m" -ForegroundColor Red; exit 1 }
 function Step($m) { Write-Host "==> $m" -ForegroundColor Cyan }
+
+function Test-IsAdministrator {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Trust-Certificate {
+    param(
+        [string]$CertificatePath,
+        [string]$StoreLocation,
+        [string]$Thumbprint
+    )
+
+    $alreadyTrusted = Get-ChildItem $StoreLocation |
+        Where-Object { $_.Thumbprint -eq $Thumbprint }
+    if (-not $alreadyTrusted) {
+        Step "trusting signing cert in $StoreLocation"
+        Import-Certificate -FilePath $CertificatePath -CertStoreLocation $StoreLocation | Out-Null
+    }
+}
 
 function Use-WindowsPowerShellModulePath {
     if ($PSVersionTable.PSEdition -ne "Desktop") { return }
@@ -201,17 +223,18 @@ if (-not (Test-Path $PfxPath)) {
     Write-Host "  generated cert $($cert.Thumbprint)" -ForegroundColor Green
 }
 
-# Trust the public cert locally so Add-AppxPackage accepts the self-signed pkg.
+# Trust the public cert locally only when registering a self-signed pkg.
 # Load with the password explicitly; Get-PfxCertificate prompts interactively
 # in Windows PowerShell 5.1 and would hang under -NonInteractive.
 $pfx = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($PfxPath, $pfxPassword)
 $cerPath = [System.IO.Path]::ChangeExtension($PfxPath, ".cer")
 Export-Certificate -Cert $pfx -FilePath $cerPath | Out-Null
-$alreadyTrusted = Get-ChildItem Cert:\CurrentUser\TrustedPeople |
-    Where-Object { $_.Thumbprint -eq $pfx.Thumbprint }
-if (-not $alreadyTrusted) {
-    Step "trusting signing cert in CurrentUser\TrustedPeople"
-    Import-Certificate -FilePath $cerPath -CertStoreLocation Cert:\CurrentUser\TrustedPeople | Out-Null
+if ($Register -and ($pfx.Subject -eq $pfx.Issuer)) {
+    if (-not (Test-IsAdministrator)) {
+        Fail "registering a self-signed identity package requires an elevated shell so the cert can be trusted in LocalMachine\Root. Re-run PowerShell as Administrator, or supply a certificate that chains to a trusted root."
+    }
+    Trust-Certificate -CertificatePath $cerPath -StoreLocation Cert:\LocalMachine\TrustedPeople -Thumbprint $pfx.Thumbprint
+    Trust-Certificate -CertificatePath $cerPath -StoreLocation Cert:\LocalMachine\Root -Thumbprint $pfx.Thumbprint
 }
 
 Step "signing package"
