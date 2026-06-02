@@ -19,4 +19,13 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
+// Watching the whole workspace pulls in the Rust build dir. On Windows (no
+// Watchman) Metro's fallback watcher crawls `target/debug/deps/` and crashes
+// with ENOENT when a transient `rustc…` temp file disappears mid-walk. Exclude
+// Rust/Tauri build artifacts from the crawl + watch entirely.
+config.resolver.blockList = [
+  /.*[\\/]tauri[\\/]target[\\/].*/,
+  /.*[\\/]src-tauri[\\/]target[\\/].*/,
+];
+
 module.exports = config;
