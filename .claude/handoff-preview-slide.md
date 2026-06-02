@@ -89,7 +89,7 @@ await window.__TAURI_INTERNALS__.invoke('plugin:window|close', { label: 'capture
 - `src-tauri/capabilities/default.json` — permissions (includes `core:window:allow-close`).
 - `src/lib/commands.ts` — TS bindings for the Rust commands.
 - `AGENTS.md` — Tauri lessons learned (sync/async deadlock, URL gotcha, JS-context-death, !Send Monitor).
-- `docs/tauri-migration-spike.md` — Validation Protocol + checklist.
+- `docs/2026-05-27-tauri-migration-spike.md` — Validation Protocol + checklist.
 
 ## Known constraints
 

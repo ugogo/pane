@@ -1,6 +1,9 @@
 ---
 title: Pane Tauri Migration Feasibility Spike
+type: spike
 status: shipped
+created: 2026-05-27
+updated: 2026-05-31
 ---
 
 # Pane Tauri Migration Feasibility Spike

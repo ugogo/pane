@@ -1,9 +1,14 @@
 ---
 title: Security Hardening Plan
+type: plan
 status: shipped
+created: 2026-05-29
+updated: 2026-05-31
 ---
 
-# Security Hardening Plan — SHIPPED (2026-05-29, commit 03c5cb6)
+# Security Hardening Plan
+
+_Shipped 2026-05-29 in commit 03c5cb6._
 
 This handoff turns the security audit into an implementation plan for Pane, a public Windows/Tauri desktop app. Treat the items below as defense-in-depth for a privileged local application: the frontend can invoke Rust commands that capture the screen, write the clipboard, register global shortcuts, modify startup behavior, control hardware lighting, install updates, and restart the app.
 
@@ -174,7 +179,7 @@ For commands that should be callable from multiple windows, accept a small allow
 - `scripts/release.ps1`
 - `scripts/dev-trusted.ps1`
 - `README.md`
-- `docs/tauri-migration-spike.md`
+- `docs/2026-05-27-tauri-migration-spike.md`
 
 **Validation:**
 
@@ -286,7 +291,7 @@ Some may be required for sparse package identity and Dynamic Lighting, but this 
 
 - `src-tauri/identity/AppxManifest.xml`
 - `src-tauri/windows-app-manifest.xml`
-- `docs/tauri-migration-spike.md`
+- `docs/2026-05-27-tauri-migration-spike.md`
 
 **Validation:**
 
