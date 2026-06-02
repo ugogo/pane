@@ -20,7 +20,7 @@ export default tseslint.config(
       '**/dist/',
       '**/node_modules/',
       'apps/mobile/**/.expo/',
-      'apps/**/metro.config.js',
+      'apps/**/*.config.js',
       'apps/windows/tauri/',
       'assets/',
       '.claude/',
