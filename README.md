@@ -95,3 +95,18 @@ Two independent signatures are involved, and they must not be conflated:
   installing machine trusts a cert generated on the build host. (For a real CA
   cert later, call `build-identity-package.ps1` directly without
   `-DevSelfSigned` and supply `-PfxPath` + `PANE_SIGNING_PFX_PASSWORD`.)
+
+### Build identities
+
+Dev (`npm run dev`) and the installed release use distinct Tauri identifiers —
+`dev.pane` and `prod.pane` — so they can run side by side (the single-instance
+lock keys on the identifier). Every per-identifier store (`companion.json`,
+`capture-hotkeys.json`, brightness presets, accent setting, `lights.json`) is
+scoped under the identifier, so the two builds never share settings.
+
+This renamed the released identity from the old `dev.pane.app`, so upgrading
+across the rename is a one-time migration: the new release installs
+**side-by-side** (the old `dev.pane.app` install is not upgraded in place —
+uninstall it manually), and the prod app starts with fresh settings. In
+particular **the companion must be re-paired** — the desktop's saved device
+record lives under the identifier and resets, even though the phone keeps its key.
