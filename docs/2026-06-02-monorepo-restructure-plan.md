@@ -217,7 +217,8 @@ hand-written duplicates are deleted.
   `apps/mobile`) to the user's Expo Go "supported SDK" (was SDK 54), not npm
   latest. Workspace install must not silently bump it.
 - **Self-signed release flow is intentional.** Don't touch signing; just keep
-  `scripts/release*.ps1` working with the new paths. Run `release.ps1` with no flags.
+  the release flow working with the new paths. Cut releases with `npm run release`
+  (the standalone `scripts/release.ps1` was removed 2026-06-02).
 - **Signing byte-compatibility.** When extracting the signer into
   `@pane/protocol`, the message bytes and header encoding must remain identical
   to what `companion.rs` verifies — a mismatch breaks pairing silently. Smoke-test

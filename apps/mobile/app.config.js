@@ -6,19 +6,19 @@
 // the dev script can't overwrite a phone already paired via the prod script.
 //
 // APP_VARIANT is set by the npm scripts (see package.json). It defaults to dev
-// so a bare `expo start` stays on the isolated dev identity. The prod variant
-// keeps the original `pane-companion` slug + `dev.pane.companion` bundle id so
-// any existing pairing is preserved.
+// so a bare `expo start` stays on the isolated dev identity. Both variants are
+// symmetric: a `pane-companion-{env}` slug and a `{env}.pane.companion` bundle
+// id, mirroring the desktop's `dev.pane` / `prod.pane` identifier split.
 const VARIANTS = {
   dev: {
     name: 'Pane (dev)',
     slug: 'pane-companion-dev',
-    bundleId: 'dev.pane.companion.dev',
+    bundleId: 'dev.pane.companion',
   },
   prod: {
     name: 'Pane (prod)',
-    slug: 'pane-companion',
-    bundleId: 'dev.pane.companion',
+    slug: 'pane-companion-prod',
+    bundleId: 'prod.pane.companion',
   },
 };
 

@@ -9,9 +9,10 @@
 //!   that power-cycled during sleep (notably the DX Light strip over USB)
 //!   come back to the user's last selection instead of the firmware default.
 //!
-//! Storage: `%LocalAppData%\{identifier}\lights.json` — identifier-scoped, the
-//! same pattern as the companion (`app_config_dir`) and capture hotkeys, so dev
-//! (`dev.pane`) and prod (`prod.pane`) builds keep their state separate. The dir
+//! Storage: `%LocalAppData%\{identifier}\lights.json` — identifier-scoped like
+//! the companion + capture hotkeys, but in `app_local_data_dir` (Local) rather
+//! than their `app_config_dir` (Roaming), preserving the original `%LocalAppData%`
+//! location. So dev (`dev.pane`) and prod (`prod.pane`) keep separate state. The dir
 //! is bound once from Tauri `setup` via [`init_storage`]; before that (or in
 //! unit tests) it falls back to the legacy `%LocalAppData%\Pane\lights.json`.
 
