@@ -26,6 +26,7 @@
     "release:legacy": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release.ps1",
     "dev:trusted": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-trusted.ps1",
     "companion": "npm run start -w @pane/companion",
+    "companion:prod": "npm run start:prod -w @pane/companion",
     "companion:clear": "npm run start -w @pane/companion -- --clear",
     "companion:install": "npm install -w @pane/companion",
     "companion:typecheck": "npm run typecheck -w @pane/companion",
@@ -47,6 +48,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/node": "^25.9.1",
+    "cross-env": "^10.1.0",
     "eslint": "10.4.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-react-doctor": "0.2.16",
