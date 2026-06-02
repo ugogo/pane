@@ -27,6 +27,14 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    // npm workspace hoisting can leave two React copies side by side (the Expo
+    // app pins react 19.1.0 at the repo-root node_modules, while this app
+    // resolves a newer 19.x nested under apps/windows). Hoisted deps like
+    // lucide-react then bind to the root copy while our own imports use the
+    // nested one — two React instances, so their hooks hit a null dispatcher
+    // and the whole tree throws ("Cannot read properties of null (useContext)").
+    // Force every react/react-dom import to resolve to this app's single copy.
+    dedupe: ['react', 'react-dom'],
   },
   clearScreen: false,
   server: {
