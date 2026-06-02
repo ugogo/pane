@@ -4,14 +4,22 @@ use tauri::{
     App, Manager,
 };
 
+use crate::APP_DISPLAY_NAME;
+
 pub fn create(app: &mut App) -> tauri::Result<()> {
-    let show = MenuItem::with_id(app, "show", "Show Pane", true, None::<&str>)?;
+    let show = MenuItem::with_id(
+        app,
+        "show",
+        format!("Show {APP_DISPLAY_NAME}"),
+        true,
+        None::<&str>,
+    )?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &quit])?;
 
     TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
-        .tooltip("Pane")
+        .tooltip(APP_DISPLAY_NAME)
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {

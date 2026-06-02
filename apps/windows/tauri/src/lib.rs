@@ -9,6 +9,12 @@ use commands::metrics::StartTime;
 use std::time::Instant;
 use tauri::Manager;
 
+pub(crate) const APP_DISPLAY_NAME: &str = if cfg!(debug_assertions) {
+    "Pane (dev)"
+} else {
+    "Pane"
+};
+
 pub fn run() {
     let boot = Instant::now();
 
@@ -36,6 +42,7 @@ pub fn run() {
             // state (the restore spawn below, brightness keys, etc.).
             commands::light_state::init_storage(app.handle());
             if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_title(APP_DISPLAY_NAME);
                 let _ = window.set_decorations(false);
                 let _ = window.set_theme(Some(tauri::Theme::Dark));
             }

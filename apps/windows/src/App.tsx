@@ -31,6 +31,7 @@ import { LightingCard } from '@/components/features/LightingCard';
 import { MetricsCard } from '@/components/features/MetricsCard';
 import { SoundCard } from '@/components/features/SoundCard';
 import { Button } from '@/components/ui/button';
+import { APP_DISPLAY_NAME } from '@/lib/app-name';
 import { prepareCaptureWindows } from '@/lib/commands';
 import {
   checkForUpdatesOnLaunch,
@@ -342,7 +343,10 @@ function BootScreen() {
     <main className="text-foreground grid h-screen grid-rows-[36px_minmax(0,1fr)] overflow-hidden bg-transparent">
       <AppTitlebar />
       <div className="bg-background grid place-items-center">
-        <output aria-label="Loading Pane" className="grid place-items-center">
+        <output
+          aria-label={`Loading ${APP_DISPLAY_NAME}`}
+          className="grid place-items-center"
+        >
           <Loader2 aria-hidden="true" className="size-4 animate-spin" />
         </output>
       </div>
@@ -374,7 +378,7 @@ function AppTitlebar() {
           className="truncate text-xs font-medium text-white/86"
           data-tauri-drag-region
         >
-          Pane
+          {APP_DISPLAY_NAME}
         </span>
       </div>
 

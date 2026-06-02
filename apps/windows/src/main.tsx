@@ -6,7 +6,10 @@ import { TooltipProvider } from './components/ui/tooltip';
 import { AccentPopup } from './views/AccentPopup';
 import { AreaSelector } from './views/AreaSelector';
 import { CapturePreview } from './views/CapturePreview';
+import { APP_DISPLAY_NAME } from './lib/app-name';
 import './styles.css';
+
+document.title = APP_DISPLAY_NAME;
 
 function resolveView() {
   const view = new URL(window.location.href).searchParams.get('view');
