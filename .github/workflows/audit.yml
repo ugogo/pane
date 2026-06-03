@@ -1,0 +1,58 @@
+name: Audit
+
+# Dependency advisories are non-blocking and don't need to gate every PR, so
+# they run on a weekly schedule (plus on demand) instead of in CI. A failure
+# here is visible in the Actions tab without holding up day-to-day work.
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Audit production npm dependencies
+        # Dev-only advisories (e.g. Vite/esbuild) are tracked separately via
+        # Dependabot. Production deps are surfaced here: the Expo companion
+        # (apps/mobile) is pinned to the Expo Go-supported SDK (54) and its
+        # tooling carries moderate advisories that can't be fixed without
+        # bumping the SDK, and workspace hoisting means those deps share
+        # node_modules with the desktop app, so `npm audit` can't isolate one
+        # workspace. Triage the companion advisories (or audit the apps in
+        # isolation) before treating a failure here as actionable.
+        run: npm audit --omit=dev --audit-level=moderate
+
+  cargo-audit:
+    # Runs on Windows to match the Windows-only Cargo lockfile/targets.
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      - name: Audit Rust dependencies (RustSec)
+        working-directory: apps/windows/tauri
+        run: cargo audit

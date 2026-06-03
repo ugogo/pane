@@ -6,12 +6,48 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel superseded runs on the same ref so rapid pushes don't pile up.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 # Least-privilege default for all jobs; widen per-job only if a step needs more.
 permissions:
   contents: read
 
 jobs:
-  build:
+  # Frontend quality gates need neither Rust nor Windows, so run them on the
+  # faster/cheaper Linux runner in parallel with the Rust job below.
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Type-check frontend
+        run: npm run typecheck
+
+      - name: Lint frontend (ESLint)
+        run: npm run lint
+
+      - name: Check formatting (Prettier)
+        run: npm run format:check
+
+  # Rust is Windows-only (windows / ddc-winapi / windows-sys), so clippy and the
+  # tauri:gen `cargo build` must run on Windows. tauri-build reads
+  # tauri.conf.json frontendDist (../dist), so the frontend is built first to
+  # produce dist/ before any Rust compilation.
+  rust:
     runs-on: windows-latest
 
     steps:
@@ -37,28 +73,6 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      - name: Audit production npm dependencies
-        # Dev-only advisories (e.g. Vite/esbuild) are tracked separately via
-        # Dependabot. Production deps are surfaced here but kept non-blocking:
-        # the Expo companion (apps/mobile) is pinned to the Expo Go-supported
-        # SDK (54) and its tooling carries moderate advisories that can't be
-        # fixed without bumping the SDK, and workspace hoisting means those
-        # deps share node_modules with the desktop app, so `npm audit` can't
-        # isolate one workspace. Mirrors the cargo-audit step below; flip to a
-        # hard gate once the companion advisories are triaged or the apps are
-        # audited in isolation.
-        continue-on-error: true
-        run: npm audit --omit=dev --audit-level=moderate
-
-      - name: Type-check frontend
-        run: npm run typecheck
-
-      - name: Lint frontend (ESLint)
-        run: npm run lint
-
-      - name: Check formatting (Prettier)
-        run: npm run format:check
-
       - name: Build frontend
         run: npm run build
 
@@ -79,14 +93,3 @@ jobs:
 
       - name: Check Tauri generated schemas match capabilities
         run: npm run tauri:gen:check
-
-      - name: Install cargo-audit
-        run: cargo install cargo-audit --locked
-
-      - name: Audit Rust dependencies (RustSec)
-        working-directory: apps/windows/tauri
-        # Non-blocking until the advisory baseline is confirmed clean; flip to a
-        # hard gate (remove continue-on-error) once any existing advisories are
-        # triaged or ignored via an audit.toml.
-        continue-on-error: true
-        run: cargo audit
