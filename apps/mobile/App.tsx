@@ -413,6 +413,24 @@ function ControlScreen({
     [pairing, refresh],
   );
 
+  const sleepComputer = useCallback(() => {
+    void sendCommand(pairing, { type: 'sleep_computer' })
+      .then(() => {
+        setConnected(false);
+        setError(undefined);
+      })
+      .catch((err) => {
+        const message = String(err);
+        if (message.includes('AbortError') || message.includes('Network')) {
+          setConnected(false);
+          setError(undefined);
+          return;
+        }
+        setError(message);
+        setConnected(false);
+      });
+  }, [pairing]);
+
   const offline = connected === false;
   const statusLabel =
     connected === null ? 'CONNECTING' : offline ? 'OFFLINE' : 'CONNECTED';
@@ -549,28 +567,12 @@ function ControlScreen({
         }) ?? null}
 
         {snapshot ? (
-          <View style={[styles.panel, offline && styles.panelOffline]}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.label}>Accent popup</Text>
-              <Switch
-                disabled={offline}
-                value={snapshot.accentPopupEnabled}
-                onValueChange={(enabled) =>
-                  runCommandNow({ type: 'set_accent_popup_enabled', enabled })
-                }
-              />
-            </View>
-            <View style={styles.rowBetween}>
-              <Text style={styles.label}>Run at startup</Text>
-              <Switch
-                disabled={offline}
-                value={snapshot.runAtStartup}
-                onValueChange={(enabled) =>
-                  runCommandNow({ type: 'set_run_at_startup', enabled })
-                }
-              />
-            </View>
-          </View>
+          <SystemControls
+            offline={offline}
+            snapshot={snapshot}
+            onCommand={runCommandNow}
+            onSleep={sleepComputer}
+          />
         ) : null}
 
         {offline ? (
@@ -586,6 +588,50 @@ function ControlScreen({
           <Text style={styles.linkText}>Unpair this iPhone</Text>
         </Pressable>
       </ScrollView>
+    </View>
+  );
+}
+
+function SystemControls({
+  offline,
+  snapshot,
+  onCommand,
+  onSleep,
+}: {
+  offline: boolean;
+  snapshot: CompanionSnapshot;
+  onCommand: (body: CompanionCommand) => void;
+  onSleep: () => void;
+}) {
+  return (
+    <View style={[styles.panel, offline && styles.panelOffline]}>
+      <View style={styles.rowBetween}>
+        <Text style={styles.label}>Accent popup</Text>
+        <Switch
+          disabled={offline}
+          value={snapshot.accentPopupEnabled}
+          onValueChange={(enabled) =>
+            onCommand({ type: 'set_accent_popup_enabled', enabled })
+          }
+        />
+      </View>
+      <View style={styles.rowBetween}>
+        <Text style={styles.label}>Run at startup</Text>
+        <Switch
+          disabled={offline}
+          value={snapshot.runAtStartup}
+          onValueChange={(enabled) =>
+            onCommand({ type: 'set_run_at_startup', enabled })
+          }
+        />
+      </View>
+      <Pressable
+        disabled={offline}
+        style={styles.secondaryButton}
+        onPress={onSleep}
+      >
+        <Text style={styles.secondaryButtonText}>Sleep computer</Text>
+      </Pressable>
     </View>
   );
 }

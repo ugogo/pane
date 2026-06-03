@@ -13,7 +13,7 @@ use super::{
     audio::{self, AudioDevice, VolumeInfo},
     brightness::{self, MonitorInfo, Preset},
     light_state::{self, LightState},
-    lighting, startup,
+    lighting, startup, system,
 };
 use crate::commands::{dx_light, dynamic_lighting};
 
@@ -174,6 +174,7 @@ pub enum CompanionCommand {
     SetRunAtStartup {
         enabled: bool,
     },
+    SleepComputer,
 }
 
 pub fn run_command(ctx: &CompanionContext, command: CompanionCommand) -> Result<(), String> {
@@ -211,6 +212,7 @@ pub fn run_command(ctx: &CompanionContext, command: CompanionCommand) -> Result<
         CompanionCommand::SetRunAtStartup { enabled } => {
             startup::set_run_at_startup_enabled(enabled)
         }
+        CompanionCommand::SleepComputer => system::sleep_computer_now(),
     }
 }
 
