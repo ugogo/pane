@@ -148,4 +148,5 @@ export type CompanionCommand =
   | { type: 'set_input_volume'; volume: number }
   | { type: 'set_input_mute'; muted: boolean }
   | { type: 'set_accent_popup_enabled'; enabled: boolean }
-  | { type: 'set_run_at_startup'; enabled: boolean };
+  | { type: 'set_run_at_startup'; enabled: boolean }
+  | { type: 'sleep_computer' };

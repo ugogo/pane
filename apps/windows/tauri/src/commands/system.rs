@@ -1,6 +1,11 @@
 #[tauri::command]
 pub fn sleep_computer(window: tauri::WebviewWindow) -> Result<(), String> {
     crate::commands::require_window(&window, &["main"])?;
+    sleep_computer_now()
+}
+
+/// Window-free entry for the companion HTTP command path.
+pub fn sleep_computer_now() -> Result<(), String> {
     request_sleep()
 }
 
