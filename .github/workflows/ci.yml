@@ -17,7 +17,9 @@ permissions:
 
 jobs:
   # Frontend quality gates need neither Rust nor Windows, so run them on the
-  # faster/cheaper Linux runner in parallel with the Rust job below.
+  # faster/cheaper Linux runner. This job also produces the dist/ bundle and
+  # hands it to the Rust job as an artifact, so Windows never runs npm ci or
+  # vite build.
   frontend:
     runs-on: ubuntu-latest
 
@@ -43,12 +45,25 @@ jobs:
       - name: Check formatting (Prettier)
         run: npm run format:check
 
+      - name: Build frontend
+        run: npm run build
+
+      - name: Upload frontend bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: apps/windows/dist
+          if-no-files-found: error
+          retention-days: 1
+
   # Rust is Windows-only (windows / ddc-winapi / windows-sys), so clippy and the
   # tauri:gen `cargo build` must run on Windows. tauri-build reads
-  # tauri.conf.json frontendDist (../dist), so the frontend is built first to
-  # produce dist/ before any Rust compilation.
+  # tauri.conf.json frontendDist (../dist), so it needs dist/ to exist — supplied
+  # by the frontend job's artifact rather than rebuilt here. That lets this job
+  # skip npm ci and vite build entirely; it only needs node for the gen script.
   rust:
     runs-on: windows-latest
+    needs: frontend
 
     steps:
       - name: Checkout
@@ -58,7 +73,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -75,11 +89,11 @@ jobs:
           # the pre-split key so existing main-branch caches keep being reused.
           shared-key: build
 
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Build frontend
-        run: npm run build
+      - name: Download frontend bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: apps/windows/dist
 
       - name: Check Rust formatting (rustfmt)
         working-directory: apps/windows/tauri
