@@ -69,6 +69,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/windows/tauri
+          # Pin the cache key independent of the job name. rust-cache otherwise
+          # folds the job name into the key, so renaming this job would silently
+          # bust the cache and force a full from-scratch compile. "build" matches
+          # the pre-split key so existing main-branch caches keep being reused.
+          shared-key: build
 
       - name: Install npm dependencies
         run: npm ci
