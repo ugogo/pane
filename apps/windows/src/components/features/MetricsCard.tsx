@@ -1,5 +1,6 @@
-import { useEffect, useEffectEvent, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getProcessMetrics, type ProcessMetrics } from '@/lib/commands';
+import { useEffectEvent } from '@/lib/use-effect-event';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';

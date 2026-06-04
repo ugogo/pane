@@ -118,6 +118,10 @@ try {
     Invoke-StopDev
     Add-WebView2BrowserArgument "--disable-logging"
 
+    # The Tauri webview is the real frontend; suppress Expo's `--web` auto-open
+    # so `expo start` serves Metro on :8081 without also launching a browser tab.
+    $env:BROWSER = "none"
+
     $exitCode = Invoke-TauriDev
     exit $exitCode
 } finally {

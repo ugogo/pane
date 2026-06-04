@@ -1,5 +1,6 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Check, Clipboard, Save, X } from 'lucide-react';
+import { useEffectEvent } from '@/lib/use-effect-event';
 import { listen } from '@tauri-apps/api/event';
 import {
   copyLatestCaptureToClipboard,
@@ -10,7 +11,13 @@ import {
   type CaptureResult,
 } from '@/lib/commands';
 
-type Phase = 'hidden' | 'slide-in' | 'idle' | 'scale-out' | 'scale-in' | 'closing';
+type Phase =
+  | 'hidden'
+  | 'slide-in'
+  | 'idle'
+  | 'scale-out'
+  | 'scale-in'
+  | 'closing';
 type ActState = 'idle' | 'busy' | 'success';
 
 const PHASE_ANIMATION: Record<Phase, string | undefined> = {
@@ -54,7 +61,11 @@ interface View {
 }
 
 export default function PreviewPage() {
-  const [view, setView] = useState<View>({ capture: null, phase: 'hidden', revision: 0 });
+  const [view, setView] = useState<View>({
+    capture: null,
+    phase: 'hidden',
+    revision: 0,
+  });
   const [error, setError] = useState<string>();
   const [actions, setActions] = useState<{ copy: ActState; save: ActState }>({
     copy: 'idle',
@@ -72,8 +83,12 @@ export default function PreviewPage() {
     setView((v) => ({ ...v, phase: next }));
   }
 
-  useEffect(() => { phaseRef.current = phase; }, [phase]);
-  useEffect(() => { captureRef.current = capture; }, [capture]);
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+  useEffect(() => {
+    captureRef.current = capture;
+  }, [capture]);
 
   useEffect(() => {
     document.documentElement.style.background = 'transparent';
@@ -89,14 +104,23 @@ export default function PreviewPage() {
     lastFetchAt.current = started;
     return takeLatestCapture()
       .then((c) => {
-        if (!c) { setError('No capture available.'); return; }
+        if (!c) {
+          setError('No capture available.');
+          return;
+        }
 
-        if (isRefresh && captureRef.current && c.dataUrl === captureRef.current.dataUrl) return;
+        if (
+          isRefresh &&
+          captureRef.current &&
+          c.dataUrl === captureRef.current.dataUrl
+        )
+          return;
 
         setError(undefined);
         setActions({ copy: 'idle', save: 'idle' });
 
-        const visible = phaseRef.current !== 'hidden' && phaseRef.current !== 'closing';
+        const visible =
+          phaseRef.current !== 'hidden' && phaseRef.current !== 'closing';
         if (isRefresh && visible && captureRef.current) {
           pending.current = c;
           setPhase('scale-out');
@@ -111,10 +135,11 @@ export default function PreviewPage() {
   const onRefetch = useEffectEvent(() => void fetchLatest(true));
 
   useEffect(() => {
-    // eslint-disable-next-line react-doctor/no-initialize-state
     onFirstFetch();
 
-    const unlisten = listen('refresh-capture', () => { onRefetch(); });
+    const unlisten = listen('refresh-capture', () => {
+      onRefetch();
+    });
 
     function fetchWhenWoken() {
       if (document.visibilityState === 'hidden') return;
@@ -169,7 +194,9 @@ export default function PreviewPage() {
 
   function closeSoon() {
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
-    closeTimer.current = window.setTimeout(() => { void close(); }, 2200);
+    closeTimer.current = window.setTimeout(() => {
+      void close();
+    }, 2200);
   }
 
   async function copyCapture() {
@@ -199,7 +226,10 @@ export default function PreviewPage() {
   }
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-transparent" data-tauri-drag-region>
+    <div
+      className="fixed inset-0 overflow-hidden bg-transparent"
+      data-tauri-drag-region
+    >
       <style>{`
         @keyframes cap-slide-in {
           from { opacity: 0; transform: translateY(14px); }
