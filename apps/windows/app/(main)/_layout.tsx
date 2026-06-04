@@ -1,6 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { Link, Slot, usePathname } from 'expo-router';
-import { getVersion } from '@tauri-apps/api/app';
 import {
   Activity,
   AlertTriangle,
@@ -23,13 +22,9 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { APP_DISPLAY_NAME } from '@/lib/app-name';
-import { prepareCaptureWindows } from '@/lib/commands';
-import {
-  checkForUpdatesOnLaunch,
-  installUpdate,
-  restartToApplyUpdate,
-  type PendingUpdate,
-} from '@/lib/updater';
+import { useAppBoot } from '@/lib/use-app-boot';
+import { useUpdateCheck, type UpdateNoticeState } from '@/lib/use-update-check';
+import { restartToApplyUpdate } from '@/lib/updater';
 
 const modules = [
   {
@@ -90,128 +85,15 @@ const modules = [
   },
 ] as const;
 
-type UpdateNoticeState =
-  | { status: 'hidden' }
-  | { status: 'available'; update: PendingUpdate; version: string }
-  | {
-      status: 'installing';
-      update: PendingUpdate;
-      version: string;
-      downloadedBytes: number;
-      contentLength?: number;
-    }
-  | { status: 'installed'; version: string }
-  | { status: 'error'; message: string };
-
 function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function MainLayout() {
-  const [isBooting, setIsBooting] = useState(true);
-  const [appVersion, setAppVersion] = useState<string | null>(null);
-  const [updateNotice, setUpdateNotice] = useState<UpdateNoticeState>({
-    status: 'hidden',
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-    let firstFrame = 0;
-    let secondFrame = 0;
-    let bootTimer = 0;
-
-    const afterFirstPaint = new Promise<void>((resolve) => {
-      firstFrame = requestAnimationFrame(() => {
-        secondFrame = requestAnimationFrame(() => resolve());
-      });
-    });
-    const minimumBoot = new Promise<void>((resolve) => {
-      bootTimer = window.setTimeout(resolve, 160);
-    });
-
-    const versionTask = getVersion()
-      .then(setAppVersion)
-      .catch((err) => {
-        console.error('Failed to load app version', err);
-      });
-
-    void Promise.allSettled([afterFirstPaint, minimumBoot, versionTask]).then(
-      () => {
-        if (cancelled) return;
-        setIsBooting(false);
-
-        void prepareCaptureWindows().catch((err) => {
-          console.error('Failed to prepare capture windows', err);
-        });
-
-        // Show the Tauri window after the first render completes.
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            void getCurrentWindow().show().catch(console.error);
-          });
-        });
-      },
-    );
-
-    void checkForUpdatesOnLaunch().then((result) => {
-      if (result.status === 'error') {
-        setUpdateNotice({ status: 'error', message: result.message });
-      } else if (result.status === 'available') {
-        setUpdateNotice({
-          status: 'available',
-          update: result.update,
-          version: result.update.version,
-        });
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(firstFrame);
-      cancelAnimationFrame(secondFrame);
-      window.clearTimeout(bootTimer);
-    };
-  }, []);
-
-  const handleInstallUpdate = async () => {
-    if (updateNotice.status !== 'available') return;
-
-    const { update, version } = updateNotice;
-    let downloadedBytes = 0;
-    let contentLength: number | undefined;
-
-    setUpdateNotice({
-      status: 'installing',
-      update,
-      version,
-      downloadedBytes,
-      contentLength,
-    });
-
-    const result = await installUpdate(update, (event) => {
-      if (event.event === 'Started') {
-        contentLength = event.data.contentLength;
-        downloadedBytes = 0;
-      } else if (event.event === 'Progress') {
-        downloadedBytes += event.data.chunkLength;
-      }
-      setUpdateNotice({
-        status: 'installing',
-        update,
-        version,
-        downloadedBytes,
-        contentLength,
-      });
-    });
-
-    if (result.status === 'error') {
-      setUpdateNotice({ status: 'error', message: result.message });
-      return;
-    }
-
-    setUpdateNotice({ status: 'installed', version });
-  };
+  const { isBooting, appVersion } = useAppBoot();
+  const { notice: updateNotice, install: handleInstallUpdate } =
+    useUpdateCheck();
 
   if (isBooting) {
     return (

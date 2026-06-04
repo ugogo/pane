@@ -112,8 +112,9 @@ Severity: **P1** broad reuse/clarity win · **P2** solid cleanup · **P3** nit.
 
 ### Phase 3 — MainLayout decomposition
 
-- [ ] **3.1** Extract `useAppBoot()` (RAF/timer/window-show) + `useUpdateCheck()`;
-      keep `AppShell`/`UpdateNotice` presentational. (F11)
+- [x] **3.1** Extracted `useAppBoot()` (RAF/timer/version/window-show) +
+      `useUpdateCheck()` (check + install lifecycle, owns `UpdateNoticeState`);
+      `MainLayout` body went from ~110 lines to ~5. (F11)
 
 ### Phase 4 — Mobile companion
 
@@ -190,6 +191,8 @@ cargo test --manifest-path apps/windows/tauri/Cargo.toml   # companion auth suit
 
 _Newest first. Format: `YYYY-MM-DD — task — note (commit)`._
 
+- 2026-06-04 — Phase 3 complete — `MainLayout` split into `useAppBoot` +
+  `useUpdateCheck` hooks. typecheck + lint green. (committed)
 - 2026-06-04 — Phase 2 complete — all 8 windows cards on `useMutation`/cache +
   shared `useActionStatus`/`useTauriEvent`/`useDebouncedWrite`/`Slider`; SoundCard
   reducer deleted + `lib/audio-favorites.ts` extracted; lights/sound/CaptureCard
