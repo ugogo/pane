@@ -24,10 +24,7 @@ export function MetricsCard({ className }: { className?: string }) {
     refetchInterval: autoRefresh ? 2000 : false,
   });
   const metrics = metricsQuery.data ?? null;
-  const error =
-    metricsQuery.error === null || metricsQuery.error === undefined
-      ? undefined
-      : String(metricsQuery.error);
+  const error = metricsQuery.error ? String(metricsQuery.error) : undefined;
 
   if (metricsQuery.isPending && !metrics && !error) {
     return <PageSpinner className={className} />;

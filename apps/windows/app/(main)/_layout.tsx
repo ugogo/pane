@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { APP_DISPLAY_NAME } from '@/lib/app-name';
 import { prepareCaptureWindows } from '@/lib/commands';
 import {
@@ -270,12 +271,12 @@ function AppShell({
               return (
                 <Link key={path} href={path} asChild>
                   <a
-                    className={[
+                    className={cn(
                       'flex min-w-max items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors md:min-w-0',
                       isActive
                         ? 'bg-white/10 text-white'
                         : 'text-white/62 hover:bg-white/8 hover:text-white',
-                    ].join(' ')}
+                    )}
                   >
                     <Icon aria-hidden="true" className="size-4 shrink-0" />
                     <span>{label}</span>

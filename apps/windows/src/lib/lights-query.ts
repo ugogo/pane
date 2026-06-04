@@ -7,8 +7,7 @@ import {
   type DynamicLightingDevice,
   type LightState,
 } from '@/lib/commands';
-
-type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail' | 'disabled';
+import type { Status } from '@/lib/status';
 
 export type Light =
   | { kind: 'dynamic'; id: string; device: DynamicLightingDevice }
@@ -19,7 +18,7 @@ export interface LightsQueryData {
   lights: Light[];
   savedStates: Record<string, LightState>;
   scan: {
-    status: ProbeStatus;
+    status: Status;
     message: string;
     disabledReason: string;
   };
@@ -28,7 +27,7 @@ export interface LightsQueryData {
 export async function fetchLights(): Promise<LightsQueryData> {
   let disabledReason = '';
   let scanMessage = '';
-  let scanStatus: ProbeStatus = 'idle';
+  let scanStatus: Status = 'idle';
 
   const [dynamic, msi, dxlight, states] = await Promise.all([
     Promise.all([

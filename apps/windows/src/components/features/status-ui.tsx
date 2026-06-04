@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-
-type Status = 'idle' | 'pass' | 'warn' | 'fail' | 'disabled';
+import type { Status } from '@/lib/status';
 
 export function StatusBadge({
   status,

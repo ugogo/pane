@@ -1,5 +1,5 @@
-import { useReducer } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye } from 'lucide-react';
 import {
   captureFullscreen,
@@ -10,164 +10,94 @@ import {
   showCapturePreview,
   toggleCapturePreview,
   type CaptureAction,
+  type CaptureHotkeys,
 } from '../../lib/commands';
 import { ShortcutInput } from '../ShortcutInput';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/query-keys';
+import { useActionStatus } from '@/lib/use-action-status';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
-
-type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
-
-interface State {
-  status: ProbeStatus;
-  message: string;
-  busy: boolean;
-  previewVisible: boolean | null;
-}
-
-type Action =
-  | { type: 'bound'; action: CaptureAction; accel: string }
-  | { type: 'cleared'; action: CaptureAction }
-  | { type: 'busy'; busy: boolean }
-  | { type: 'previewToggled'; visible: boolean }
-  | { type: 'notify'; status: ProbeStatus; message: string };
-
-const initialState: State = {
-  status: 'idle',
-  message: '',
-  busy: false,
-  previewVisible: null,
-};
 
 const actionLabels: Record<CaptureAction, string> = {
   fullscreen: 'full screen',
   area: 'area',
 };
 
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case 'bound':
-      return {
-        ...state,
-        status: 'pass',
-        message: `${actionLabels[action.action]} shortcut saved.`,
-      };
-    case 'cleared':
-      return {
-        ...state,
-        status: 'idle',
-        message: `${actionLabels[action.action]} shortcut cleared.`,
-      };
-    case 'busy':
-      return { ...state, busy: action.busy };
-    case 'previewToggled':
-      return {
-        ...state,
-        previewVisible: action.visible,
-        status: 'pass',
-        message: action.visible
-          ? 'Floating preview is visible.'
-          : 'Floating preview is hidden.',
-      };
-    case 'notify':
-      return {
-        ...state,
-        status: action.status,
-        message: action.message,
-      };
-  }
-}
-
-async function runFullscreen(): Promise<string | null> {
-  try {
-    await captureFullscreen();
-    await showCapturePreview();
-    return null;
-  } catch (err) {
-    return String(err);
-  }
-}
-
-async function runArea(): Promise<string | null> {
-  try {
-    await showAreaSelector();
-    return null;
-  } catch (err) {
-    return String(err);
-  }
-}
-
 export function CaptureCard({ className }: { className?: string }) {
   const queryClient = useQueryClient();
   const hotkeysQuery = useQuery({
     queryKey: queryKeys.captureHotkeys,
-    queryFn: async () => {
-      const saved = await getCaptureHotkeys();
-      return { fullscreen: saved.fullscreen, area: saved.area };
-    },
+    queryFn: getCaptureHotkeys,
   });
   const hotkeys = hotkeysQuery.data ?? { fullscreen: '', area: '' };
-  const [state, dispatch] = useReducer(reducer, initialState);
-  const { status, message, busy, previewVisible } = state;
+  const status = useActionStatus();
+  const [previewVisible, setPreviewVisible] = useState<boolean | null>(null);
 
-  async function bind(action: CaptureAction, accel: string) {
-    try {
-      await setCaptureHotkey(action, accel);
-      queryClient.setQueryData(
-        queryKeys.captureHotkeys,
-        (prev: { fullscreen: string; area: string } | undefined) => ({
-          fullscreen: prev?.fullscreen ?? '',
-          area: prev?.area ?? '',
-          [action]: accel,
-        }),
+  function patchHotkey(action: CaptureAction, accelerator: string) {
+    queryClient.setQueryData(
+      queryKeys.captureHotkeys,
+      (prev: CaptureHotkeys | undefined) => ({
+        fullscreen: prev?.fullscreen ?? '',
+        area: prev?.area ?? '',
+        [action]: accelerator,
+      }),
+    );
+  }
+
+  const bind = useMutation({
+    mutationFn: ({ action, accel }: { action: CaptureAction; accel: string }) =>
+      setCaptureHotkey(action, accel),
+    onSuccess: (_result, { action, accel }) => {
+      patchHotkey(action, accel);
+      status.set('pass', `${actionLabels[action]} shortcut saved.`);
+    },
+    onError: (err) => status.set('fail', String(err)),
+  });
+
+  const clear = useMutation({
+    mutationFn: (action: CaptureAction) => clearCaptureHotkey(action),
+    onSuccess: (_result, action) => {
+      patchHotkey(action, '');
+      status.set('idle', `${actionLabels[action]} shortcut cleared.`);
+    },
+    onError: (err) => status.set('fail', String(err)),
+  });
+
+  const trigger = useMutation({
+    mutationFn: async (action: CaptureAction) => {
+      if (action === 'fullscreen') {
+        await captureFullscreen();
+        await showCapturePreview();
+      } else {
+        await showAreaSelector();
+      }
+      return action;
+    },
+    onSuccess: (action) =>
+      status.set(
+        'pass',
+        action === 'fullscreen'
+          ? 'Captured the full screen.'
+          : 'Area selection is ready.',
+      ),
+    onError: (err) => status.set('fail', String(err)),
+  });
+
+  const preview = useMutation({
+    mutationFn: toggleCapturePreview,
+    onSuccess: (visible) => {
+      setPreviewVisible(visible);
+      status.set(
+        'pass',
+        visible
+          ? 'Floating preview is visible.'
+          : 'Floating preview is hidden.',
       );
-      dispatch({ type: 'bound', action, accel });
-    } catch (err) {
-      dispatch({ type: 'notify', status: 'fail', message: String(err) });
-    }
-  }
-
-  async function clear(action: CaptureAction) {
-    try {
-      await clearCaptureHotkey(action);
-      queryClient.setQueryData(
-        queryKeys.captureHotkeys,
-        (prev: { fullscreen: string; area: string } | undefined) => ({
-          fullscreen: prev?.fullscreen ?? '',
-          area: prev?.area ?? '',
-          [action]: '',
-        }),
-      );
-      dispatch({ type: 'cleared', action });
-    } catch (err) {
-      dispatch({ type: 'notify', status: 'fail', message: String(err) });
-    }
-  }
-
-  async function trigger(action: CaptureAction) {
-    dispatch({ type: 'busy', busy: true });
-    const err =
-      action === 'fullscreen' ? await runFullscreen() : await runArea();
-    dispatch({ type: 'busy', busy: false });
-    if (err) {
-      dispatch({ type: 'notify', status: 'fail', message: err });
-    } else {
-      dispatch({
-        type: 'notify',
-        status: 'pass',
-        message:
-          action === 'fullscreen'
-            ? 'Captured the full screen.'
-            : 'Area selection is ready.',
-      });
-    }
-  }
-
-  const previewLabel = previewVisible
-    ? 'Hide floating preview'
-    : 'Show floating preview';
+    },
+    onError: (err) => status.set('fail', String(err)),
+  });
 
   if (hotkeysQuery.isPending && !hotkeysQuery.data) {
     return <PageSpinner className={className} />;
@@ -191,20 +121,20 @@ export function CaptureCard({ className }: { className?: string }) {
           actionLabel="Capture full screen"
           shortcutLabel="Fullscreen capture shortcut"
           hotkey={hotkeys.fullscreen}
-          onCommit={(a) => void bind('fullscreen', a)}
-          onClear={() => void clear('fullscreen')}
-          onTrigger={() => void trigger('fullscreen')}
-          busy={busy}
+          onCommit={(accel) => bind.mutate({ action: 'fullscreen', accel })}
+          onClear={() => clear.mutate('fullscreen')}
+          onTrigger={() => trigger.mutate('fullscreen')}
+          busy={trigger.isPending}
         />
         <Row
           label="Area capture"
           actionLabel="Select area"
           shortcutLabel="Area capture shortcut"
           hotkey={hotkeys.area}
-          onCommit={(a) => void bind('area', a)}
-          onClear={() => void clear('area')}
-          onTrigger={() => void trigger('area')}
-          busy={busy}
+          onCommit={(accel) => bind.mutate({ action: 'area', accel })}
+          onClear={() => clear.mutate('area')}
+          onTrigger={() => trigger.mutate('area')}
+          busy={trigger.isPending}
         />
       </div>
 
@@ -213,16 +143,14 @@ export function CaptureCard({ className }: { className?: string }) {
           size="sm"
           variant="secondary"
           aria-pressed={previewVisible ?? undefined}
-          onClick={() => {
-            void toggleCapturePreview().then((visible) => {
-              dispatch({ type: 'previewToggled', visible });
-            });
-          }}
+          onClick={() => preview.mutate()}
         >
           <Eye aria-hidden="true" className="size-3.5" />
-          {previewLabel}
+          {previewVisible ? 'Hide floating preview' : 'Show floating preview'}
         </Button>
-        {message && <StatusText status={status}>{message}</StatusText>}
+        {status.message && (
+          <StatusText status={status.status}>{status.message}</StatusText>
+        )}
       </div>
     </div>
   );

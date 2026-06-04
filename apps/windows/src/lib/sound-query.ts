@@ -6,8 +6,7 @@ import {
   type AudioDevice,
   type VolumeInfo,
 } from '@/lib/commands';
-
-type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
+import type { Status } from '@/lib/status';
 
 function readVolume(
   read: () => Promise<VolumeInfo>,
@@ -18,7 +17,7 @@ function readVolume(
 export interface SoundQueryData {
   devices: { output: AudioDevice[]; input: AudioDevice[] };
   volumes: { output: VolumeInfo | null; input: VolumeInfo | null };
-  status: ProbeStatus;
+  status: Status;
   message: string;
 }
 

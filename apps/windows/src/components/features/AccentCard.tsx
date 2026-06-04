@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAccentPopupEnabled, setAccentPopupEnabled } from '@/lib/commands';
 import { queryKeys } from '@/lib/query-keys';
+import { useActionStatus } from '@/lib/use-action-status';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { PageSpinner } from './page-spinner';
@@ -14,21 +14,23 @@ export function AccentCard({ className }: { className?: string }) {
     queryFn: getAccentPopupEnabled,
   });
   const enabled = enabledQuery.data ?? null;
-  const [error, setError] = useState<string>();
+  const status = useActionStatus();
 
-  async function handleToggle(next: boolean) {
-    setError(undefined);
-    const prev = enabledQuery.data;
-    queryClient.setQueryData(queryKeys.accentEnabled, next);
-    try {
-      await setAccentPopupEnabled(next);
-    } catch (err) {
-      queryClient.setQueryData(queryKeys.accentEnabled, prev);
-      setError(String(err));
-    }
-  }
+  const toggle = useMutation({
+    mutationFn: setAccentPopupEnabled,
+    onMutate: (next: boolean) => {
+      status.clear();
+      const prev = enabledQuery.data;
+      queryClient.setQueryData(queryKeys.accentEnabled, next);
+      return { prev };
+    },
+    onError: (err, _next, ctx) => {
+      queryClient.setQueryData(queryKeys.accentEnabled, ctx?.prev);
+      status.set('fail', String(err));
+    },
+  });
 
-  if (enabledQuery.isPending && enabled === null && !error) {
+  if (enabledQuery.isPending && enabled === null && !status.message) {
     return <PageSpinner className={className} />;
   }
 
@@ -45,10 +47,12 @@ export function AccentCard({ className }: { className?: string }) {
           aria-label="Enable long-press accents"
           disabled={enabled === null}
           checked={enabled ?? false}
-          onCheckedChange={(checked) => void handleToggle(checked)}
+          onCheckedChange={(checked) => toggle.mutate(checked)}
         />
       </div>
-      {error && <StatusText status="fail">{error}</StatusText>}
+      {status.message && (
+        <StatusText status={status.status}>{status.message}</StatusText>
+      )}
     </div>
   );
 }

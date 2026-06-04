@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { listen } from '@tauri-apps/api/event';
 import { Sun, Contrast, Sunset, Trash2, RotateCcw } from 'lucide-react';
 import {
   listMonitors,
@@ -18,6 +17,7 @@ import {
   type MonitorPreset,
 } from '../../lib/commands';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -25,10 +25,13 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { queryKeys } from '@/lib/query-keys';
+import type { Status, StatusMessage } from '@/lib/status';
+import { useDebouncedWrite } from '@/lib/use-debounced-write';
+import { useTauriEvent } from '@/lib/use-tauri-event';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
 
-function scanForMonitors(list: MonitorInfo[]): Scan {
+function scanForMonitors(list: MonitorInfo[]): StatusMessage {
   const controllable = list.filter((m) => m.brightness.supported).length;
   if (list.length === 0) {
     return { status: 'warn', message: 'No monitors detected.' };
@@ -44,17 +47,6 @@ function scanForMonitors(list: MonitorInfo[]): Scan {
     message: `${controllable} of ${list.length} monitor${list.length === 1 ? '' : 's'} controllable.`,
   };
 }
-
-type ScanStatus = 'idle' | 'pass' | 'warn' | 'fail';
-
-interface Scan {
-  status: ScanStatus;
-  message: string;
-}
-
-// DDC/CI writes are slow (tens of ms over I2C), so we only push to the monitor
-// after the slider settles rather than on every pixel of drag.
-const WRITE_DEBOUNCE_MS = 150;
 
 type FeatureKey = 'brightness' | 'contrast';
 
@@ -117,14 +109,14 @@ export function BrightnessCard({ className }: { className?: string }) {
   });
   const monitors = monitorsQuery.data ?? emptyMonitors;
   const presets = presetsQuery.data ?? [];
-  const [scanOverride, setScanOverride] = useState<Scan | null>(null);
+  const [scanOverride, setScanOverride] = useState<StatusMessage | null>(null);
   const scan =
     scanOverride ??
     (monitors.length > 0
       ? scanForMonitors(monitors)
-      : { status: 'idle' as ScanStatus, message: '' });
+      : { status: 'idle' as Status, message: '' });
   const [actionBusy, setActionBusy] = useState(false);
-  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const schedule = useDebouncedWrite();
 
   function patchMonitors(updater: (list: MonitorInfo[]) => MonitorInfo[]) {
     queryClient.setQueryData(
@@ -151,30 +143,25 @@ export function BrightnessCard({ className }: { className?: string }) {
 
   // The physical brightness key adjusts every monitor in the Rust backend and
   // emits the new values; reflect them so the sliders track the key live.
-  useEffect(() => {
-    const unlisten = listen<MonitorInfo[]>('brightness-changed', (event) => {
-      const next = event.payload;
-      queryClient.setQueryData(
-        queryKeys.displayMonitors,
-        (prev: MonitorInfo[] | undefined) =>
-          (prev ?? []).map((m) => {
-            const updated = next.find((n) => n.id === m.id);
-            return updated
-              ? {
-                  ...m,
-                  brightness: {
-                    ...m.brightness,
-                    value: updated.brightness.value,
-                  },
-                }
-              : m;
-          }),
-      );
-    });
-    return () => {
-      void unlisten.then((off) => off());
-    };
-  }, [queryClient]);
+  useTauriEvent<MonitorInfo[]>('brightness-changed', (event) => {
+    const next = event.payload;
+    queryClient.setQueryData(
+      queryKeys.displayMonitors,
+      (prev: MonitorInfo[] | undefined) =>
+        (prev ?? []).map((m) => {
+          const updated = next.find((n) => n.id === m.id);
+          return updated
+            ? {
+                ...m,
+                brightness: {
+                  ...m.brightness,
+                  value: updated.brightness.value,
+                },
+              }
+            : m;
+        }),
+    );
+  });
 
   function onSlide(id: string, feature: FeatureKey, value: number) {
     patchMonitors((prev) =>
@@ -182,13 +169,11 @@ export function BrightnessCard({ className }: { className?: string }) {
         m.id === id ? { ...m, [feature]: { ...m[feature], value } } : m,
       ),
     );
-    const timerKey = `${id}:${feature}`;
-    if (timers.current[timerKey]) clearTimeout(timers.current[timerKey]);
-    timers.current[timerKey] = setTimeout(() => {
+    schedule(`${id}:${feature}`, () => {
       void writers[feature](id, value).catch((e) =>
         setScanOverride({ status: 'fail', message: String(e) }),
       );
-    }, WRITE_DEBOUNCE_MS);
+    });
   }
 
   function onWarmth(id: string, t: number) {
@@ -207,9 +192,7 @@ export function BrightnessCard({ className }: { className?: string }) {
           : m,
       ),
     );
-    const timerKey = `${id}:temp`;
-    if (timers.current[timerKey]) clearTimeout(timers.current[timerKey]);
-    timers.current[timerKey] = setTimeout(() => {
+    schedule(`${id}:temp`, () => {
       void (async () => {
         try {
           // DDC writes must be sequential — concurrent I2C writes to one
@@ -222,7 +205,7 @@ export function BrightnessCard({ className }: { className?: string }) {
           setScanOverride({ status: 'fail', message: String(e) });
         }
       })();
-    }, WRITE_DEBOUNCE_MS);
+    });
   }
 
   async function onApplyPreset(name: string) {
@@ -447,15 +430,13 @@ function MonitorRow({
             />
             {f.supported ? (
               <>
-                <input
-                  type="range"
+                <Slider
                   min={0}
                   max={f.max}
                   step={1}
                   value={f.value}
                   onChange={(e) => onSlide(m.id, key, Number(e.target.value))}
                   aria-label={`${label} for ${name}`}
-                  className="w-full"
                 />
                 <span className="text-muted-foreground w-10 shrink-0 text-right text-xs">
                   {pct(f.value, f.max)}%
@@ -477,8 +458,7 @@ function MonitorRow({
             className="text-muted-foreground shrink-0"
             aria-hidden
           />
-          <input
-            type="range"
+          <Slider
             min={0}
             max={100}
             step={1}
@@ -486,7 +466,6 @@ function MonitorRow({
             onChange={(e) => onWarmth(m.id, Number(e.target.value))}
             aria-label={`Warmth for ${name}`}
             title="Default (left) → warmer (right)"
-            className="w-full"
           />
           <span className="text-muted-foreground w-20 shrink-0 text-right text-xs">
             {gainsToWarmth(m) === 0 ? 'Default' : `Warm ${gainsToWarmth(m)}%`}

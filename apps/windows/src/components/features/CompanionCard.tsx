@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { Copy, QrCode, Wifi, X } from 'lucide-react';
 import {
@@ -11,6 +10,7 @@ import {
   type CompanionStatus,
 } from '@/lib/commands';
 import { queryKeys } from '@/lib/query-keys';
+import { useActionStatus } from '@/lib/use-action-status';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -33,22 +33,17 @@ export function CompanionCard({ className }: { className?: string }) {
       query.state.data?.activePairing != null ? 2000 : false,
   });
   const status = statusQuery.data ?? null;
-  const [message, setMessage] = useState('');
-  const [actionBusy, setActionBusy] = useState(false);
+  const actionStatus = useActionStatus();
 
-  async function update(action: () => Promise<CompanionStatus>) {
-    setActionBusy(true);
-    setMessage('');
-
-    try {
-      const next = await action();
-      queryClient.setQueryData(queryKeys.companionStatus, next);
-    } catch (err) {
-      setMessage(String(err));
-    } finally {
-      setActionBusy(false);
-    }
-  }
+  const mutation = useMutation({
+    mutationFn: (action: () => Promise<CompanionStatus>) => action(),
+    onMutate: () => actionStatus.clear(),
+    onSuccess: (next) =>
+      queryClient.setQueryData(queryKeys.companionStatus, next),
+    onError: (err) => actionStatus.set('fail', String(err)),
+  });
+  const update = (action: () => Promise<CompanionStatus>) =>
+    mutation.mutate(action);
 
   if (statusQuery.isPending && !status) {
     return <PageSpinner className={className} />;
@@ -56,7 +51,7 @@ export function CompanionCard({ className }: { className?: string }) {
 
   const pairing = status?.activePairing ?? null;
   const devices = status?.pairedDevices ?? [];
-  const busy = actionBusy || statusQuery.isFetching;
+  const busy = mutation.isPending || statusQuery.isFetching;
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -184,9 +179,9 @@ export function CompanionCard({ className }: { className?: string }) {
         )}
       </div>
 
-      {message ? (
-        <StatusText status={statusQuery.isError ? 'fail' : 'idle'}>
-          {message}
+      {actionStatus.message ? (
+        <StatusText status={actionStatus.status}>
+          {actionStatus.message}
         </StatusText>
       ) : null}
     </div>

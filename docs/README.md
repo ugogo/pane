@@ -17,6 +17,7 @@ Every doc carries YAML frontmatter:
 
 ## Index (newest first)
 
+- 2026-06-04 — [Code Quality Audit & Refactor](2026-06-04-code-quality-audit.md) · in-progress
 - 2026-06-02 — [Monorepo Restructure & Shared Protocol](2026-06-02-monorepo-restructure-plan.md) · shipped
 - 2026-06-01 — [iPhone Companion Plan](2026-06-01-mobile-companion-plan.md) · shipped
 - 2026-05-29 — [Security Hardening Plan](2026-05-29-security-hardening-plan.md) · shipped

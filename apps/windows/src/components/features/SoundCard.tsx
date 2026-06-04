@@ -1,6 +1,5 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { listen } from '@tauri-apps/api/event';
+import { useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Volume2, VolumeX, Mic, MicOff, Star } from 'lucide-react';
 import {
   setDefaultOutputDevice,
@@ -13,21 +12,25 @@ import {
   type VolumeInfo,
 } from '../../lib/commands';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  orderDevices,
+  readFavorites,
+  writeFavorites,
+} from '@/lib/audio-favorites';
 import { fetchSound, type SoundQueryData } from '@/lib/sound-query';
 import { queryKeys } from '@/lib/query-keys';
+import { useActionStatus } from '@/lib/use-action-status';
+import { useDebouncedWrite } from '@/lib/use-debounced-write';
+import { useTauriEvent } from '@/lib/use-tauri-event';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
-
-type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
-
-// Avoid flooding the endpoint with a write on every pixel of slider drag.
-const WRITE_DEBOUNCE_MS = 100;
 
 type Kind = 'output' | 'input';
 
@@ -54,212 +57,86 @@ function vpct(volume: number) {
   return Math.round(volume * 100);
 }
 
-function favKey(kind: Kind) {
-  return `pane.audio.favorites.${kind}`;
-}
-
-function readFavorites(kind: Kind): Set<string> {
-  try {
-    const raw = localStorage.getItem(favKey(kind));
-    if (!raw) return new Set();
-    const arr: unknown = JSON.parse(raw);
-    return Array.isArray(arr)
-      ? new Set(arr.filter((x): x is string => typeof x === 'string'))
-      : new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-// Favorites float to the top; everything else stays alphabetical.
-function orderDevices(
-  devices: AudioDevice[],
-  favs: Set<string>,
-): AudioDevice[] {
-  return devices.toSorted((a, b) => {
-    const fa = favs.has(a.id) ? 0 : 1;
-    const fb = favs.has(b.id) ? 0 : 1;
-    if (fa !== fb) return fa - fb;
-    return a.name.localeCompare(b.name);
-  });
-}
-
-interface State {
-  devices: Record<Kind, AudioDevice[]>;
-  volumes: Record<Kind, VolumeInfo | null>;
-  status: ProbeStatus;
-  message: string;
-  busy: boolean;
-}
-
-type Action =
-  | { type: 'beginLoad' }
-  | {
-      type: 'loaded';
-      devices: Record<Kind, AudioDevice[]>;
-      volumes: Record<Kind, VolumeInfo | null>;
-      status: ProbeStatus;
-      message: string;
-    }
-  | { type: 'loadFailed'; message: string }
-  | { type: 'setVolume'; kind: Kind; info: VolumeInfo }
-  | { type: 'externalVolume'; kind: Kind; info: VolumeInfo }
-  | { type: 'notify'; status: ProbeStatus; message: string };
-
-const initialState: State = {
-  devices: { output: [], input: [] },
-  volumes: { output: null, input: null },
-  status: 'idle',
-  message: '',
-  // Starts true because we enumerate devices on mount.
-  busy: true,
+const emptyDevices = {
+  output: [] as AudioDevice[],
+  input: [] as AudioDevice[],
 };
-
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case 'beginLoad':
-      return { ...state, busy: true, status: 'idle' };
-    case 'loaded':
-      return {
-        ...state,
-        devices: action.devices,
-        volumes: action.volumes,
-        status: action.status,
-        message: action.message,
-        busy: false,
-      };
-    case 'loadFailed':
-      return { ...state, status: 'fail', message: action.message, busy: false };
-    case 'setVolume':
-      return {
-        ...state,
-        volumes: { ...state.volumes, [action.kind]: action.info },
-      };
-    case 'externalVolume': {
-      // Skip no-op echoes so we don't clobber an in-progress drag.
-      const prev = state.volumes[action.kind];
-      if (
-        prev &&
-        vpct(prev.volume) === vpct(action.info.volume) &&
-        prev.muted === action.info.muted
-      ) {
-        return state;
-      }
-      return {
-        ...state,
-        volumes: { ...state.volumes, [action.kind]: action.info },
-      };
-    }
-    case 'notify':
-      return { ...state, status: action.status, message: action.message };
-  }
-}
-
-function isUnseeded(state: State) {
-  return (
-    state.devices.output.length === 0 &&
-    state.devices.input.length === 0 &&
-    state.volumes.output === null &&
-    state.volumes.input === null
-  );
-}
-
-function loadedState(data: SoundQueryData): State {
-  return {
-    devices: data.devices,
-    volumes: data.volumes,
-    status: data.status,
-    message: data.message,
-    busy: false,
-  };
-}
+const emptyVolumes = { output: null, input: null };
 
 export function SoundCard({ className }: { className?: string }) {
+  const queryClient = useQueryClient();
   const soundQuery = useQuery({
     queryKey: queryKeys.sound,
     queryFn: fetchSound,
   });
-  const { refetch: refetchSound } = soundQuery;
-  const [state, dispatch] = useReducer(reducer, initialState);
-  const displayState =
-    soundQuery.data && isUnseeded(state)
-      ? { ...state, ...loadedState(soundQuery.data) }
-      : state;
-  const { devices, volumes, status, message, busy } = displayState;
+  const data = soundQuery.data;
+  const devices = data?.devices ?? emptyDevices;
+  const volumes = data?.volumes ?? emptyVolumes;
+
+  const status = useActionStatus();
+  const schedule = useDebouncedWrite();
+  // Kinds with a slider write in flight — used to ignore the hardware's own
+  // change echoes so they don't clobber an active drag. Lazy-initialized once.
+  const pendingRef = useRef<Set<Kind> | undefined>(undefined);
+  const pending = (pendingRef.current ??= new Set());
   const [favorites, setFavorites] = useState<Record<Kind, Set<string>>>(() => ({
     output: readFavorites('output'),
     input: readFavorites('input'),
   }));
-  const timers = useRef<
-    Record<Kind, ReturnType<typeof setTimeout> | undefined>
-  >({
-    output: undefined,
-    input: undefined,
+
+  function patchVolume(kind: Kind, info: VolumeInfo) {
+    queryClient.setQueryData(
+      queryKeys.sound,
+      (prev: SoundQueryData | undefined) =>
+        prev ? { ...prev, volumes: { ...prev.volumes, [kind]: info } } : prev,
+    );
+  }
+
+  useTauriEvent<VolumeChange>('audio-volume-changed', (event) => {
+    const { kind, volume, muted } = event.payload;
+    if (pending.has(kind)) return;
+    const prev = volumes[kind];
+    // Skip no-op echoes so we don't thrash the cache.
+    if (prev && vpct(prev.volume) === vpct(volume) && prev.muted === muted) {
+      return;
+    }
+    patchVolume(kind, { volume, muted });
   });
 
-  useEffect(() => {
-    function applyExternal(kind: Kind, info: VolumeInfo) {
-      if (timers.current[kind]) return;
-      dispatch({ type: 'externalVolume', kind, info });
-    }
-    const volSub = listen<VolumeChange>('audio-volume-changed', (e) => {
-      applyExternal(e.payload.kind, {
-        volume: e.payload.volume,
-        muted: e.payload.muted,
-      });
-    });
-    const devSub = listen('audio-devices-changed', () => {
-      void refetchSound().then((result) => {
-        if (result.data) dispatch({ type: 'loaded', ...result.data });
-      });
-    });
-    return () => {
-      void volSub.then((un) => un());
-      void devSub.then((un) => un());
-    };
-  }, [refetchSound]);
+  useTauriEvent('audio-devices-changed', () => void soundQuery.refetch());
+
+  const selectDevice = useMutation({
+    mutationFn: ({ kind, id }: { kind: Kind; id: string }) =>
+      setDefaultFor[kind](id),
+    onMutate: () => status.clear(),
+    onSuccess: () => void soundQuery.refetch(),
+    onError: (err) => status.set('fail', String(err)),
+  });
+
+  const busy = soundQuery.isFetching || selectDevice.isPending;
 
   function onVolume(kind: Kind, percent: number) {
     const cur = volumes[kind];
-    dispatch({
-      type: 'setVolume',
-      kind,
-      info: { volume: percent / 100, muted: cur?.muted ?? false },
+    patchVolume(kind, { volume: percent / 100, muted: cur?.muted ?? false });
+    pending.add(kind);
+    schedule(kind, () => {
+      void setVolumeFor[kind](percent / 100)
+        .catch((e) => status.set('fail', String(e)))
+        .finally(() => pending.delete(kind));
     });
-    if (timers.current[kind]) clearTimeout(timers.current[kind]);
-    timers.current[kind] = setTimeout(async () => {
-      try {
-        await setVolumeFor[kind](percent / 100);
-      } catch (e) {
-        dispatch({ type: 'notify', status: 'fail', message: String(e) });
-      } finally {
-        timers.current[kind] = undefined;
-      }
-    }, WRITE_DEBOUNCE_MS);
   }
 
-  async function onToggleMute(kind: Kind) {
+  function onToggleMute(kind: Kind) {
     const cur = volumes[kind];
     if (!cur) return;
     const muted = !cur.muted;
-    dispatch({ type: 'setVolume', kind, info: { ...cur, muted } });
-    try {
-      await setMuteFor[kind](muted);
-    } catch (e) {
-      dispatch({ type: 'notify', status: 'fail', message: String(e) });
-    }
+    patchVolume(kind, { ...cur, muted });
+    void setMuteFor[kind](muted).catch((e) => status.set('fail', String(e)));
   }
 
-  async function onSelectDevice(kind: Kind, id: string) {
+  function onSelectDevice(kind: Kind, id: string) {
     if (!id || devices[kind].find((d) => d.id === id)?.isDefault) return;
-    dispatch({ type: 'beginLoad' });
-    try {
-      await setDefaultFor[kind](id);
-      const result = await refetchSound();
-      if (result.data) dispatch({ type: 'loaded', ...result.data });
-    } catch (e) {
-      dispatch({ type: 'loadFailed', message: String(e) });
-    }
+    selectDevice.mutate({ kind, id });
   }
 
   function toggleFavorite(kind: Kind, id: string) {
@@ -267,35 +144,31 @@ export function SoundCard({ className }: { className?: string }) {
       const next = new Set(prev[kind]);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      try {
-        localStorage.setItem(favKey(kind), JSON.stringify([...next]));
-      } catch {
-        /* storage unavailable; favorites just won't persist */
-      }
+      writeFavorites(kind, next);
       return { ...prev, [kind]: next };
     });
   }
 
-  if (soundQuery.isPending && !soundQuery.data) {
+  if (soundQuery.isPending && !data) {
     return <PageSpinner className={className} />;
   }
+
+  const scanStatus = status.message ? status.status : (data?.status ?? 'idle');
+  const scanMessage = status.message || (data?.message ?? '');
 
   return (
     <div className={cn('space-y-4', className)}>
       <Button
         disabled={busy}
         size="sm"
-        onClick={() => {
-          dispatch({ type: 'beginLoad' });
-          void refetchSound().then((result) => {
-            if (result.data) dispatch({ type: 'loaded', ...result.data });
-          });
-        }}
+        onClick={() => void soundQuery.refetch()}
       >
         Refresh
       </Button>
 
-      {message && <StatusText status={status}>{message}</StatusText>}
+      {scanMessage && (
+        <StatusText status={scanStatus}>{scanMessage}</StatusText>
+      )}
 
       <div className="grid gap-3">
         <Section
@@ -367,9 +240,10 @@ function Section({
             return (
               <li
                 key={d.id}
-                className={`flex items-center gap-2 px-2 py-1.5 transition-colors ${
-                  d.isDefault ? 'bg-muted' : ''
-                }`}
+                className={cn(
+                  'flex items-center gap-2 px-2 py-1.5 transition-colors',
+                  d.isDefault && 'bg-muted',
+                )}
               >
                 <button
                   type="button"
@@ -384,16 +258,18 @@ function Section({
                 >
                   <span
                     aria-hidden
-                    className={`size-1.5 shrink-0 rounded-full ${
-                      d.isDefault ? 'bg-accent' : 'bg-transparent'
-                    }`}
+                    className={cn(
+                      'size-1.5 shrink-0 rounded-full',
+                      d.isDefault ? 'bg-accent' : 'bg-transparent',
+                    )}
                   />
                   <span
-                    className={`truncate text-sm ${
+                    className={cn(
+                      'truncate text-sm',
                       d.isDefault
                         ? 'text-foreground font-medium'
-                        : 'text-muted-foreground'
-                    }`}
+                        : 'text-muted-foreground',
+                    )}
                   >
                     {d.name}
                   </span>
@@ -442,9 +318,10 @@ function Section({
                 : `Mute ${label.toLowerCase()}`
             }
             title={muted ? 'Unmute' : 'Mute'}
-            className={`hover:bg-muted shrink-0 rounded-md border p-1.5 transition ${
-              muted ? 'text-destructive' : 'text-muted-foreground'
-            }`}
+            className={cn(
+              'hover:bg-muted shrink-0 rounded-md border p-1.5 transition',
+              muted ? 'text-destructive' : 'text-muted-foreground',
+            )}
           >
             {kind === 'output' ? (
               muted ? (
@@ -458,15 +335,13 @@ function Section({
               <Mic size={14} aria-hidden />
             )}
           </button>
-          <input
-            type="range"
+          <Slider
             min={0}
             max={100}
             step={1}
             value={vpct(vol.volume)}
             onChange={(e) => onVolume(kind, Number(e.target.value))}
             aria-label={`${label} volume`}
-            className="w-full"
           />
           <span className="text-muted-foreground w-10 shrink-0 text-right text-xs">
             {muted ? 'Muted' : `${vpct(vol.volume)}%`}

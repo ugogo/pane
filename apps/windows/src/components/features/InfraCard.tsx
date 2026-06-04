@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Moon } from 'lucide-react';
 import {
   getRunAtStartup,
@@ -7,6 +6,7 @@ import {
   sleepComputer,
 } from '@/lib/commands';
 import { queryKeys } from '@/lib/query-keys';
+import { useActionStatus } from '@/lib/use-action-status';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -20,32 +20,30 @@ export function InfraCard({ className }: { className?: string }) {
     queryFn: getRunAtStartup,
   });
   const runAtStartup = startupQuery.data ?? null;
-  const [saved, setSaved] = useState(false);
-  const [startupError, setStartupError] = useState<string>();
-  const [sleepError, setSleepError] = useState<string>();
+  const startupStatus = useActionStatus();
+  const sleepStatus = useActionStatus();
 
-  async function handleStartupToggle(enabled: boolean) {
-    setStartupError(undefined);
-    setSaved(false);
-    try {
-      const result = await setRunAtStartup(enabled);
+  const startupToggle = useMutation({
+    mutationFn: setRunAtStartup,
+    onMutate: () => startupStatus.clear(),
+    onSuccess: (result) => {
       queryClient.setQueryData(queryKeys.runAtStartup, result.enabled);
-      setSaved(true);
-    } catch (err) {
-      setStartupError(String(err));
-    }
-  }
+      startupStatus.set('pass', 'Startup preference saved.');
+    },
+    onError: (err) => startupStatus.set('fail', String(err)),
+  });
 
-  async function handleSleep() {
-    setSleepError(undefined);
-    try {
-      await sleepComputer();
-    } catch (err) {
-      setSleepError(String(err));
-    }
-  }
+  const sleep = useMutation({
+    mutationFn: sleepComputer,
+    onMutate: () => sleepStatus.clear(),
+    onError: (err) => sleepStatus.set('fail', String(err)),
+  });
 
-  if (startupQuery.isPending && runAtStartup === null && !startupError) {
+  if (
+    startupQuery.isPending &&
+    runAtStartup === null &&
+    !startupStatus.message
+  ) {
     return <PageSpinner className={className} />;
   }
 
@@ -64,13 +62,14 @@ export function InfraCard({ className }: { className?: string }) {
           aria-label="Run at startup"
           disabled={runAtStartup === null || __DEV__}
           checked={runAtStartup ?? false}
-          onCheckedChange={(checked) => void handleStartupToggle(checked)}
+          onCheckedChange={(checked) => startupToggle.mutate(checked)}
         />
       </div>
-      {saved && (
-        <StatusText status="pass">Startup preference saved.</StatusText>
+      {startupStatus.message && (
+        <StatusText status={startupStatus.status}>
+          {startupStatus.message}
+        </StatusText>
       )}
-      {startupError && <StatusText status="fail">{startupError}</StatusText>}
 
       <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
         <div>
@@ -83,13 +82,17 @@ export function InfraCard({ className }: { className?: string }) {
           aria-label="Sleep computer"
           size="sm"
           variant="secondary"
-          onClick={() => void handleSleep()}
+          onClick={() => sleep.mutate()}
         >
           <Moon aria-hidden="true" />
           Sleep
         </Button>
       </div>
-      {sleepError && <StatusText status="fail">{sleepError}</StatusText>}
+      {sleepStatus.message && (
+        <StatusText status={sleepStatus.status}>
+          {sleepStatus.message}
+        </StatusText>
+      )}
     </div>
   );
 }

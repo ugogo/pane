@@ -11,12 +11,13 @@ import {
 } from '../../lib/commands';
 import { fetchLights, lightKey, type Light } from '@/lib/lights-query';
 import { queryKeys } from '@/lib/query-keys';
+import type { Status } from '@/lib/status';
+import { useActionStatus } from '@/lib/use-action-status';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { PageSpinner } from './page-spinner';
 import { StatusBadge, StatusText } from './status-ui';
-
-type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail' | 'disabled';
 
 function lightTitle(l: Light) {
   switch (l.kind) {
@@ -71,11 +72,6 @@ function rgbToHex(r: number, g: number, b: number) {
   return `#${h(r)}${h(g)}${h(b)}`;
 }
 
-interface Result {
-  status: ProbeStatus;
-  message: string;
-}
-
 interface LightRowProps {
   light: Light;
   initialState?: LightState;
@@ -99,7 +95,7 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
       : 0.75;
   });
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<Result>({ status: 'idle', message: '' });
+  const result = useActionStatus();
   const disabled = Boolean(disabledReason);
   const visibleStatus = disabled ? 'disabled' : result.status;
 
@@ -107,10 +103,7 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
     if (disabled) return;
     const rgb = hexToRgb(color);
     if (!rgb) {
-      setResult({
-        status: 'fail',
-        message: 'Invalid color (expected #RRGGBB).',
-      });
+      result.set('fail', 'Invalid color (expected #RRGGBB).');
       return;
     }
     setBusy(true);
@@ -139,9 +132,9 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
           break;
         }
       }
-      setResult({ status: 'pass', message });
+      result.set('pass', message);
     } catch (e) {
-      setResult({ status: 'fail', message: String(e) });
+      result.set('fail', String(e));
     } finally {
       setBusy(false);
     }
@@ -163,9 +156,9 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
           await dxLightOff();
           break;
       }
-      setResult({ status: 'pass', message: 'Off.' });
+      result.set('pass', 'Off.');
     } catch (e) {
-      setResult({ status: 'fail', message: String(e) });
+      result.set('fail', String(e));
     } finally {
       setBusy(false);
     }
@@ -200,15 +193,13 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
           <span className="text-muted-foreground text-xs">
             Brightness {Math.round(brightness * 100)}%
           </span>
-          <input
-            type="range"
+          <Slider
             min={0}
             max={1}
             step={0.01}
             value={brightness}
             onChange={(e) => setBrightness(Number(e.target.value))}
             disabled={disabled}
-            className="w-full disabled:cursor-not-allowed disabled:opacity-50"
           />
         </label>
 
@@ -250,7 +241,7 @@ export function LightingCard({ className }: { className?: string }) {
     queryFn: fetchLights,
   });
   const [actionMessage, setActionMessage] = useState<{
-    status: ProbeStatus;
+    status: Status;
     message: string;
     disabledReason?: string;
   } | null>(null);
@@ -258,7 +249,7 @@ export function LightingCard({ className }: { className?: string }) {
   const lights = lightsQuery.data?.lights ?? [];
   const savedStates = lightsQuery.data?.savedStates ?? {};
   const scan = lightsQuery.data?.scan ?? {
-    status: 'idle' as ProbeStatus,
+    status: 'idle' as Status,
     message: '',
     disabledReason: '',
   };
