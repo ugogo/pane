@@ -7,6 +7,10 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot, { isCSSEnabled: true });
 
+if (!config.resolver.assetExts.includes('woff2')) {
+  config.resolver.assetExts.push('woff2');
+}
+
 config.watchFolders = [workspaceRoot];
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),

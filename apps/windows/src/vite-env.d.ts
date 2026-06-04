@@ -6,3 +6,8 @@ declare module '*.css' {
   const stylesheet: Record<string, string>;
   export default stylesheet;
 }
+
+declare module '*.woff2' {
+  const asset: number;
+  export default asset;
+}
