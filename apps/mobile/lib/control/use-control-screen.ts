@@ -7,15 +7,15 @@ import {
   type CompanionSnapshot,
   type HelloResponse,
 } from '@pane/protocol';
-import { fetchWithTimeout, fetchSnapshot, sendCommand } from '../lib/api';
-import { baseUrl, isPairing } from '../lib/pairing';
+import { fetchWithTimeout, fetchSnapshot, sendCommand } from '../api';
+import { baseUrl, isPairing } from '../pairing';
 import {
   STORE_KEY,
   HEARTBEAT_MS,
   WRITE_DEBOUNCE_MS,
   REQUEST_TIMEOUT_MS,
-} from '../lib/constants';
-import type { Pairing } from '../lib/types';
+} from '../constants';
+import type { Pairing } from '../types';
 
 export function useControlScreen() {
   const router = useRouter();

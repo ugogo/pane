@@ -1,9 +1,9 @@
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Slider } from '../components/Slider';
-import { ControlSystemControls } from './control-system-controls';
-import { controlStyles as styles } from './control.styles';
-import { useControlScreen } from './use-control-screen';
+import { ControlSystemControls } from '../lib/control/control-system-controls';
+import { controlStyles as styles } from '../lib/control/control.styles';
+import { useControlScreen } from '../lib/control/use-control-screen';
 
 export default function ControlScreen() {
   const {
