@@ -453,247 +453,70 @@ mod watch {
 }
 
 // ── Companion (window-free) ───────────────────────────────────────────────────
+//
+// The companion HTTP path needs the same audio operations without a caller
+// window. Each is a thin delegate to `imp::*` on Windows and a `NOT_WINDOWS`
+// error elsewhere; the macro stamps out both arms so the wrappers stay one line.
 
-#[cfg(windows)]
-pub fn companion_list_output_devices() -> Result<Vec<AudioDevice>, String> {
-    imp::enumerate(imp::RENDER)
+macro_rules! companion_audio {
+    ($name:ident($($arg:ident: $ty:ty),*) -> $ret:ty => $body:expr) => {
+        #[cfg(windows)]
+        pub fn $name($($arg: $ty),*) -> Result<$ret, String> {
+            $body
+        }
+        #[cfg(not(windows))]
+        pub fn $name($($arg: $ty),*) -> Result<$ret, String> {
+            $(let _ = $arg;)*
+            Err(NOT_WINDOWS.into())
+        }
+    };
 }
 
-#[cfg(not(windows))]
-pub fn companion_list_output_devices() -> Result<Vec<AudioDevice>, String> {
-    Err(NOT_WINDOWS.into())
-}
-
-#[cfg(windows)]
-pub fn companion_list_input_devices() -> Result<Vec<AudioDevice>, String> {
-    imp::enumerate(imp::CAPTURE)
-}
-
-#[cfg(not(windows))]
-pub fn companion_list_input_devices() -> Result<Vec<AudioDevice>, String> {
-    Err(NOT_WINDOWS.into())
-}
-
-#[cfg(windows)]
-pub fn companion_get_output_volume() -> Result<VolumeInfo, String> {
-    imp::read_volume(imp::RENDER)
-}
-
-#[cfg(not(windows))]
-pub fn companion_get_output_volume() -> Result<VolumeInfo, String> {
-    Err(NOT_WINDOWS.into())
-}
-
-#[cfg(windows)]
-pub fn companion_get_input_volume() -> Result<VolumeInfo, String> {
-    imp::read_volume(imp::CAPTURE)
-}
-
-#[cfg(not(windows))]
-pub fn companion_get_input_volume() -> Result<VolumeInfo, String> {
-    Err(NOT_WINDOWS.into())
-}
-
-#[cfg(windows)]
-pub fn companion_set_output_volume(volume: f64) -> Result<(), String> {
-    imp::write_volume(imp::RENDER, volume)
-}
-
-#[cfg(not(windows))]
-pub fn companion_set_output_volume(_volume: f64) -> Result<(), String> {
-    Err(NOT_WINDOWS.into())
-}
-
-#[cfg(windows)]
-pub fn companion_set_input_volume(volume: f64) -> Result<(), String> {
-    imp::write_volume(imp::CAPTURE, volume)
-}
-
-#[cfg(not(windows))]
-pub fn companion_set_input_volume(_volume: f64) -> Result<(), String> {
-    Err(NOT_WINDOWS.into())
-}
-
-#[cfg(windows)]
-pub fn companion_set_output_mute(muted: bool) -> Result<(), String> {
-    imp::write_mute(imp::RENDER, muted)
-}
-
-#[cfg(not(windows))]
-pub fn companion_set_output_mute(_muted: bool) -> Result<(), String> {
-    Err(NOT_WINDOWS.into())
-}
-
-#[cfg(windows)]
-pub fn companion_set_input_mute(muted: bool) -> Result<(), String> {
-    imp::write_mute(imp::CAPTURE, muted)
-}
-
-#[cfg(not(windows))]
-pub fn companion_set_input_mute(_muted: bool) -> Result<(), String> {
-    Err(NOT_WINDOWS.into())
-}
-
-#[cfg(windows)]
-pub fn companion_set_default_output(device_id: &str) -> Result<(), String> {
-    imp::set_default(device_id)
-}
-
-#[cfg(not(windows))]
-pub fn companion_set_default_output(_device_id: &str) -> Result<(), String> {
-    Err(NOT_WINDOWS.into())
-}
-
-#[cfg(windows)]
-pub fn companion_set_default_input(device_id: &str) -> Result<(), String> {
-    imp::set_default(device_id)
-}
-
-#[cfg(not(windows))]
-pub fn companion_set_default_input(_device_id: &str) -> Result<(), String> {
-    Err(NOT_WINDOWS.into())
-}
+companion_audio!(companion_list_output_devices() -> Vec<AudioDevice> => imp::enumerate(imp::RENDER));
+companion_audio!(companion_list_input_devices() -> Vec<AudioDevice> => imp::enumerate(imp::CAPTURE));
+companion_audio!(companion_get_output_volume() -> VolumeInfo => imp::read_volume(imp::RENDER));
+companion_audio!(companion_get_input_volume() -> VolumeInfo => imp::read_volume(imp::CAPTURE));
+companion_audio!(companion_set_output_volume(volume: f64) -> () => imp::write_volume(imp::RENDER, volume));
+companion_audio!(companion_set_input_volume(volume: f64) -> () => imp::write_volume(imp::CAPTURE, volume));
+companion_audio!(companion_set_output_mute(muted: bool) -> () => imp::write_mute(imp::RENDER, muted));
+companion_audio!(companion_set_input_mute(muted: bool) -> () => imp::write_mute(imp::CAPTURE, muted));
+companion_audio!(companion_set_default_output(device_id: &str) -> () => imp::set_default(device_id));
+companion_audio!(companion_set_default_input(device_id: &str) -> () => imp::set_default(device_id));
 
 // ── Tauri commands ────────────────────────────────────────────────────────────
+//
+// Every audio command is restricted to the main window, then delegates to
+// `imp::*`. The macro stamps out the window guard + the Windows/non-Windows
+// split so each command reads as a single line of intent.
 
-#[tauri::command]
-pub fn list_output_devices(window: tauri::WebviewWindow) -> Result<Vec<AudioDevice>, String> {
-    crate::commands::require_window(&window, &["main"])?;
-    #[cfg(windows)]
-    {
-        imp::enumerate(imp::RENDER)
-    }
-    #[cfg(not(windows))]
-    {
-        Err(NOT_WINDOWS.into())
-    }
+macro_rules! audio_command {
+    ($name:ident($($arg:ident: $ty:ty),*) -> $ret:ty => $body:expr) => {
+        #[tauri::command]
+        pub fn $name(
+            window: tauri::WebviewWindow,
+            $($arg: $ty),*
+        ) -> Result<$ret, String> {
+            crate::commands::require_window(&window, &["main"])?;
+            #[cfg(windows)]
+            {
+                $body
+            }
+            #[cfg(not(windows))]
+            {
+                $(let _ = $arg;)*
+                Err(NOT_WINDOWS.into())
+            }
+        }
+    };
 }
 
-#[tauri::command]
-pub fn list_input_devices(window: tauri::WebviewWindow) -> Result<Vec<AudioDevice>, String> {
-    crate::commands::require_window(&window, &["main"])?;
-    #[cfg(windows)]
-    {
-        imp::enumerate(imp::CAPTURE)
-    }
-    #[cfg(not(windows))]
-    {
-        Err(NOT_WINDOWS.into())
-    }
-}
-
-#[tauri::command]
-pub fn set_default_output_device(
-    window: tauri::WebviewWindow,
-    device_id: String,
-) -> Result<(), String> {
-    crate::commands::require_window(&window, &["main"])?;
-    #[cfg(windows)]
-    {
-        imp::set_default(&device_id)
-    }
-    #[cfg(not(windows))]
-    {
-        let _ = device_id;
-        Err(NOT_WINDOWS.into())
-    }
-}
-
-#[tauri::command]
-pub fn set_default_input_device(
-    window: tauri::WebviewWindow,
-    device_id: String,
-) -> Result<(), String> {
-    crate::commands::require_window(&window, &["main"])?;
-    #[cfg(windows)]
-    {
-        imp::set_default(&device_id)
-    }
-    #[cfg(not(windows))]
-    {
-        let _ = device_id;
-        Err(NOT_WINDOWS.into())
-    }
-}
-
-#[tauri::command]
-pub fn get_output_volume(window: tauri::WebviewWindow) -> Result<VolumeInfo, String> {
-    crate::commands::require_window(&window, &["main"])?;
-    #[cfg(windows)]
-    {
-        imp::read_volume(imp::RENDER)
-    }
-    #[cfg(not(windows))]
-    {
-        Err(NOT_WINDOWS.into())
-    }
-}
-
-#[tauri::command]
-pub fn set_output_volume(window: tauri::WebviewWindow, volume: f64) -> Result<(), String> {
-    crate::commands::require_window(&window, &["main"])?;
-    #[cfg(windows)]
-    {
-        imp::write_volume(imp::RENDER, volume)
-    }
-    #[cfg(not(windows))]
-    {
-        let _ = volume;
-        Err(NOT_WINDOWS.into())
-    }
-}
-
-#[tauri::command]
-pub fn set_output_mute(window: tauri::WebviewWindow, muted: bool) -> Result<(), String> {
-    crate::commands::require_window(&window, &["main"])?;
-    #[cfg(windows)]
-    {
-        imp::write_mute(imp::RENDER, muted)
-    }
-    #[cfg(not(windows))]
-    {
-        let _ = muted;
-        Err(NOT_WINDOWS.into())
-    }
-}
-
-#[tauri::command]
-pub fn get_input_volume(window: tauri::WebviewWindow) -> Result<VolumeInfo, String> {
-    crate::commands::require_window(&window, &["main"])?;
-    #[cfg(windows)]
-    {
-        imp::read_volume(imp::CAPTURE)
-    }
-    #[cfg(not(windows))]
-    {
-        Err(NOT_WINDOWS.into())
-    }
-}
-
-#[tauri::command]
-pub fn set_input_volume(window: tauri::WebviewWindow, volume: f64) -> Result<(), String> {
-    crate::commands::require_window(&window, &["main"])?;
-    #[cfg(windows)]
-    {
-        imp::write_volume(imp::CAPTURE, volume)
-    }
-    #[cfg(not(windows))]
-    {
-        let _ = volume;
-        Err(NOT_WINDOWS.into())
-    }
-}
-
-#[tauri::command]
-pub fn set_input_mute(window: tauri::WebviewWindow, muted: bool) -> Result<(), String> {
-    crate::commands::require_window(&window, &["main"])?;
-    #[cfg(windows)]
-    {
-        imp::write_mute(imp::CAPTURE, muted)
-    }
-    #[cfg(not(windows))]
-    {
-        let _ = muted;
-        Err(NOT_WINDOWS.into())
-    }
-}
+audio_command!(list_output_devices() -> Vec<AudioDevice> => imp::enumerate(imp::RENDER));
+audio_command!(list_input_devices() -> Vec<AudioDevice> => imp::enumerate(imp::CAPTURE));
+audio_command!(set_default_output_device(device_id: String) -> () => imp::set_default(&device_id));
+audio_command!(set_default_input_device(device_id: String) -> () => imp::set_default(&device_id));
+audio_command!(get_output_volume() -> VolumeInfo => imp::read_volume(imp::RENDER));
+audio_command!(set_output_volume(volume: f64) -> () => imp::write_volume(imp::RENDER, volume));
+audio_command!(set_output_mute(muted: bool) -> () => imp::write_mute(imp::RENDER, muted));
+audio_command!(get_input_volume() -> VolumeInfo => imp::read_volume(imp::CAPTURE));
+audio_command!(set_input_volume(volume: f64) -> () => imp::write_volume(imp::CAPTURE, volume));
+audio_command!(set_input_mute(muted: bool) -> () => imp::write_mute(imp::CAPTURE, muted));

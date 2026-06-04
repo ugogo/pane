@@ -239,10 +239,16 @@ fn set_feature(id: &str, which: Which, value: u16) -> Result<(), String> {
     Ok(())
 }
 
-/// Step every brightness-capable monitor by `delta`. Brightness only — the
-/// physical brightness key drives this. Shared with `brightness_keys`.
+/// Lock the metadata cache (reseeding it on first use), enumerate fresh monitor
+/// handles, run `per_monitor` for each cached entry, and return the refreshed
+/// list. Centralizes the cache-lock + reseed + enumerate preamble that every
+/// brightness/preset writer shares — the DDC round-trip dominates, so
+/// re-enumerating handles each call is cheap.
 #[cfg(windows)]
-pub fn adjust_all(delta: i32) -> Vec<MonitorInfo> {
+fn with_monitors<F>(mut per_monitor: F) -> Vec<MonitorInfo>
+where
+    F: FnMut(usize, &mut Cached, &mut [ddc_winapi::Monitor]),
+{
     let mut cache = CACHE.lock().unwrap();
     if cache.is_empty() {
         drop(cache);
@@ -253,6 +259,17 @@ pub fn adjust_all(delta: i32) -> Vec<MonitorInfo> {
     let mut monitors = enumerate();
     let mut out = Vec::with_capacity(cache.len());
     for (index, entry) in cache.iter_mut().enumerate() {
+        per_monitor(index, entry, &mut monitors);
+        out.push(cached_to_info(index, entry));
+    }
+    out
+}
+
+/// Step every brightness-capable monitor by `delta`. Brightness only — the
+/// physical brightness key drives this. Shared with `brightness_keys`.
+#[cfg(windows)]
+pub fn adjust_all(delta: i32) -> Vec<MonitorInfo> {
+    with_monitors(|index, entry, monitors| {
         if entry.brightness.supported {
             let target = (entry.brightness.value as i32 + delta)
                 .clamp(0, entry.brightness.max as i32) as u16;
@@ -262,9 +279,7 @@ pub fn adjust_all(delta: i32) -> Vec<MonitorInfo> {
                 }
             }
         }
-        out.push(cached_to_info(index, entry));
-    }
-    out
+    })
 }
 
 /// Set every brightness-capable monitor to an absolute `pct` (0–100). Window-
@@ -272,16 +287,7 @@ pub fn adjust_all(delta: i32) -> Vec<MonitorInfo> {
 /// implementation. Returns the refreshed monitor list.
 #[cfg(windows)]
 pub fn set_all_brightness_pct(pct: u8) -> Vec<MonitorInfo> {
-    let mut cache = CACHE.lock().unwrap();
-    if cache.is_empty() {
-        drop(cache);
-        read_seed();
-        cache = CACHE.lock().unwrap();
-    }
-
-    let mut monitors = enumerate();
-    let mut out = Vec::with_capacity(cache.len());
-    for (index, entry) in cache.iter_mut().enumerate() {
+    with_monitors(|index, entry, monitors| {
         if entry.brightness.supported {
             let target = pct_to_value(pct, entry.brightness.max);
             if let Some(mon) = monitors.get_mut(index) {
@@ -290,9 +296,7 @@ pub fn set_all_brightness_pct(pct: u8) -> Vec<MonitorInfo> {
                 }
             }
         }
-        out.push(cached_to_info(index, entry));
-    }
-    out
+    })
 }
 
 #[cfg(not(windows))]
@@ -316,16 +320,7 @@ fn apply_pcts(
     green_gain_pct: u8,
     blue_gain_pct: u8,
 ) -> Vec<MonitorInfo> {
-    let mut cache = CACHE.lock().unwrap();
-    if cache.is_empty() {
-        drop(cache);
-        read_seed();
-        cache = CACHE.lock().unwrap();
-    }
-
-    let mut monitors = enumerate();
-    let mut out = Vec::with_capacity(cache.len());
-    for (index, entry) in cache.iter_mut().enumerate() {
+    with_monitors(|index, entry, monitors| {
         if let Some(mon) = monitors.get_mut(index) {
             for (which, pct) in [
                 (Which::Brightness, brightness_pct),
@@ -346,9 +341,7 @@ fn apply_pcts(
                 }
             }
         }
-        out.push(cached_to_info(index, entry));
-    }
-    out
+    })
 }
 
 // ── Preset persistence (all platforms) ──────────────────────────────────────

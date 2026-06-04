@@ -1,7 +1,7 @@
 ---
 title: Code Quality Audit & Refactor
 type: plan
-status: in-progress
+status: shipped
 created: 2026-06-04
 updated: 2026-06-04
 ---
@@ -139,13 +139,13 @@ Severity: **P1** broad reuse/clarity win · **P2** solid cleanup · **P3** nit.
 
 ### Phase 6 — Rust backend (recompile-heavy; do last)
 
-- [ ] **6.1** `to_hex(&[u8]) -> String` helper in companion.rs; use in
-      `random_hex` + `sha256_hex`. (F20)
-- [ ] **6.2** `with_monitors(|cache, monitors| …)` helper in brightness.rs;
-      apply to `adjust_all`/`set_all_brightness_pct`/`apply_pcts`. (F21)
-- [ ] **6.3** Command-boilerplate macro for the `require_window` + cfg pairs;
-      collapse audio.rs `companion_*` wrappers + brightness.rs commands. Verify
-      the `generate_handler!` set in lib.rs is byte-identical. (F19)
+- [x] **6.1** `to_hex(&[u8]) -> String` helper in companion.rs; `random_hex` +
+      `sha256_hex` route through it. (F20)
+- [x] **6.2** `with_monitors(|index, entry, monitors| …)` helper in brightness.rs;
+      applied to `adjust_all`/`set_all_brightness_pct`/`apply_pcts`. (F21)
+- [x] **6.3** `companion_audio!` + `audio_command!` macros collapse the 10
+      `companion_*` wrappers and 10 Tauri commands in audio.rs (−187 lines).
+      `generate_handler!` set unchanged (clippy resolves all command names). (F19)
 
 ## Reuse — existing utilities (don't reinvent)
 
@@ -171,8 +171,14 @@ npm run companion:typecheck
 ```powershell
 npm run rust:fmt:check
 npm run rust:clippy
-cargo test --manifest-path apps/windows/tauri/Cargo.toml   # companion auth suite must stay green
+cargo test --manifest-path apps/windows/tauri/Cargo.toml   # companion auth suite — run on a real Windows runner / CI
 ```
+
+> Note: in the sandbox where this refactor was done, the Tauri-linked test exe
+> aborts at startup with `STATUS_ENTRYPOINT_NOT_FOUND` (0xc0000139) — a DLL/entry
+> issue **independent of these changes** (reproduced on the pre-change tree).
+> Rust verification here relied on `cargo clippy -D warnings` + `cargo fmt --check`
+> (both green); run the test suite on a normal Windows dev/CI environment.
 
 **Runtime (manual):**
 
@@ -196,6 +202,10 @@ cargo test --manifest-path apps/windows/tauri/Cargo.toml   # companion auth suit
 
 _Newest first. Format: `YYYY-MM-DD — task — note (commit)`._
 
+- 2026-06-04 — Phase 6 complete — Rust `to_hex` + `with_monitors` helpers;
+  `companion_audio!`/`audio_command!` macros (audio.rs −187 lines). clippy
+  `-D warnings` + rustfmt green; test exe blocked by an env DLL issue (see note).
+  **All phases shipped.** (committed)
 - 2026-06-04 — Phase 5 complete — `bytesToHex` exported from @pane/protocol;
   `usePaneQueryClient` hook added to @pane/query; both providers use it. All
   package typechecks + lint green. (committed)
