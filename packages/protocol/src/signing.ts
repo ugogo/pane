@@ -17,7 +17,7 @@ import { HEADERS } from './constants';
 // @noble/ed25519 v3 needs a sha512 implementation wired in once.
 ed25519.hashes.sha512 = sha512;
 
-function bytesToHex(bytes: Uint8Array): string {
+export function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(
     '',
   );

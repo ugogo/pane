@@ -1,6 +1,5 @@
 import * as Crypto from 'expo-crypto';
-import { signedHeaders } from '@pane/protocol';
-import { bytesToHex } from './pairing';
+import { bytesToHex, signedHeaders } from '@pane/protocol';
 import type { Pairing } from './types';
 
 export function randomNonce(): string {

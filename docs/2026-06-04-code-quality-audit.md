@@ -130,9 +130,12 @@ Severity: **P1** broad reuse/clarity win · **P2** solid cleanup · **P3** nit.
 
 ### Phase 5 — Shared packages
 
-- [ ] **5.1** Export `bytesToHex` from `@pane/protocol`; mobile imports it. (F16)
-- [ ] **5.2** Move bare `PaneQueryProvider` into `@pane/query`; both apps compose
-      it (mobile keeps its NetInfo/AppState wiring on top). (F17)
+- [x] **5.1** Exported `bytesToHex` from `@pane/protocol`; mobile crypto.ts
+      imports it; removed the duplicate in mobile pairing.ts. (F16)
+- [x] **5.2** Added `usePaneQueryClient()` (plain TS) to `@pane/query`; both apps'
+      providers use it (mobile keeps NetInfo/AppState). Chose the hook over moving
+      the JSX provider into the package to avoid the documented Metro
+      JSX-in-workspace-package sharp edge (can't runtime-verify Metro here). (F17)
 
 ### Phase 6 — Rust backend (recompile-heavy; do last)
 
@@ -193,6 +196,9 @@ cargo test --manifest-path apps/windows/tauri/Cargo.toml   # companion auth suit
 
 _Newest first. Format: `YYYY-MM-DD — task — note (commit)`._
 
+- 2026-06-04 — Phase 5 complete — `bytesToHex` exported from @pane/protocol;
+  `usePaneQueryClient` hook added to @pane/query; both providers use it. All
+  package typechecks + lint green. (committed)
 - 2026-06-04 — Phase 4 complete — mobile theme tokens + `<Screen>` + `<SliderPanel>`;
   per-control debounce fix in use-control-screen. companion typecheck + lint green. (committed)
 - 2026-06-04 — Phase 3 complete — `MainLayout` split into `useAppBoot` +

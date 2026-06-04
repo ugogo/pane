@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import {
@@ -6,7 +6,7 @@ import {
   focusManager,
   onlineManager,
 } from '@tanstack/react-query';
-import { createPaneQueryClient } from '@pane/query';
+import { usePaneQueryClient } from '@pane/query';
 
 onlineManager.setEventListener((setOnline) => {
   return NetInfo.addEventListener((state) => {
@@ -19,7 +19,7 @@ function onAppStateChange(status: AppStateStatus) {
 }
 
 export function PaneQueryProvider({ children }: { children: ReactNode }) {
-  const [client] = useState(createPaneQueryClient);
+  const client = usePaneQueryClient();
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', onAppStateChange);
