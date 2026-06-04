@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { colors } from '../lib/theme';
 
 // Expo Go-compatible slider using native gesture recognition. It maps the
 // gesture's absolute X position against the track's measured window position.
@@ -82,19 +83,19 @@ export function Slider({
 
 const styles = StyleSheet.create({
   track: {
-    backgroundColor: '#2a2a2e',
+    backgroundColor: colors.elevated,
     borderRadius: 999,
     height: 8,
     justifyContent: 'center',
     marginVertical: 12,
   },
   fill: {
-    backgroundColor: '#5ed6a8',
+    backgroundColor: colors.accent,
     borderRadius: 999,
     height: 8,
   },
   thumb: {
-    backgroundColor: '#fafafa',
+    backgroundColor: colors.textPrimary,
     borderRadius: 12,
     height: 24,
     marginLeft: -12,

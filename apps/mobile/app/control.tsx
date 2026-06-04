@@ -1,7 +1,7 @@
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { Slider } from '../components/Slider';
+import { Screen } from '../components/Screen';
 import { ControlSystemControls } from '../lib/control/control-system-controls';
+import { SliderPanel } from '../lib/control/slider-panel';
 import { controlStyles as styles } from '../lib/control/control.styles';
 import { useControlScreen } from '../lib/control/use-control-screen';
 
@@ -28,9 +28,10 @@ export default function ControlScreen() {
 
   if (!pairing) return null;
 
+  const muted = Boolean(snapshot?.outputVolume.muted);
+
   return (
-    <View style={styles.shell}>
-      <StatusBar style="light" />
+    <Screen safeArea={false}>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.scrollContent}
@@ -43,18 +44,14 @@ export default function ControlScreen() {
           <Text style={styles.title}>{displayName}</Text>
         </View>
 
-        <View style={[styles.panel, offline && styles.panelOffline]}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.label}>Brightness</Text>
-            <Text style={styles.value}>{brightness}%</Text>
-          </View>
-          <Slider
-            value={brightness}
-            onValueChange={setBrightness}
-            onChange={(value) => runCommand({ type: 'set_brightness', value })}
-            disabled={offline}
-          />
-        </View>
+        <SliderPanel
+          label="Brightness"
+          valueText={`${brightness}%`}
+          value={brightness}
+          offline={offline}
+          onValueChange={setBrightness}
+          onChange={(value) => runCommand({ type: 'set_brightness', value })}
+        />
 
         {snapshot && snapshot.presets.length > 0 ? (
           <View style={[styles.panel, offline && styles.panelOffline]}>
@@ -79,36 +76,21 @@ export default function ControlScreen() {
           </View>
         ) : null}
 
-        <View style={[styles.panel, offline && styles.panelOffline]}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.label}>Output volume</Text>
-            <Text style={styles.value}>
-              {snapshot?.outputVolume.muted ? 'Muted' : `${outputVolume}%`}
-            </Text>
-          </View>
-          <Slider
-            value={outputVolume}
-            onValueChange={setOutputVolume}
-            onChange={(value) =>
-              runCommand({ type: 'set_output_volume', volume: value / 100 })
-            }
-            disabled={offline || snapshot?.outputVolume.muted}
-          />
-          <Pressable
-            disabled={offline}
-            style={styles.secondaryButton}
-            onPress={() =>
-              runCommandNow({
-                type: 'set_output_mute',
-                muted: !snapshot?.outputVolume.muted,
-              })
-            }
-          >
-            <Text style={styles.secondaryButtonText}>
-              {snapshot?.outputVolume.muted ? 'Unmute output' : 'Mute output'}
-            </Text>
-          </Pressable>
-        </View>
+        <SliderPanel
+          label="Output volume"
+          valueText={muted ? 'Muted' : `${outputVolume}%`}
+          value={outputVolume}
+          offline={offline}
+          sliderDisabled={offline || muted}
+          onValueChange={setOutputVolume}
+          onChange={(value) =>
+            runCommand({ type: 'set_output_volume', volume: value / 100 })
+          }
+          secondaryLabel={muted ? 'Unmute output' : 'Mute output'}
+          onSecondary={() =>
+            runCommandNow({ type: 'set_output_mute', muted: !muted })
+          }
+        />
 
         {snapshot?.lights.map((light) => {
           const lightLevel =
@@ -116,44 +98,33 @@ export default function ControlScreen() {
           const hasLocalLevel = lightLevels[light.id] !== undefined;
 
           return (
-            <View
+            <SliderPanel
               key={light.id}
-              style={[styles.panel, offline && styles.panelOffline]}
-            >
-              <View style={styles.rowBetween}>
-                <Text style={styles.label}>{light.label}</Text>
-                <Text style={styles.value}>
-                  {light.state.on || hasLocalLevel ? `${lightLevel}%` : 'Off'}
-                </Text>
-              </View>
-              <Slider
-                value={lightLevel}
-                onValueChange={(value) =>
-                  setLightLevels((prev) => ({ ...prev, [light.id]: value }))
-                }
-                onChange={(value) => {
-                  setLightLevels((prev) => ({ ...prev, [light.id]: value }));
-                  runCommand({
-                    type: 'set_light',
-                    light: light.id,
-                    r: light.state.r,
-                    g: light.state.g,
-                    b: light.state.b,
-                    brightness: value / 100,
-                  });
-                }}
-                disabled={offline}
-              />
-              <Pressable
-                disabled={offline}
-                style={styles.secondaryButton}
-                onPress={() =>
-                  runCommandNow({ type: 'turn_light_off', light: light.id })
-                }
-              >
-                <Text style={styles.secondaryButtonText}>Turn off</Text>
-              </Pressable>
-            </View>
+              label={light.label}
+              valueText={
+                light.state.on || hasLocalLevel ? `${lightLevel}%` : 'Off'
+              }
+              value={lightLevel}
+              offline={offline}
+              onValueChange={(value) =>
+                setLightLevels((prev) => ({ ...prev, [light.id]: value }))
+              }
+              onChange={(value) => {
+                setLightLevels((prev) => ({ ...prev, [light.id]: value }));
+                runCommand({
+                  type: 'set_light',
+                  light: light.id,
+                  r: light.state.r,
+                  g: light.state.g,
+                  b: light.state.b,
+                  brightness: value / 100,
+                });
+              }}
+              secondaryLabel="Turn off"
+              onSecondary={() =>
+                runCommandNow({ type: 'turn_light_off', light: light.id })
+              }
+            />
           );
         }) ?? null}
 
@@ -179,6 +150,6 @@ export default function ControlScreen() {
           <Text style={styles.linkText}>Unpair this iPhone</Text>
         </Pressable>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }

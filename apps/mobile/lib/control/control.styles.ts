@@ -1,10 +1,7 @@
 import { StyleSheet } from 'react-native';
+import { colors } from '../theme';
 
 export const controlStyles = StyleSheet.create({
-  shell: {
-    backgroundColor: '#0b0b0c',
-    flex: 1,
-  },
   scroll: {
     flex: 1,
   },
@@ -22,27 +19,27 @@ export const controlStyles = StyleSheet.create({
     letterSpacing: 1,
   },
   title: {
-    color: '#fafafa',
+    color: colors.textPrimary,
     fontSize: 28,
     fontWeight: '700',
   },
   body: {
-    color: '#a3a3a3',
+    color: colors.textMuted,
     fontSize: 15,
     lineHeight: 22,
   },
   label: {
-    color: '#fafafa',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
   value: {
-    color: '#a3a3a3',
+    color: colors.textMuted,
     fontSize: 16,
   },
   panel: {
-    backgroundColor: '#161618',
-    borderColor: '#262629',
+    backgroundColor: colors.surface,
+    borderColor: colors.surfaceBorder,
     borderRadius: 16,
     borderWidth: 1,
     gap: 18,
@@ -63,25 +60,25 @@ export const controlStyles = StyleSheet.create({
     marginTop: 12,
   },
   chip: {
-    backgroundColor: '#2a2a2e',
+    backgroundColor: colors.elevated,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   chipText: {
-    color: '#fafafa',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
   secondaryButton: {
     alignItems: 'center',
-    backgroundColor: '#2a2a2e',
+    backgroundColor: colors.elevated,
     borderRadius: 10,
     marginTop: 8,
     paddingVertical: 10,
   },
   secondaryButtonText: {
-    color: '#fafafa',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -90,12 +87,12 @@ export const controlStyles = StyleSheet.create({
     paddingVertical: 12,
   },
   linkText: {
-    color: '#a3a3a3',
+    color: colors.textMuted,
     fontSize: 15,
     fontWeight: '600',
   },
   error: {
-    color: '#f87171',
+    color: colors.danger,
     fontSize: 14,
   },
 });

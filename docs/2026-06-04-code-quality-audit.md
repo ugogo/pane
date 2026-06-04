@@ -118,13 +118,15 @@ Severity: **P1** broad reuse/clarity win · **P2** solid cleanup · **P3** nit.
 
 ### Phase 4 — Mobile companion
 
-- [ ] **4.1** `apps/mobile/lib/theme.ts` — named color tokens; replace hex
-      literals in index/pair/control.styles/Slider + `statusColor`. (F13)
-- [ ] **4.2** `<Screen>` wrapper component (dark shell + centered loader);
-      adopt in index/pair/control. (F13)
-- [ ] **4.3** Per-control debounce timers in `use-control-screen.ts`
-      (behavior fix — independent brightness/volume/light writes). (F14)
-- [ ] **4.4** `<ControlPanel>` / `<SliderPanel>` extraction in control.tsx. (F15)
+- [x] **4.1** `apps/mobile/lib/theme.ts` — `colors` + `statusColors` tokens;
+      replaced hex literals in index/pair/control.styles/Slider + `statusColor`. (F13)
+- [x] **4.2** `components/Screen.tsx` wrapper (dark shell + light status bar +
+      optional centering); adopted in index/pair/control. (F13)
+- [x] **4.3** Per-control debounce in `use-control-screen.ts` via a
+      `commandKey(body)`-keyed timer map — independent brightness/volume/light
+      writes (behavior fix). (F14)
+- [x] **4.4** `lib/control/slider-panel.tsx` — `<SliderPanel>` collapses the
+      brightness/volume/light panels in control.tsx. (F15)
 
 ### Phase 5 — Shared packages
 
@@ -191,6 +193,8 @@ cargo test --manifest-path apps/windows/tauri/Cargo.toml   # companion auth suit
 
 _Newest first. Format: `YYYY-MM-DD — task — note (commit)`._
 
+- 2026-06-04 — Phase 4 complete — mobile theme tokens + `<Screen>` + `<SliderPanel>`;
+  per-control debounce fix in use-control-screen. companion typecheck + lint green. (committed)
 - 2026-06-04 — Phase 3 complete — `MainLayout` split into `useAppBoot` +
   `useUpdateCheck` hooks. typecheck + lint green. (committed)
 - 2026-06-04 — Phase 2 complete — all 8 windows cards on `useMutation`/cache +

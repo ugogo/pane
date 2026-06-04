@@ -8,6 +8,14 @@ import { fetchCompanion } from '../companion-query';
 import { STORE_KEY, HEARTBEAT_MS, WRITE_DEBOUNCE_MS } from '../constants';
 import { loadStoredPairing } from '../pairing-query';
 import { queryKeys } from '../query-keys';
+import { statusColors } from '../theme';
+
+// A stable per-control key so debounced writes for one control never cancel a
+// pending write for another (dragging volume must not drop a queued brightness
+// write).
+function commandKey(body: CompanionCommand): string {
+  return body.type === 'set_light' ? `set_light:${body.light}` : body.type;
+}
 
 function mergeLightLevels(
   prev: Record<string, number>,
@@ -53,9 +61,7 @@ export function useControlScreen() {
   const [draftVolume, setDraftVolume] = useState<number | null>(null);
   const [lightLevels, setLightLevels] = useState<Record<string, number>>({});
   const [commandError, setCommandError] = useState<string>();
-  const writeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  );
+  const writeTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const snapshot = companionQuery.data?.snapshot ?? null;
   const helloName = companionQuery.data?.helloName ?? null;
@@ -90,8 +96,11 @@ export function useControlScreen() {
   const runCommand = useCallback(
     (body: CompanionCommand) => {
       if (!pairing) return;
-      if (writeTimer.current) clearTimeout(writeTimer.current);
-      writeTimer.current = setTimeout(() => {
+      const key = commandKey(body);
+      const timers = writeTimers.current;
+      if (timers[key]) clearTimeout(timers[key]);
+      timers[key] = setTimeout(() => {
+        delete timers[key];
         void sendCommand(pairing, body)
           .then(() => refresh())
           .catch((err) => {
@@ -141,7 +150,11 @@ export function useControlScreen() {
   const statusLabel =
     connected === null ? 'CONNECTING' : offline ? 'OFFLINE' : 'CONNECTED';
   const statusColor =
-    connected === null ? '#a3a3a3' : offline ? '#f87171' : '#5ed6a8';
+    connected === null
+      ? statusColors.connecting
+      : offline
+        ? statusColors.offline
+        : statusColors.connected;
 
   return {
     pairing,

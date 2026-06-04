@@ -7,13 +7,13 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
-import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { generateKeyPair, ENDPOINTS, type PairResponse } from '@pane/protocol';
+import { Screen } from '../components/Screen';
+import { colors } from '../lib/theme';
 import { parsePairingUri, baseUrl } from '../lib/pairing';
 import { STORE_KEY, DEVICE_NAME } from '../lib/constants';
 import { queryKeys } from '../lib/query-keys';
@@ -75,19 +75,15 @@ export default function PairScreen() {
 
   if (!permission) {
     return (
-      <SafeAreaView style={styles.shell}>
-        <StatusBar style="light" />
-        <View style={styles.content}>
-          <ActivityIndicator color="#fff" />
-        </View>
-      </SafeAreaView>
+      <Screen center>
+        <ActivityIndicator color={colors.white} />
+      </Screen>
     );
   }
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={styles.shell}>
-        <StatusBar style="light" />
+      <Screen>
         <View style={styles.content}>
           <Text style={styles.title}>Pane Companion</Text>
           <Text style={styles.body}>
@@ -101,13 +97,12 @@ export default function PairScreen() {
             <Text style={styles.buttonText}>Allow camera</Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.shell}>
-      <StatusBar style="light" />
+    <Screen>
       <View style={styles.scannerHeader}>
         <Text style={styles.title}>Scan Pane</Text>
         <Text style={styles.body}>
@@ -122,21 +117,17 @@ export default function PairScreen() {
         />
         {pairing ? (
           <View style={styles.cameraOverlay}>
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.white} />
             <Text style={styles.body}>Pairing&hellip;</Text>
           </View>
         ) : null}
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  shell: {
-    backgroundColor: '#0b0b0c',
-    flex: 1,
-  },
   content: {
     flex: 1,
     gap: 20,
@@ -148,36 +139,36 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   title: {
-    color: '#fafafa',
+    color: colors.textPrimary,
     fontSize: 28,
     fontWeight: '700',
   },
   body: {
-    color: '#a3a3a3',
+    color: colors.textMuted,
     fontSize: 15,
     lineHeight: 22,
   },
   button: {
     alignItems: 'center',
-    backgroundColor: '#5ed6a8',
+    backgroundColor: colors.accent,
     borderRadius: 12,
     paddingVertical: 14,
   },
   buttonText: {
-    color: '#0b0b0c',
+    color: colors.onAccent,
     fontSize: 16,
     fontWeight: '700',
   },
   cameraWrap: {
     aspectRatio: 1,
-    backgroundColor: '#000',
+    backgroundColor: colors.cameraBackground,
     borderRadius: 24,
     marginHorizontal: 24,
     overflow: 'hidden',
   },
   cameraOverlay: {
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: colors.cameraOverlay,
     bottom: 0,
     gap: 12,
     justifyContent: 'center',
@@ -187,7 +178,7 @@ const styles = StyleSheet.create({
     top: 0,
   },
   error: {
-    color: '#f87171',
+    color: colors.danger,
     fontSize: 14,
     padding: 24,
   },
