@@ -1,13 +1,10 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { listen } from '@tauri-apps/api/event';
 import { Volume2, VolumeX, Mic, MicOff, Star } from 'lucide-react';
 import {
-  listOutputDevices,
-  listInputDevices,
   setDefaultOutputDevice,
   setDefaultInputDevice,
-  getOutputVolume,
-  getInputVolume,
   setOutputVolume,
   setInputVolume,
   setOutputMute,
@@ -22,6 +19,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { fetchSound, type SoundQueryData } from '@/lib/sound-query';
+import { queryKeys } from '@/lib/query-keys';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
 
@@ -53,14 +52,6 @@ const setDefaultFor: Record<Kind, (id: string) => Promise<void>> = {
 
 function vpct(volume: number) {
   return Math.round(volume * 100);
-}
-
-// A missing default endpoint (e.g. no input device) shouldn't sink the whole
-// load, so a failed read just yields null.
-function readVolume(
-  read: () => Promise<VolumeInfo>,
-): Promise<VolumeInfo | null> {
-  return read().catch(() => null);
 }
 
 function favKey(kind: Kind) {
@@ -164,9 +155,37 @@ function reducer(state: State, action: Action): State {
   }
 }
 
+function isUnseeded(state: State) {
+  return (
+    state.devices.output.length === 0 &&
+    state.devices.input.length === 0 &&
+    state.volumes.output === null &&
+    state.volumes.input === null
+  );
+}
+
+function loadedState(data: SoundQueryData): State {
+  return {
+    devices: data.devices,
+    volumes: data.volumes,
+    status: data.status,
+    message: data.message,
+    busy: false,
+  };
+}
+
 export function SoundCard({ className }: { className?: string }) {
+  const soundQuery = useQuery({
+    queryKey: queryKeys.sound,
+    queryFn: fetchSound,
+  });
+  const { refetch: refetchSound } = soundQuery;
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { devices, volumes, status, message, busy } = state;
+  const displayState =
+    soundQuery.data && isUnseeded(state)
+      ? { ...state, ...loadedState(soundQuery.data) }
+      : state;
+  const { devices, volumes, status, message, busy } = displayState;
   const [favorites, setFavorites] = useState<Record<Kind, Set<string>>>(() => ({
     output: readFavorites('output'),
     input: readFavorites('input'),
@@ -178,40 +197,6 @@ export function SoundCard({ className }: { className?: string }) {
     input: undefined,
   });
 
-  // All state updates live in deferred promise callbacks, so this is safe to
-  // call straight from an effect without tripping set-state-in-effect.
-  function load() {
-    return Promise.all([listOutputDevices(), listInputDevices()])
-      .then(async ([out, inp]) => {
-        const [outputVol, inputVol] = await Promise.all([
-          readVolume(getOutputVolume),
-          readVolume(getInputVolume),
-        ]);
-        const empty = out.length === 0 && inp.length === 0;
-        dispatch({
-          type: 'loaded',
-          devices: { output: out, input: inp },
-          volumes: { output: outputVol, input: inputVol },
-          status: empty ? 'warn' : 'pass',
-          message: empty
-            ? 'No audio devices found.'
-            : `${out.length} output, ${inp.length} input device${
-                out.length + inp.length === 1 ? '' : 's'
-              }.`,
-        });
-      })
-      .catch((e: unknown) =>
-        dispatch({ type: 'loadFailed', message: String(e) }),
-      );
-  }
-
-  useEffect(() => {
-    void load();
-  }, []);
-
-  // The backend pushes volume/mute changes (media keys, mixer, other apps) and
-  // device changes as events, so we never poll. A pending debounce timer means
-  // the user is dragging that slider — skip those so we don't clobber the drag.
   useEffect(() => {
     function applyExternal(kind: Kind, info: VolumeInfo) {
       if (timers.current[kind]) return;
@@ -223,12 +208,16 @@ export function SoundCard({ className }: { className?: string }) {
         muted: e.payload.muted,
       });
     });
-    const devSub = listen('audio-devices-changed', () => void load());
+    const devSub = listen('audio-devices-changed', () => {
+      void refetchSound().then((result) => {
+        if (result.data) dispatch({ type: 'loaded', ...result.data });
+      });
+    });
     return () => {
       void volSub.then((un) => un());
       void devSub.then((un) => un());
     };
-  }, []);
+  }, [refetchSound]);
 
   function onVolume(kind: Kind, percent: number) {
     const cur = volumes[kind];
@@ -266,8 +255,8 @@ export function SoundCard({ className }: { className?: string }) {
     dispatch({ type: 'beginLoad' });
     try {
       await setDefaultFor[kind](id);
-      // Re-read so the slider reflects the newly-default device's own volume.
-      await load();
+      const result = await refetchSound();
+      if (result.data) dispatch({ type: 'loaded', ...result.data });
     } catch (e) {
       dispatch({ type: 'loadFailed', message: String(e) });
     }
@@ -287,15 +276,7 @@ export function SoundCard({ className }: { className?: string }) {
     });
   }
 
-  const isInitialLoad =
-    busy &&
-    !message &&
-    devices.output.length === 0 &&
-    devices.input.length === 0 &&
-    volumes.output === null &&
-    volumes.input === null;
-
-  if (isInitialLoad) {
+  if (soundQuery.isPending && !soundQuery.data) {
     return <PageSpinner className={className} />;
   }
 
@@ -306,7 +287,9 @@ export function SoundCard({ className }: { className?: string }) {
         size="sm"
         onClick={() => {
           dispatch({ type: 'beginLoad' });
-          void load();
+          void refetchSound().then((result) => {
+            if (result.data) dispatch({ type: 'loaded', ...result.data });
+          });
         }}
       >
         Refresh

@@ -1,37 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Cpu, Monitor, Mouse } from 'lucide-react';
 import {
   applyDxLight,
   applyDynamicLighting,
   applyMsiLighting,
-  detectDxLight,
-  detectMsiLighting,
   dxLightOff,
-  getDynamicLightingStatus,
-  getLightStates,
-  listDynamicLightingDevices,
   restoreAllLights,
-  type DynamicLightingDevice,
   type LightState,
 } from '../../lib/commands';
+import { fetchLights, lightKey, type Light } from '@/lib/lights-query';
+import { queryKeys } from '@/lib/query-keys';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { PageSpinner } from './page-spinner';
 import { StatusBadge, StatusText } from './status-ui';
 
 type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail' | 'disabled';
-
-// A "light" is anything we can paint a color onto. We normalize all three
-// sources (Windows Dynamic Lighting devices, MSI Mystic Light, DX Light) into
-// this discriminated union so the UI can render them with the same row layout.
-type Light =
-  | { kind: 'dynamic'; id: string; device: DynamicLightingDevice }
-  | { kind: 'msi' }
-  | { kind: 'dxlight' };
-
-function lightKey(l: Light) {
-  return l.kind === 'dynamic' ? `dynamic:${l.id}` : l.kind;
-}
 
 function lightTitle(l: Light) {
   switch (l.kind) {
@@ -259,128 +244,56 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
   );
 }
 
-interface Scan {
-  status: ProbeStatus;
-  message: string;
-  disabledReason: string;
-}
-
 export function LightingCard({ className }: { className?: string }) {
-  const [lights, setLights] = useState<Light[]>([]);
-  const [savedStates, setSavedStates] = useState<Record<string, LightState>>(
-    {},
-  );
-  const [scan, setScan] = useState<Scan>({
-    status: 'idle',
+  const lightsQuery = useQuery({
+    queryKey: queryKeys.lights,
+    queryFn: fetchLights,
+  });
+  const [actionMessage, setActionMessage] = useState<{
+    status: ProbeStatus;
+    message: string;
+    disabledReason?: string;
+  } | null>(null);
+
+  const lights = lightsQuery.data?.lights ?? [];
+  const savedStates = lightsQuery.data?.savedStates ?? {};
+  const scan = lightsQuery.data?.scan ?? {
+    status: 'idle' as ProbeStatus,
     message: '',
     disabledReason: '',
-  });
-  // Starts true because we scan for lights on mount.
-  const [busy, setBusy] = useState(true);
-
-  // All state updates live in deferred promise callbacks, so this is safe to
-  // call straight from an effect without tripping set-state-in-effect.
-  function refresh() {
-    return Promise.all([
-      Promise.all([
-        getDynamicLightingStatus(),
-        listDynamicLightingDevices().catch(() => []),
-      ])
-        .then(([status, devices]) => {
-          const reason = status.canControl ? '' : (status.reason ?? '');
-          setScan((s) => ({ ...s, disabledReason: reason }));
-          return devices;
-        })
-        .catch((e: unknown) => {
-          setScan((s) => ({
-            ...s,
-            disabledReason: '',
-            status: 'warn',
-            message: String(e),
-          }));
-          return [];
-        }),
-      detectMsiLighting().catch(() => ({
-        present: false,
-        vendorId: 0,
-        productId: 0,
-      })),
-      detectDxLight().catch(() => ({
-        present: false,
-        vendorId: 0,
-        productId: 0,
-      })),
-      getLightStates().catch(() => ({}) as Record<string, LightState>),
-    ])
-      .then(([dynamic, msi, dxlight, states]) => {
-        const collected: Light[] = [
-          ...dynamic.map((d) => ({
-            kind: 'dynamic' as const,
-            id: d.id,
-            device: d,
-          })),
-          ...(msi.present ? [{ kind: 'msi' as const }] : []),
-          ...(dxlight.present ? [{ kind: 'dxlight' as const }] : []),
-        ];
-
-        setSavedStates(states);
-        setLights(collected);
-        setScan((s) => ({
-          ...s,
-          status: collected.length > 0 ? 'pass' : 'warn',
-          message:
-            collected.length === 0
-              ? 'No controllable lights detected.'
-              : `${collected.length} light${collected.length === 1 ? '' : 's'} detected.`,
-        }));
-      })
-      .catch((e: unknown) =>
-        setScan((s) => ({ ...s, status: 'fail', message: String(e) })),
-      )
-      .finally(() => setBusy(false));
-  }
-
-  // Entering the loading state from a user action (handler context).
-  function beginRefresh() {
-    setBusy(true);
-    setScan((s) => ({ ...s, status: 'idle' }));
-  }
+  };
+  const busy = lightsQuery.isFetching;
+  const displayScan = actionMessage ?? scan;
+  const dynamicDisabledReason =
+    actionMessage?.disabledReason ?? scan.disabledReason;
 
   async function restore() {
-    setBusy(true);
+    setActionMessage({ status: 'idle', message: '' });
     try {
       const results = await restoreAllLights();
       const errors = results.filter(([, err]) => err !== null);
       if (errors.length === 0) {
-        setScan((s) => ({
-          ...s,
+        setActionMessage({
           status: 'pass',
           message: `Restored ${results.length} light${results.length === 1 ? '' : 's'}.`,
-        }));
+        });
       } else {
-        setScan((s) => ({
-          ...s,
+        setActionMessage({
           status: 'warn',
           message: `Restored ${results.length - errors.length}/${results.length}; failed: ${errors
             .map(([k, e]) => `${k} (${e})`)
             .join(', ')}`,
-        }));
+        });
       }
+      void lightsQuery.refetch();
     } catch (e) {
-      setScan((s) => ({ ...s, status: 'fail', message: String(e) }));
-    } finally {
-      setBusy(false);
+      setActionMessage({ status: 'fail', message: String(e) });
     }
   }
 
-  useEffect(() => {
-    void refresh();
-  }, []);
-
-  // Stable key list so React doesn't re-mount rows on every refresh.
   const keyedLights = lights.map((l) => ({ key: lightKey(l), light: l }));
 
-  if (busy && keyedLights.length === 0 && !scan.message) {
+  if (lightsQuery.isPending && !lightsQuery.data) {
     return <PageSpinner className={className} />;
   }
 
@@ -391,8 +304,8 @@ export function LightingCard({ className }: { className?: string }) {
           disabled={busy}
           size="sm"
           onClick={() => {
-            beginRefresh();
-            void refresh();
+            setActionMessage(null);
+            void lightsQuery.refetch();
           }}
         >
           Refresh
@@ -406,8 +319,10 @@ export function LightingCard({ className }: { className?: string }) {
           Restore
         </Button>
       </div>
-      {scan.message && (
-        <StatusText status={scan.status}>{scan.message}</StatusText>
+      {displayScan.message && (
+        <StatusText status={displayScan.status}>
+          {displayScan.message}
+        </StatusText>
       )}
       <div className="grid gap-3">
         {keyedLights.map(({ key, light }) => (
@@ -416,7 +331,7 @@ export function LightingCard({ className }: { className?: string }) {
             light={light}
             initialState={savedStates[key]}
             disabledReason={
-              light.kind === 'dynamic' ? scan.disabledReason : undefined
+              light.kind === 'dynamic' ? dynamicDisabledReason : undefined
             }
           />
         ))}

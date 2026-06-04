@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { listen } from '@tauri-apps/api/event';
 import { Sun, Contrast, Sunset, Trash2, RotateCcw } from 'lucide-react';
 import {
@@ -23,8 +24,26 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { queryKeys } from '@/lib/query-keys';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
+
+function scanForMonitors(list: MonitorInfo[]): Scan {
+  const controllable = list.filter((m) => m.brightness.supported).length;
+  if (list.length === 0) {
+    return { status: 'warn', message: 'No monitors detected.' };
+  }
+  if (controllable === 0) {
+    return {
+      status: 'warn',
+      message: `${list.length} monitor${list.length === 1 ? '' : 's'} found, but none expose DDC/CI brightness. Enable DDC/CI in the monitor's on-screen menu.`,
+    };
+  }
+  return {
+    status: 'pass',
+    message: `${controllable} of ${list.length} monitor${list.length === 1 ? '' : 's'} controllable.`,
+  };
+}
 
 type ScanStatus = 'idle' | 'pass' | 'warn' | 'fail';
 
@@ -84,79 +103,81 @@ function gainsToWarmth(m: MonitorInfo) {
   return Math.round(d * 100);
 }
 
+const emptyMonitors: MonitorInfo[] = [];
+
 export function BrightnessCard({ className }: { className?: string }) {
-  const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
-  const [presets, setPresets] = useState<MonitorPreset[]>([]);
-  const [scan, setScan] = useState<Scan>({ status: 'idle', message: '' });
-  // Starts true because we enumerate monitors on mount.
-  const [busy, setBusy] = useState(true);
+  const queryClient = useQueryClient();
+  const monitorsQuery = useQuery({
+    queryKey: queryKeys.displayMonitors,
+    queryFn: listMonitors,
+  });
+  const presetsQuery = useQuery({
+    queryKey: queryKeys.displayPresets,
+    queryFn: getMonitorPresets,
+  });
+  const monitors = monitorsQuery.data ?? emptyMonitors;
+  const presets = presetsQuery.data ?? [];
+  const [scanOverride, setScanOverride] = useState<Scan | null>(null);
+  const scan =
+    scanOverride ??
+    (monitors.length > 0
+      ? scanForMonitors(monitors)
+      : { status: 'idle' as ScanStatus, message: '' });
+  const [actionBusy, setActionBusy] = useState(false);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  // All state updates live in deferred promise callbacks, so this is safe to
-  // call straight from an effect without tripping set-state-in-effect.
-  function load(refresh: boolean) {
-    return (refresh ? refreshMonitors() : listMonitors())
-      .then((list) => {
-        setMonitors(list);
-        const controllable = list.filter((m) => m.brightness.supported).length;
-        if (list.length === 0) {
-          setScan({ status: 'warn', message: 'No monitors detected.' });
-        } else if (controllable === 0) {
-          setScan({
-            status: 'warn',
-            message: `${list.length} monitor${list.length === 1 ? '' : 's'} found, but none expose DDC/CI brightness. Enable DDC/CI in the monitor's on-screen menu.`,
-          });
-        } else {
-          setScan({
-            status: 'pass',
-            message: `${controllable} of ${list.length} monitor${list.length === 1 ? '' : 's'} controllable.`,
-          });
-        }
-      })
-      .catch((e: unknown) => setScan({ status: 'fail', message: String(e) }))
-      .finally(() => setBusy(false));
+  function patchMonitors(updater: (list: MonitorInfo[]) => MonitorInfo[]) {
+    queryClient.setQueryData(
+      queryKeys.displayMonitors,
+      (prev: MonitorInfo[] | undefined) => updater(prev ?? []),
+    );
   }
 
-  // Entering the loading state from a user action (handler context).
-  function beginLoad() {
-    setBusy(true);
-    setScan({ status: 'idle', message: '' });
-  }
+  const busy = actionBusy || monitorsQuery.isFetching;
 
-  useEffect(() => {
-    void load(false);
-    void getMonitorPresets()
-      .then(setPresets)
-      .catch(() => {});
-  }, []);
+  async function reloadMonitors(refresh: boolean) {
+    setActionBusy(true);
+    setScanOverride({ status: 'idle', message: '' });
+    try {
+      const list = await (refresh ? refreshMonitors() : listMonitors());
+      queryClient.setQueryData(queryKeys.displayMonitors, list);
+      setScanOverride(null);
+    } catch (e) {
+      setScanOverride({ status: 'fail', message: String(e) });
+    } finally {
+      setActionBusy(false);
+    }
+  }
 
   // The physical brightness key adjusts every monitor in the Rust backend and
   // emits the new values; reflect them so the sliders track the key live.
   useEffect(() => {
     const unlisten = listen<MonitorInfo[]>('brightness-changed', (event) => {
       const next = event.payload;
-      setMonitors((prev) =>
-        prev.map((m) => {
-          const updated = next.find((n) => n.id === m.id);
-          return updated
-            ? {
-                ...m,
-                brightness: {
-                  ...m.brightness,
-                  value: updated.brightness.value,
-                },
-              }
-            : m;
-        }),
+      queryClient.setQueryData(
+        queryKeys.displayMonitors,
+        (prev: MonitorInfo[] | undefined) =>
+          (prev ?? []).map((m) => {
+            const updated = next.find((n) => n.id === m.id);
+            return updated
+              ? {
+                  ...m,
+                  brightness: {
+                    ...m.brightness,
+                    value: updated.brightness.value,
+                  },
+                }
+              : m;
+          }),
       );
     });
     return () => {
       void unlisten.then((off) => off());
     };
-  }, []);
+  }, [queryClient]);
 
   function onSlide(id: string, feature: FeatureKey, value: number) {
-    setMonitors((prev) =>
+    patchMonitors((prev) =>
       prev.map((m) =>
         m.id === id ? { ...m, [feature]: { ...m[feature], value } } : m,
       ),
@@ -165,7 +186,7 @@ export function BrightnessCard({ className }: { className?: string }) {
     if (timers.current[timerKey]) clearTimeout(timers.current[timerKey]);
     timers.current[timerKey] = setTimeout(() => {
       void writers[feature](id, value).catch((e) =>
-        setScan({ status: 'fail', message: String(e) }),
+        setScanOverride({ status: 'fail', message: String(e) }),
       );
     }, WRITE_DEBOUNCE_MS);
   }
@@ -174,7 +195,7 @@ export function BrightnessCard({ className }: { className?: string }) {
     const mon = monitors.find((x) => x.id === id);
     if (!mon) return;
     const { r, g, b } = warmthToGains(t, mon);
-    setMonitors((prev) =>
+    patchMonitors((prev) =>
       prev.map((m) =>
         m.id === id
           ? {
@@ -198,22 +219,22 @@ export function BrightnessCard({ className }: { className?: string }) {
           await setMonitorGreenGain(id, g);
           await setMonitorBlueGain(id, b);
         } catch (e) {
-          setScan({ status: 'fail', message: String(e) });
+          setScanOverride({ status: 'fail', message: String(e) });
         }
       })();
     }, WRITE_DEBOUNCE_MS);
   }
 
   async function onApplyPreset(name: string) {
-    setBusy(true);
+    setActionBusy(true);
     try {
       const list = await applyMonitorPreset(name);
-      setMonitors(list);
-      setScan({ status: 'pass', message: `Applied "${name}".` });
+      queryClient.setQueryData(queryKeys.displayMonitors, list);
+      setScanOverride({ status: 'pass', message: `Applied "${name}".` });
     } catch (e) {
-      setScan({ status: 'fail', message: String(e) });
+      setScanOverride({ status: 'fail', message: String(e) });
     } finally {
-      setBusy(false);
+      setActionBusy(false);
     }
   }
 
@@ -230,50 +251,50 @@ export function BrightnessCard({ className }: { className?: string }) {
       greenGainPct: pct(ref.greenGain.value, ref.greenGain.max),
       blueGainPct: pct(ref.blueGain.value, ref.blueGain.max),
     });
-    setPresets(next);
+    queryClient.setQueryData(queryKeys.displayPresets, next);
   }
 
   async function onUpdatePreset(name: string) {
-    setBusy(true);
+    setActionBusy(true);
     try {
       await snapshot(name);
-      setScan({
+      setScanOverride({
         status: 'pass',
         message: `Updated "${name}" to current settings.`,
       });
     } catch (e) {
-      setScan({ status: 'fail', message: String(e) });
+      setScanOverride({ status: 'fail', message: String(e) });
     } finally {
-      setBusy(false);
+      setActionBusy(false);
     }
   }
 
   async function onSavePreset() {
     const name = window.prompt('Preset name')?.trim();
     if (!name) return;
-    setBusy(true);
+    setActionBusy(true);
     try {
       await snapshot(name);
     } catch (e) {
-      setScan({ status: 'fail', message: String(e) });
+      setScanOverride({ status: 'fail', message: String(e) });
     } finally {
-      setBusy(false);
+      setActionBusy(false);
     }
   }
 
   async function onDeletePreset(name: string) {
-    setBusy(true);
+    setActionBusy(true);
     try {
       const next = await deleteMonitorPreset(name);
-      setPresets(next);
+      queryClient.setQueryData(queryKeys.displayPresets, next);
     } catch (e) {
-      setScan({ status: 'fail', message: String(e) });
+      setScanOverride({ status: 'fail', message: String(e) });
     } finally {
-      setBusy(false);
+      setActionBusy(false);
     }
   }
 
-  if (busy && monitors.length === 0 && !scan.message) {
+  if (monitorsQuery.isPending && !monitorsQuery.data) {
     return <PageSpinner className={className} />;
   }
 
@@ -283,10 +304,7 @@ export function BrightnessCard({ className }: { className?: string }) {
         presets={presets}
         busy={busy}
         hasMonitors={monitors.length > 0}
-        onRefresh={() => {
-          beginLoad();
-          void load(true);
-        }}
+        onRefresh={() => void reloadMonitors(true)}
         onApply={(name) => void onApplyPreset(name)}
         onUpdate={(name) => void onUpdatePreset(name)}
         onDelete={(name) => void onDeletePreset(name)}

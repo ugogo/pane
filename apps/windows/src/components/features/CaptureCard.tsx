@@ -1,4 +1,5 @@
-import { useEffect, useReducer } from 'react';
+import { useReducer } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye } from 'lucide-react';
 import {
   captureFullscreen,
@@ -13,22 +14,20 @@ import {
 import { ShortcutInput } from '../ShortcutInput';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { queryKeys } from '@/lib/query-keys';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
 
 type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
 
 interface State {
-  hotkeys: { fullscreen: string; area: string };
   status: ProbeStatus;
   message: string;
   busy: boolean;
-  loadingHotkeys: boolean;
   previewVisible: boolean | null;
 }
 
 type Action =
-  | { type: 'hotkeysLoaded'; hotkeys: { fullscreen: string; area: string } }
   | { type: 'bound'; action: CaptureAction; accel: string }
   | { type: 'cleared'; action: CaptureAction }
   | { type: 'busy'; busy: boolean }
@@ -36,11 +35,9 @@ type Action =
   | { type: 'notify'; status: ProbeStatus; message: string };
 
 const initialState: State = {
-  hotkeys: { fullscreen: '', area: '' },
   status: 'idle',
   message: '',
   busy: false,
-  loadingHotkeys: true,
   previewVisible: null,
 };
 
@@ -51,19 +48,15 @@ const actionLabels: Record<CaptureAction, string> = {
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'hotkeysLoaded':
-      return { ...state, hotkeys: action.hotkeys, loadingHotkeys: false };
     case 'bound':
       return {
         ...state,
-        hotkeys: { ...state.hotkeys, [action.action]: action.accel },
         status: 'pass',
         message: `${actionLabels[action.action]} shortcut saved.`,
       };
     case 'cleared':
       return {
         ...state,
-        hotkeys: { ...state.hotkeys, [action.action]: '' },
         status: 'idle',
         message: `${actionLabels[action.action]} shortcut cleared.`,
       };
@@ -83,7 +76,6 @@ function reducer(state: State, action: Action): State {
         ...state,
         status: action.status,
         message: action.message,
-        loadingHotkeys: false,
       };
   }
 }
@@ -108,30 +100,29 @@ async function runArea(): Promise<string | null> {
 }
 
 export function CaptureCard({ className }: { className?: string }) {
+  const queryClient = useQueryClient();
+  const hotkeysQuery = useQuery({
+    queryKey: queryKeys.captureHotkeys,
+    queryFn: async () => {
+      const saved = await getCaptureHotkeys();
+      return { fullscreen: saved.fullscreen, area: saved.area };
+    },
+  });
+  const hotkeys = hotkeysQuery.data ?? { fullscreen: '', area: '' };
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { hotkeys, status, message, busy, loadingHotkeys, previewVisible } =
-    state;
-
-  useEffect(() => {
-    void getCaptureHotkeys()
-      .then((saved) =>
-        dispatch({
-          type: 'hotkeysLoaded',
-          hotkeys: { fullscreen: saved.fullscreen, area: saved.area },
-        }),
-      )
-      .catch((err: unknown) =>
-        dispatch({
-          type: 'notify',
-          status: 'warn',
-          message: `Could not load saved hotkeys: ${String(err)}`,
-        }),
-      );
-  }, []);
+  const { status, message, busy, previewVisible } = state;
 
   async function bind(action: CaptureAction, accel: string) {
     try {
       await setCaptureHotkey(action, accel);
+      queryClient.setQueryData(
+        queryKeys.captureHotkeys,
+        (prev: { fullscreen: string; area: string } | undefined) => ({
+          fullscreen: prev?.fullscreen ?? '',
+          area: prev?.area ?? '',
+          [action]: accel,
+        }),
+      );
       dispatch({ type: 'bound', action, accel });
     } catch (err) {
       dispatch({ type: 'notify', status: 'fail', message: String(err) });
@@ -141,6 +132,14 @@ export function CaptureCard({ className }: { className?: string }) {
   async function clear(action: CaptureAction) {
     try {
       await clearCaptureHotkey(action);
+      queryClient.setQueryData(
+        queryKeys.captureHotkeys,
+        (prev: { fullscreen: string; area: string } | undefined) => ({
+          fullscreen: prev?.fullscreen ?? '',
+          area: prev?.area ?? '',
+          [action]: '',
+        }),
+      );
       dispatch({ type: 'cleared', action });
     } catch (err) {
       dispatch({ type: 'notify', status: 'fail', message: String(err) });
@@ -170,8 +169,18 @@ export function CaptureCard({ className }: { className?: string }) {
     ? 'Hide floating preview'
     : 'Show floating preview';
 
-  if (loadingHotkeys) {
+  if (hotkeysQuery.isPending && !hotkeysQuery.data) {
     return <PageSpinner className={className} />;
+  }
+
+  if (hotkeysQuery.isError) {
+    return (
+      <div className={cn('space-y-4', className)}>
+        <StatusText status="warn">
+          Could not load saved hotkeys: {String(hotkeysQuery.error)}
+        </StatusText>
+      </div>
+    );
   }
 
   return (

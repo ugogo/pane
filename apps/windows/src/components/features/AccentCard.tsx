@@ -1,33 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAccentPopupEnabled, setAccentPopupEnabled } from '@/lib/commands';
+import { queryKeys } from '@/lib/query-keys';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
 
 export function AccentCard({ className }: { className?: string }) {
-  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const queryClient = useQueryClient();
+  const enabledQuery = useQuery({
+    queryKey: queryKeys.accentEnabled,
+    queryFn: getAccentPopupEnabled,
+  });
+  const enabled = enabledQuery.data ?? null;
   const [error, setError] = useState<string>();
-
-  useEffect(() => {
-    void getAccentPopupEnabled()
-      .then(setEnabled)
-      .catch((err: unknown) => setError(String(err)));
-  }, []);
 
   async function handleToggle(next: boolean) {
     setError(undefined);
-    const prev = enabled;
-    setEnabled(next);
+    const prev = enabledQuery.data;
+    queryClient.setQueryData(queryKeys.accentEnabled, next);
     try {
       await setAccentPopupEnabled(next);
     } catch (err) {
-      setEnabled(prev ?? null);
+      queryClient.setQueryData(queryKeys.accentEnabled, prev);
       setError(String(err));
     }
   }
 
-  if (enabled === null && !error) {
+  if (enabledQuery.isPending && enabled === null && !error) {
     return <PageSpinner className={className} />;
   }
 

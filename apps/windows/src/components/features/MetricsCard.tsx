@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { getProcessMetrics, type ProcessMetrics } from '@/lib/commands';
-import { useEffectEvent } from '@/lib/use-effect-event';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getProcessMetrics } from '@/lib/commands';
+import { queryKeys } from '@/lib/query-keys';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -16,29 +17,19 @@ function fmtMs(ms: number) {
 }
 
 export function MetricsCard({ className }: { className?: string }) {
-  const [metrics, setMetrics] = useState<ProcessMetrics | null>(null);
-  const [error, setError] = useState<string>();
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const metricsQuery = useQuery({
+    queryKey: queryKeys.metrics,
+    queryFn: getProcessMetrics,
+    refetchInterval: autoRefresh ? 2000 : false,
+  });
+  const metrics = metricsQuery.data ?? null;
+  const error =
+    metricsQuery.error === null || metricsQuery.error === undefined
+      ? undefined
+      : String(metricsQuery.error);
 
-  function refresh() {
-    return getProcessMetrics()
-      .then((m) => {
-        setMetrics(m);
-        setError(undefined);
-      })
-      .catch((err: unknown) => setError(String(err)));
-  }
-
-  const onTick = useEffectEvent(() => void refresh());
-
-  useEffect(() => {
-    onTick();
-    if (!autoRefresh) return;
-    const id = setInterval(onTick, 2000);
-    return () => clearInterval(id);
-  }, [autoRefresh]);
-
-  if (!metrics && !error) {
+  if (metricsQuery.isPending && !metrics && !error) {
     return <PageSpinner className={className} />;
   }
 
@@ -58,7 +49,7 @@ export function MetricsCard({ className }: { className?: string }) {
       ) : null}
 
       <div className="flex items-center gap-3">
-        <Button size="sm" onClick={() => void refresh()}>
+        <Button size="sm" onClick={() => void metricsQuery.refetch()}>
           Refresh
         </Button>
         <div className="text-muted-foreground flex items-center gap-2 text-sm">

@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ActivityIndicator,
   Pressable,
@@ -15,10 +16,12 @@ import { useRouter } from 'expo-router';
 import { generateKeyPair, ENDPOINTS, type PairResponse } from '@pane/protocol';
 import { parsePairingUri, baseUrl } from '../lib/pairing';
 import { STORE_KEY, DEVICE_NAME } from '../lib/constants';
+import { queryKeys } from '../lib/query-keys';
 import type { Pairing } from '../lib/types';
 
 export default function PairScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [permission, requestPermission] = useCameraPermissions();
   const [error, setError] = useState<string>();
   const [pairing, setPairing] = useState(false);
@@ -59,6 +62,7 @@ export default function PairScreen() {
           name: DEVICE_NAME,
         };
         await SecureStore.setItemAsync(STORE_KEY, JSON.stringify(newPairing));
+        queryClient.setQueryData(queryKeys.pairing, newPairing);
         router.replace('/control');
       } catch (err) {
         setError(String(err));
@@ -66,7 +70,7 @@ export default function PairScreen() {
         setPairing(false);
       }
     },
-    [router],
+    [queryClient, router],
   );
 
   if (!permission) {

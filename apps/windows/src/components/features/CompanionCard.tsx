@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { Copy, QrCode, Wifi, X } from 'lucide-react';
 import {
@@ -9,13 +10,12 @@ import {
   startCompanionPairing,
   type CompanionStatus,
 } from '@/lib/commands';
+import { queryKeys } from '@/lib/query-keys';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { PageSpinner } from './page-spinner';
 import { StatusBadge, StatusText } from './status-ui';
-
-type LoadState = 'busy' | 'ready' | 'error';
 
 function formatExpiry(expiresAt: number) {
   return new Date(expiresAt * 1000).toLocaleTimeString([], {
@@ -25,57 +25,38 @@ function formatExpiry(expiresAt: number) {
 }
 
 export function CompanionCard({ className }: { className?: string }) {
-  const [status, setStatus] = useState<CompanionStatus | null>(null);
-  const [loadState, setLoadState] = useState<LoadState>('busy');
+  const queryClient = useQueryClient();
+  const statusQuery = useQuery({
+    queryKey: queryKeys.companionStatus,
+    queryFn: getCompanionStatus,
+    refetchInterval: (query) =>
+      query.state.data?.activePairing != null ? 2000 : false,
+  });
+  const status = statusQuery.data ?? null;
   const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    void getCompanionStatus()
-      .then((next) => {
-        setStatus(next);
-        setLoadState('ready');
-      })
-      .catch((err: unknown) => {
-        setMessage(String(err));
-        setLoadState('error');
-      });
-  }, []);
-
-  // While a pairing window is open the phone pairs over HTTP on its own — the
-  // desktop has no push channel, so poll until the session is consumed (the new
-  // device appears and activePairing clears) or it expires.
-  const pairingActive = status?.activePairing != null;
-  useEffect(() => {
-    if (!pairingActive) return;
-    const id = setInterval(() => {
-      void getCompanionStatus()
-        .then(setStatus)
-        .catch(() => {});
-    }, 2000);
-    return () => clearInterval(id);
-  }, [pairingActive]);
+  const [actionBusy, setActionBusy] = useState(false);
 
   async function update(action: () => Promise<CompanionStatus>) {
-    setLoadState('busy');
+    setActionBusy(true);
     setMessage('');
 
     try {
       const next = await action();
-      setStatus(next);
-      setLoadState('ready');
+      queryClient.setQueryData(queryKeys.companionStatus, next);
     } catch (err) {
       setMessage(String(err));
-      setLoadState('error');
+    } finally {
+      setActionBusy(false);
     }
   }
 
-  if (status === null && loadState === 'busy') {
+  if (statusQuery.isPending && !status) {
     return <PageSpinner className={className} />;
   }
 
   const pairing = status?.activePairing ?? null;
   const devices = status?.pairedDevices ?? [];
-  const busy = loadState === 'busy';
+  const busy = actionBusy || statusQuery.isFetching;
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -204,7 +185,7 @@ export function CompanionCard({ className }: { className?: string }) {
       </div>
 
       {message ? (
-        <StatusText status={loadState === 'error' ? 'fail' : 'idle'}>
+        <StatusText status={statusQuery.isError ? 'fail' : 'idle'}>
           {message}
         </StatusText>
       ) : null}

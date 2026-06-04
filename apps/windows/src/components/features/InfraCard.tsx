@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Moon } from 'lucide-react';
 import {
   getRunAtStartup,
   setRunAtStartup,
   sleepComputer,
 } from '@/lib/commands';
+import { queryKeys } from '@/lib/query-keys';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -12,23 +14,22 @@ import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
 
 export function InfraCard({ className }: { className?: string }) {
-  const [runAtStartup, setRunAtStartupState] = useState<boolean | null>(null);
+  const queryClient = useQueryClient();
+  const startupQuery = useQuery({
+    queryKey: queryKeys.runAtStartup,
+    queryFn: getRunAtStartup,
+  });
+  const runAtStartup = startupQuery.data ?? null;
   const [saved, setSaved] = useState(false);
   const [startupError, setStartupError] = useState<string>();
   const [sleepError, setSleepError] = useState<string>();
-
-  useEffect(() => {
-    void getRunAtStartup()
-      .then(setRunAtStartupState)
-      .catch((err: unknown) => setStartupError(String(err)));
-  }, []);
 
   async function handleStartupToggle(enabled: boolean) {
     setStartupError(undefined);
     setSaved(false);
     try {
       const result = await setRunAtStartup(enabled);
-      setRunAtStartupState(result.enabled);
+      queryClient.setQueryData(queryKeys.runAtStartup, result.enabled);
       setSaved(true);
     } catch (err) {
       setStartupError(String(err));
@@ -44,7 +45,7 @@ export function InfraCard({ className }: { className?: string }) {
     }
   }
 
-  if (runAtStartup === null && !startupError) {
+  if (startupQuery.isPending && runAtStartup === null && !startupError) {
     return <PageSpinner className={className} />;
   }
 
