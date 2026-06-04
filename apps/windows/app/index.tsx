@@ -5,7 +5,10 @@ import { Redirect, useLocalSearchParams } from 'expo-router';
 // windows. New Rust code should open direct routes (/accent-popup, etc.)
 // instead.
 export default function Index() {
-  const { view, chars } = useLocalSearchParams<{ view?: string; chars?: string }>();
+  const { view, chars } = useLocalSearchParams<{
+    view?: string;
+    chars?: string;
+  }>();
 
   if (view === 'accent-popup') {
     const href = chars

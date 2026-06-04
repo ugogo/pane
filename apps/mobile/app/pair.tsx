@@ -87,9 +87,13 @@ export default function PairScreen() {
         <View style={styles.content}>
           <Text style={styles.title}>Pane Companion</Text>
           <Text style={styles.body}>
-            Camera access is needed to scan the pairing code shown in Pane on your desktop.
+            Camera access is needed to scan the pairing code shown in Pane on
+            your desktop.
           </Text>
-          <Pressable style={styles.button} onPress={() => void requestPermission()}>
+          <Pressable
+            style={styles.button}
+            onPress={() => void requestPermission()}
+          >
             <Text style={styles.buttonText}>Allow camera</Text>
           </Pressable>
         </View>

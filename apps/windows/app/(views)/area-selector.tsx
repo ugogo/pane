@@ -13,7 +13,10 @@ interface Rect {
   h: number;
 }
 
-function rectFrom(a: { x: number; y: number }, b: { x: number; y: number }): Rect {
+function rectFrom(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): Rect {
   const x = Math.min(a.x, b.x);
   const y = Math.min(a.y, b.y);
   const w = Math.abs(a.x - b.x);

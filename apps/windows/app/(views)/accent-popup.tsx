@@ -35,10 +35,12 @@ export default function AccentPopupPage() {
   useEffect(() => {
     // The Rust keyboard hook owns navigation and pushes the highlighted index
     // here via `eval` (the popup is never focused, so events are throttled).
-    (window as Window & { __accentSel?: (i: number) => void }).__accentSel = (i: number) =>
-      setSelected(i);
+    (window as Window & { __accentSel?: (i: number) => void }).__accentSel = (
+      i: number,
+    ) => setSelected(i);
     return () => {
-      delete (window as Window & { __accentSel?: (i: number) => void }).__accentSel;
+      delete (window as Window & { __accentSel?: (i: number) => void })
+        .__accentSel;
     };
   }, []);
 
@@ -62,7 +64,9 @@ export default function AccentPopupPage() {
           <span className="text-lg leading-none">{ch}</span>
           <span
             className={`text-[9px] leading-none ${
-              i === selected ? 'text-primary-foreground/75' : 'text-muted-foreground/60'
+              i === selected
+                ? 'text-primary-foreground/75'
+                : 'text-muted-foreground/60'
             }`}
           >
             {i + 1}

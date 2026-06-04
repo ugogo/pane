@@ -67,8 +67,14 @@ export function Slider({
   return (
     <GestureDetector gesture={sliderGesture}>
       <View ref={trackRef} hitSlop={16} style={styles.track} onLayout={measure}>
-        <View pointerEvents="none" style={[styles.fill, { width: `${value}%` as `${number}%` }]} />
-        <View pointerEvents="none" style={[styles.thumb, { left: `${value}%` as `${number}%` }]} />
+        <View
+          pointerEvents="none"
+          style={[styles.fill, { width: `${value}%` as `${number}%` }]}
+        />
+        <View
+          pointerEvents="none"
+          style={[styles.thumb, { left: `${value}%` as `${number}%` }]}
+        />
       </View>
     </GestureDetector>
   );

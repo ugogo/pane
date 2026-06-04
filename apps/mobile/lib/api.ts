@@ -1,4 +1,8 @@
-import { ENDPOINTS, type CompanionCommand, type CompanionSnapshot } from '@pane/protocol';
+import {
+  ENDPOINTS,
+  type CompanionCommand,
+  type CompanionSnapshot,
+} from '@pane/protocol';
 import { baseUrl } from './pairing';
 import { headersFor } from './crypto';
 import { REQUEST_TIMEOUT_MS } from './constants';
@@ -18,7 +22,9 @@ export async function fetchWithTimeout(
   }
 }
 
-export async function fetchSnapshot(pairing: Pairing): Promise<CompanionSnapshot> {
+export async function fetchSnapshot(
+  pairing: Pairing,
+): Promise<CompanionSnapshot> {
   const response = await fetchWithTimeout(
     `${baseUrl(pairing)}${ENDPOINTS.snapshot}`,
     { headers: headersFor(pairing, 'GET', ENDPOINTS.snapshot) },
@@ -28,7 +34,10 @@ export async function fetchSnapshot(pairing: Pairing): Promise<CompanionSnapshot
   return (await response.json()) as CompanionSnapshot;
 }
 
-export async function sendCommand(pairing: Pairing, body: CompanionCommand): Promise<void> {
+export async function sendCommand(
+  pairing: Pairing,
+  body: CompanionCommand,
+): Promise<void> {
   const encodedBody = JSON.stringify(body);
   const response = await fetchWithTimeout(
     `${baseUrl(pairing)}${ENDPOINTS.commands}`,

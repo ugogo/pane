@@ -8,7 +8,9 @@ import { isPairing } from '../lib/pairing';
 import { STORE_KEY } from '../lib/constants';
 
 export default function Index() {
-  const [destination, setDestination] = useState<'pair' | 'control' | null>(null);
+  const [destination, setDestination] = useState<'pair' | 'control' | null>(
+    null,
+  );
 
   useEffect(() => {
     void SecureStore.getItemAsync(STORE_KEY).then((raw) => {
