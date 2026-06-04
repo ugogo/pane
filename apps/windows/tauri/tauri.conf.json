@@ -5,8 +5,8 @@
   "identifier": "pane.prod",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "npx vite",
+    "devUrl": "http://localhost:8081",
+    "beforeDevCommand": "npx expo start --web",
     "beforeBuildCommand": "npm run build"
   },
   "app": {

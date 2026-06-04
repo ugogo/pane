@@ -54,14 +54,14 @@ export function InfraCard({ className }: { className?: string }) {
         <div>
           <p className="text-sm font-medium">Start with Windows</p>
           <p className="text-muted-foreground text-sm">
-            {import.meta.env.DEV
+            {__DEV__
               ? 'Disabled in dev so the debug binary is not registered.'
               : 'Keep capture and accents available after sign-in.'}
           </p>
         </div>
         <Switch
           aria-label="Run at startup"
-          disabled={runAtStartup === null || import.meta.env.DEV}
+          disabled={runAtStartup === null || __DEV__}
           checked={runAtStartup ?? false}
           onCheckedChange={(checked) => void handleStartupToggle(checked)}
         />

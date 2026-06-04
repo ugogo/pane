@@ -8,16 +8,9 @@ import {
   saveLatestCaptureToDesktop,
   takeLatestCapture,
   type CaptureResult,
-} from '../lib/commands';
+} from '@/lib/commands';
 
-type Phase =
-  | 'hidden'
-  | 'slide-in'
-  | 'idle'
-  | 'scale-out'
-  | 'scale-in'
-  | 'closing';
-
+type Phase = 'hidden' | 'slide-in' | 'idle' | 'scale-out' | 'scale-in' | 'closing';
 type ActState = 'idle' | 'busy' | 'success';
 
 const PHASE_ANIMATION: Record<Phase, string | undefined> = {
@@ -60,12 +53,8 @@ interface View {
   revision: number;
 }
 
-export function CapturePreview() {
-  const [view, setView] = useState<View>({
-    capture: null,
-    phase: 'hidden',
-    revision: 0,
-  });
+export default function PreviewPage() {
+  const [view, setView] = useState<View>({ capture: null, phase: 'hidden', revision: 0 });
   const [error, setError] = useState<string>();
   const [actions, setActions] = useState<{ copy: ActState; save: ActState }>({
     copy: 'idle',
@@ -83,76 +72,49 @@ export function CapturePreview() {
     setView((v) => ({ ...v, phase: next }));
   }
 
-  useEffect(() => {
-    phaseRef.current = phase;
-  }, [phase]);
-  useEffect(() => {
-    captureRef.current = capture;
-  }, [capture]);
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+  useEffect(() => { captureRef.current = capture; }, [capture]);
 
   useEffect(() => {
     document.documentElement.style.background = 'transparent';
     document.body.style.background = 'transparent';
     const timer = closeTimer;
     return () => {
-      if (timer.current) {
-        window.clearTimeout(timer.current);
-      }
+      if (timer.current) window.clearTimeout(timer.current);
     };
   }, []);
 
-  // State updates live in the deferred `.then`/`.catch` callbacks, so this is
-  // safe to call from an effect.
   function fetchLatest(isRefresh = false) {
     const started = performance.now();
     lastFetchAt.current = started;
     return takeLatestCapture()
       .then((c) => {
-        if (!c) {
-          setError('No capture available.');
-          return;
-        }
+        if (!c) { setError('No capture available.'); return; }
 
-        // Re-displaying the identical capture (e.g. on window focus) shouldn't
-        // replay the swap animation.
-        if (
-          isRefresh &&
-          captureRef.current &&
-          c.dataUrl === captureRef.current.dataUrl
-        ) {
-          return;
-        }
+        if (isRefresh && captureRef.current && c.dataUrl === captureRef.current.dataUrl) return;
 
         setError(undefined);
         setActions({ copy: 'idle', save: 'idle' });
 
-        const visible =
-          phaseRef.current !== 'hidden' && phaseRef.current !== 'closing';
+        const visible = phaseRef.current !== 'hidden' && phaseRef.current !== 'closing';
         if (isRefresh && visible && captureRef.current) {
-          // A preview is already on screen: scale the old one out, then the new in.
           pending.current = c;
           setPhase('scale-out');
         } else {
-          // First display: slide it in once the window is shown.
           setView((v) => ({ ...v, capture: c, revision: v.revision + 1 }));
         }
       })
       .catch((e: unknown) => setError(String(e)));
   }
 
-  // Effect Events so the mount-only effect below doesn't depend on fetchLatest.
   const onFirstFetch = useEffectEvent(() => void fetchLatest());
   const onRefetch = useEffectEvent(() => void fetchLatest(true));
 
   useEffect(() => {
-    // Not state initialization: this pulls the latest capture from the Rust
-    // backend on mount (the backend also pushes later updates via events).
     // eslint-disable-next-line react-doctor/no-initialize-state
     onFirstFetch();
 
-    const unlisten = listen('refresh-capture', () => {
-      onRefetch();
-    });
+    const unlisten = listen('refresh-capture', () => { onRefetch(); });
 
     function fetchWhenWoken() {
       if (document.visibilityState === 'hidden') return;
@@ -172,7 +134,6 @@ export function CapturePreview() {
 
   useEffect(() => {
     if (revision === 0) return;
-
     return afterPaint(() => {
       void previewReady()
         .then(() => setView((v) => ({ ...v, phase: 'slide-in' })))
@@ -197,9 +158,7 @@ export function CapturePreview() {
   }
 
   async function close() {
-    if (closeTimer.current) {
-      window.clearTimeout(closeTimer.current);
-    }
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
     setPhase('closing');
     window.setTimeout(() => {
       void hideCapturePreview()
@@ -209,12 +168,8 @@ export function CapturePreview() {
   }
 
   function closeSoon() {
-    if (closeTimer.current) {
-      window.clearTimeout(closeTimer.current);
-    }
-    closeTimer.current = window.setTimeout(() => {
-      void close();
-    }, 2200);
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => { void close(); }, 2200);
   }
 
   async function copyCapture() {
@@ -244,30 +199,25 @@ export function CapturePreview() {
   }
 
   return (
-    <div
-      className="fixed inset-0 overflow-hidden bg-transparent"
-      data-tauri-drag-region
-    >
-      <style>
-        {`
-          @keyframes cap-slide-in {
-            from { opacity: 0; transform: translateY(14px); }
-            to   { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes cap-scale-in {
-            from { opacity: 0; transform: scale(0.92); }
-            to   { opacity: 1; transform: scale(1); }
-          }
-          @keyframes cap-scale-out {
-            from { opacity: 1; transform: scale(1); }
-            to   { opacity: 0; transform: scale(0.92); }
-          }
-          @keyframes cap-close-out {
-            from { opacity: 1; transform: translateY(0); }
-            to   { opacity: 0; transform: translateY(14px); }
-          }
-        `}
-      </style>
+    <div className="fixed inset-0 overflow-hidden bg-transparent" data-tauri-drag-region>
+      <style>{`
+        @keyframes cap-slide-in {
+          from { opacity: 0; transform: translateY(14px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes cap-scale-in {
+          from { opacity: 0; transform: scale(0.92); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes cap-scale-out {
+          from { opacity: 1; transform: scale(1); }
+          to   { opacity: 0; transform: scale(0.92); }
+        }
+        @keyframes cap-close-out {
+          from { opacity: 1; transform: translateY(0); }
+          to   { opacity: 0; transform: translateY(14px); }
+        }
+      `}</style>
       <div
         className="group border-border bg-card text-card-foreground absolute bottom-0 left-0 h-[200px] w-[250px] overflow-hidden rounded-lg border shadow-lg"
         data-tauri-drag-region

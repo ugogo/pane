@@ -4,7 +4,7 @@ import {
   areaSelectorOrigin,
   commitRegionCapture,
   hideAreaSelector,
-} from '../lib/commands';
+} from '@/lib/commands';
 
 interface Rect {
   x: number;
@@ -13,10 +13,7 @@ interface Rect {
   h: number;
 }
 
-function rectFrom(
-  a: { x: number; y: number },
-  b: { x: number; y: number },
-): Rect {
+function rectFrom(a: { x: number; y: number }, b: { x: number; y: number }): Rect {
   const x = Math.min(a.x, b.x);
   const y = Math.min(a.y, b.y);
   const w = Math.abs(a.x - b.x);
@@ -28,7 +25,7 @@ function pt(e: React.MouseEvent) {
   return { x: e.clientX, y: e.clientY };
 }
 
-export function AreaSelector() {
+export default function AreaSelectorPage() {
   const [drag, setDrag] = useState<{
     start: { x: number; y: number };
     end: { x: number; y: number };
@@ -91,10 +88,7 @@ export function AreaSelector() {
       role="application"
       aria-label="Drag to select a capture region"
       className="fixed inset-0 select-none"
-      style={{
-        background: 'transparent',
-        cursor: 'crosshair',
-      }}
+      style={{ background: 'transparent', cursor: 'crosshair' }}
       onMouseDown={(e) => {
         if (submitting.current) return;
         const p = pt(e);

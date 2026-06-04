@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { accentSelect } from '../lib/commands';
+import { useLocalSearchParams } from 'expo-router';
+import { accentSelect } from '@/lib/commands';
 
 interface AccentPayload {
   accents: string[];
 }
 
-function accentsFromUrl(): string[] {
-  const chars = new URLSearchParams(window.location.search).get('chars');
-  return chars ? chars.split(',').filter(Boolean) : [];
-}
-
-export function AccentPopup() {
-  const [accents, setAccents] = useState<string[]>(accentsFromUrl);
+export default function AccentPopupPage() {
+  const { chars } = useLocalSearchParams<{ chars?: string }>();
+  const [accents, setAccents] = useState<string[]>(() =>
+    chars ? chars.split(',').filter(Boolean) : [],
+  );
   // Index highlighted for keyboard navigation; driven by the Rust hook, which
   // owns the keyboard while the popup is up.
   const [selected, setSelected] = useState(0);
@@ -21,8 +20,6 @@ export function AccentPopup() {
     // Clear inherited app backgrounds so this overlay window is transparent.
     document.documentElement.style.background = 'transparent';
     document.body.style.background = 'transparent';
-    const root = document.getElementById('root');
-    if (root) root.style.background = 'transparent';
   }, []);
 
   useEffect(() => {
@@ -38,12 +35,10 @@ export function AccentPopup() {
   useEffect(() => {
     // The Rust keyboard hook owns navigation and pushes the highlighted index
     // here via `eval` (the popup is never focused, so events are throttled).
-    (window as Window & { __accentSel?: (i: number) => void }).__accentSel = (
-      i: number,
-    ) => setSelected(i);
+    (window as Window & { __accentSel?: (i: number) => void }).__accentSel = (i: number) =>
+      setSelected(i);
     return () => {
-      delete (window as Window & { __accentSel?: (i: number) => void })
-        .__accentSel;
+      delete (window as Window & { __accentSel?: (i: number) => void }).__accentSel;
     };
   }, []);
 
@@ -67,9 +62,7 @@ export function AccentPopup() {
           <span className="text-lg leading-none">{ch}</span>
           <span
             className={`text-[9px] leading-none ${
-              i === selected
-                ? 'text-primary-foreground/75'
-                : 'text-muted-foreground/60'
+              i === selected ? 'text-primary-foreground/75' : 'text-muted-foreground/60'
             }`}
           >
             {i + 1}

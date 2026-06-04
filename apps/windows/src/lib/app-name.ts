@@ -1,1 +1,1 @@
-export const APP_DISPLAY_NAME = import.meta.env.DEV ? 'Pane (dev)' : 'Pane';
+export const APP_DISPLAY_NAME = __DEV__ ? 'Pane (dev)' : 'Pane';
