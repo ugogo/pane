@@ -9,7 +9,7 @@ export default function Index() {
 
   if (view === 'accent-popup') {
     const href = chars
-      ? (`/accent-popup?chars=${encodeURIComponent(chars)}` as const)
+      ? `/accent-popup?chars=${encodeURIComponent(chars)}`
       : '/accent-popup';
     return <Redirect href={href} />;
   }
