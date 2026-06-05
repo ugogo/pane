@@ -321,9 +321,35 @@
   color: var(--app-foreground-muted);
 }
 
+.accent-popup-chip:hover {
+  background: var(--app-white-08);
+  color: var(--app-foreground);
+}
+
+.accent-popup-char {
+  color: currentcolor;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.accent-popup-shortcut {
+  color: currentcolor;
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.62;
+}
+
 .accent-popup-chip-active {
   background: var(--app-primary);
   color: var(--app-primary-foreground);
+}
+
+.accent-popup-chip-active:hover {
+  background: var(--app-primary);
+}
+
+.accent-popup-chip-active .accent-popup-shortcut {
+  opacity: 0.8;
 }
 
 @keyframes area-selector-fade-in {

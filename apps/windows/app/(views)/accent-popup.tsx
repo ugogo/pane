@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { useLocalSearchParams } from 'expo-router';
-import { PopupTransition, Text } from '@pane/ui';
+import { PopupTransition } from '@pane/ui';
 import { accentSelect } from '@/lib/commands';
 
 interface AccentPayload {
@@ -69,12 +69,8 @@ export default function AccentPopupPage() {
               }
               onClick={() => void accentSelect(ch)}
             >
-              <Text fontSize="$6" lineHeight={1}>
-                {ch}
-              </Text>
-              <Text fontSize={9} lineHeight={1} opacity={active ? 0.75 : 0.6}>
-                {i + 1}
-              </Text>
+              <span className="accent-popup-char">{ch}</span>
+              <span className="accent-popup-shortcut">{i + 1}</span>
             </button>
           );
         })}
