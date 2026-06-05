@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "tamagui": {
+      "source": "tamagui/tamagui",
+      "sourceType": "github",
+      "skillPath": "plans/tamagui-skill/skills/tamagui/SKILL.md",
+      "computedHash": "c16ef17b45cf188289a72600898110f6245c295c41cf5493b8ead3fd45027544"
+    },
     "tauri-development": {
       "source": "mindrally/skills",
       "sourceType": "github",
