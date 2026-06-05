@@ -87,6 +87,7 @@ export default function AreaSelectorPage() {
 
   return (
     <div
+      className="area-selector-root"
       role="application"
       aria-label="Drag to select a capture region"
       style={{

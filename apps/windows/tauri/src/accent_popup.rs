@@ -38,10 +38,12 @@ mod imp {
     use once_cell::sync::OnceCell;
     use serde::{Deserialize, Serialize};
     use tauri::{
-        AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindowBuilder,
+        webview::Color, AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, WebviewUrl,
+        WebviewWindowBuilder,
     };
 
     use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, WPARAM};
+    use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_TRANSITIONS_FORCEDISABLED};
     use windows::Win32::Graphics::Gdi::ClientToScreen;
     use windows::Win32::System::LibraryLoader::GetModuleHandleW;
     use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -55,6 +57,7 @@ mod imp {
         SetWindowLongPtrW, SetWindowsHookExW, GUITHREADINFO, GWL_EXSTYLE, KBDLLHOOKSTRUCT, MSG,
         WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WS_EX_NOACTIVATE,
     };
+    use windows_core::BOOL;
 
     const POPUP_LABEL: &str = "accent-popup";
     // The window is sized to the variant count: each cell is BTN_W wide and the
@@ -434,6 +437,7 @@ mod imp {
             .position(0.0, -1000.0)
             .decorations(false)
             .transparent(true)
+            .background_color(Color(0, 0, 0, 0))
             .always_on_top(true)
             .skip_taskbar(true)
             .resizable(false)
@@ -441,7 +445,10 @@ mod imp {
             .visible(false)
             .build()
         {
-            Ok(w) => set_no_activate(&w),
+            Ok(w) => {
+                set_no_activate(&w);
+                disable_window_transitions(&w);
+            }
             Err(e) => eprintln!("[accent-popup] warmup failed: {e}"),
         }
     }
@@ -481,13 +488,7 @@ mod imp {
         };
 
         let window = match app.get_webview_window(POPUP_LABEL) {
-            Some(w) => {
-                // Reload the page with the accents baked into the query string so
-                // the variants are present synchronously on load — no event-
-                // delivery race against a webview that may not have warmed up.
-                let _ = w.navigate(target.clone());
-                w
-            }
+            Some(w) => w,
             None => {
                 match WebviewWindowBuilder::new(
                     app,
@@ -499,6 +500,7 @@ mod imp {
                 .position(pos_x, pos_y)
                 .decorations(false)
                 .transparent(true)
+                .background_color(Color(0, 0, 0, 0))
                 .always_on_top(true)
                 .skip_taskbar(true)
                 .resizable(false)
@@ -522,6 +524,7 @@ mod imp {
         // in their original app, so the chosen character injects straight into
         // it and the global hook keeps receiving the number-key selection.
         set_no_activate(&window);
+        disable_window_transitions(&window);
 
         // Publish the variants so the keyboard hook can resolve a number key to
         // a character without round-tripping through the webview. Start the
@@ -547,6 +550,20 @@ mod imp {
         unsafe {
             let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
             SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | WS_EX_NOACTIVATE.0 as isize);
+        }
+    }
+
+    fn disable_window_transitions(window: &tauri::WebviewWindow) {
+        let Ok(h) = window.hwnd() else { return };
+        let hwnd = HWND(h.0 as *mut _);
+        let disabled = BOOL(1);
+        unsafe {
+            let _ = DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_TRANSITIONS_FORCEDISABLED,
+                &disabled as *const _ as *const _,
+                std::mem::size_of::<BOOL>() as u32,
+            );
         }
     }
 

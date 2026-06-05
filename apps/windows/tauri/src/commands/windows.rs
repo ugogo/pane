@@ -142,30 +142,57 @@ fn enlarged_geometry(app: &AppHandle) -> Result<(f64, f64, f64, f64), String> {
 fn create_area_selector_window(app: &AppHandle) -> Result<WebviewWindow, String> {
     let (overlay_w, overlay_h, pos_x, pos_y) = area_selector_geometry(app)?;
     let url = child_webview_url::webview_url(app, routes::AREA_SELECTOR)?;
-    WebviewWindowBuilder::new(app, AREA_SELECTOR_LABEL, url)
+    let window = WebviewWindowBuilder::new(app, AREA_SELECTOR_LABEL, url)
         .title("Select region")
         .inner_size(overlay_w, overlay_h)
         .position(pos_x, pos_y)
         .decorations(false)
         .transparent(true)
+        .background_color(Color(0, 0, 0, 0))
         .always_on_top(true)
         .skip_taskbar(true)
         .resizable(false)
         .focused(false)
         .visible(false)
         .build()
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    disable_window_transitions(&window);
+    Ok(window)
 }
+
+#[cfg(windows)]
+fn disable_window_transitions(window: &WebviewWindow) {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_TRANSITIONS_FORCEDISABLED};
+    use windows_core::BOOL;
+
+    let Ok(h) = window.hwnd() else { return };
+    let hwnd = HWND(h.0 as *mut _);
+    let disabled = BOOL(1);
+    unsafe {
+        let _ = DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_TRANSITIONS_FORCEDISABLED,
+            &disabled as *const _ as *const _,
+            std::mem::size_of::<BOOL>() as u32,
+        );
+    }
+}
+
+#[cfg(not(windows))]
+fn disable_window_transitions(_window: &WebviewWindow) {}
 
 fn create_capture_preview_window(app: &AppHandle) -> Result<WebviewWindow, String> {
     let (win_w, win_h, pos_x, pos_y) = preview_geometry(app)?;
     let url = child_webview_url::webview_url(app, routes::CAPTURE_PREVIEW)?;
-    WebviewWindowBuilder::new(app, CAPTURE_PREVIEW_LABEL, url)
+    let window = WebviewWindowBuilder::new(app, CAPTURE_PREVIEW_LABEL, url)
         .title("Capture")
         .inner_size(win_w, win_h)
         .position(pos_x, pos_y)
         .decorations(false)
         .transparent(true)
+        .background_color(Color(0, 0, 0, 0))
         .shadow(false)
         .always_on_top(true)
         .skip_taskbar(false)
@@ -173,7 +200,10 @@ fn create_capture_preview_window(app: &AppHandle) -> Result<WebviewWindow, Strin
         .focused(false)
         .visible(false)
         .build()
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    disable_window_transitions(&window);
+    Ok(window)
 }
 
 #[tauri::command]
@@ -195,12 +225,8 @@ pub async fn prepare_capture_windows(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub async fn show_area_selector(app: AppHandle) -> Result<(), String> {
     let (overlay_w, overlay_h, pos_x, pos_y) = area_selector_geometry(&app)?;
-    let route = child_webview_url::route_url(&app, routes::AREA_SELECTOR)?;
     let window = match app.get_webview_window(AREA_SELECTOR_LABEL) {
-        Some(existing) => {
-            let _ = existing.navigate(route);
-            existing
-        }
+        Some(existing) => existing,
         None => create_area_selector_window(&app)?,
     };
 
@@ -212,6 +238,7 @@ pub async fn show_area_selector(app: AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     app.emit_to(AREA_SELECTOR_LABEL, "reset-area-selector", ())
         .map_err(|e| e.to_string())?;
+    disable_window_transitions(&window);
     window.show().map_err(|e| e.to_string())?;
     let _ = window.set_focus();
     Ok(())
@@ -220,12 +247,8 @@ pub async fn show_area_selector(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub async fn show_capture_preview(app: AppHandle) -> Result<(), String> {
     let (win_w, win_h, pos_x, pos_y) = preview_geometry(&app)?;
-    let route = child_webview_url::route_url(&app, routes::CAPTURE_PREVIEW)?;
     let window = match app.get_webview_window(CAPTURE_PREVIEW_LABEL) {
-        Some(existing) => {
-            let _ = existing.navigate(route);
-            existing
-        }
+        Some(existing) => existing,
         None => create_capture_preview_window(&app)?,
     };
 
@@ -244,6 +267,7 @@ pub async fn show_capture_preview(app: AppHandle) -> Result<(), String> {
         .set_position(LogicalPosition::new(pos_x, pos_y))
         .map_err(|e| e.to_string())?;
     let _ = window.set_always_on_top(true);
+    disable_window_transitions(&window);
 
     app.emit_to(CAPTURE_PREVIEW_LABEL, "refresh-capture", ())
         .map_err(|e| e.to_string())?;
@@ -277,7 +301,7 @@ pub async fn preview_ready(window: WebviewWindow) -> Result<(), String> {
 fn create_capture_zoom_window(app: &AppHandle) -> Result<WebviewWindow, String> {
     let (win_w, win_h, pos_x, pos_y) = enlarged_geometry(app)?;
     let url = child_webview_url::webview_url(app, routes::CAPTURE_ZOOM)?;
-    WebviewWindowBuilder::new(app, CAPTURE_ZOOM_LABEL, url)
+    let window = WebviewWindowBuilder::new(app, CAPTURE_ZOOM_LABEL, url)
         .title("Capture preview")
         .inner_size(win_w, win_h)
         .position(pos_x, pos_y)
@@ -291,7 +315,10 @@ fn create_capture_zoom_window(app: &AppHandle) -> Result<WebviewWindow, String> 
         .focused(false)
         .visible(false)
         .build()
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    disable_window_transitions(&window);
+    Ok(window)
 }
 
 /// Show the enlarged preview window: a larger, draggable, controls-free copy of
@@ -299,14 +326,8 @@ fn create_capture_zoom_window(app: &AppHandle) -> Result<WebviewWindow, String> 
 #[tauri::command]
 pub async fn show_capture_zoom(app: AppHandle) -> Result<(), String> {
     let (win_w, win_h, pos_x, pos_y) = enlarged_geometry(&app)?;
-    let route = child_webview_url::route_url(&app, routes::CAPTURE_ZOOM)?;
     let window = match app.get_webview_window(CAPTURE_ZOOM_LABEL) {
-        Some(existing) => {
-            if existing.url().map(|url| url != route).unwrap_or(true) {
-                let _ = existing.navigate(route);
-            }
-            existing
-        }
+        Some(existing) => existing,
         None => create_capture_zoom_window(&app)?,
     };
     window
@@ -316,6 +337,7 @@ pub async fn show_capture_zoom(app: AppHandle) -> Result<(), String> {
         .set_position(LogicalPosition::new(pos_x, pos_y))
         .map_err(|e| e.to_string())?;
     let _ = window.set_always_on_top(true);
+    disable_window_transitions(&window);
     app.emit_to(CAPTURE_ZOOM_LABEL, "refresh-capture", ())
         .map_err(|e| e.to_string())?;
     window.show().map_err(|e| e.to_string())?;
