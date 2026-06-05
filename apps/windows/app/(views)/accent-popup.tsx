@@ -43,7 +43,16 @@ export default function AccentPopupPage() {
   if (accents.length === 0) return null;
 
   return (
-    <PopupTransition motionKey={accents.join(',')} style={{ display: 'block' }}>
+    <PopupTransition
+      motionKey={accents.join(',')}
+      style={{
+        display: 'block',
+        height: '100%',
+        inset: 0,
+        position: 'fixed',
+        width: '100%',
+      }}
+    >
       <div className="accent-popup-root">
         {accents.map((ch, i) => {
           const active = i === selected;

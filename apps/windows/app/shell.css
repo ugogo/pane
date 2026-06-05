@@ -295,7 +295,7 @@
 }
 
 .accent-popup-root {
-  position: fixed;
+  position: absolute;
   inset: 0;
   display: flex;
   gap: 4px;
