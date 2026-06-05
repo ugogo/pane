@@ -1,5 +1,6 @@
 // Metro config for the Pane Windows frontend living inside an npm workspace.
 const { getDefaultConfig } = require('expo/metro-config');
+const { withTamagui } = require('@tamagui/metro-plugin');
 const path = require('path');
 
 const projectRoot = __dirname;
@@ -23,4 +24,4 @@ config.resolver.blockList = [
   /.*[\\/]src-tauri[\\/]target[\\/].*/,
 ];
 
-module.exports = config;
+module.exports = withTamagui(config);

@@ -1,6 +1,21 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Volume2, VolumeX, Mic, MicOff, Star } from 'lucide-react';
+import { Volume2, VolumeX, Mic, MicOff, Star } from '@tamagui/lucide-icons';
+import {
+  Button,
+  Card,
+  IconButton,
+  ListRow,
+  ListRowContent,
+  Label,
+  MutedText,
+  SectionList,
+  Slider,
+  SliderRow,
+  SliderValue,
+  XStack,
+  YStack,
+} from '@pane/ui';
 import {
   setDefaultOutputDevice,
   setDefaultInputDevice,
@@ -11,14 +26,6 @@ import {
   type AudioDevice,
   type VolumeInfo,
 } from '../../lib/commands';
-import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import {
   orderDevices,
   readFavorites,
@@ -63,7 +70,7 @@ const emptyDevices = {
 };
 const emptyVolumes = { output: null, input: null };
 
-export function SoundCard({ className }: { className?: string }) {
+export function SoundCard() {
   const queryClient = useQueryClient();
   const soundQuery = useQuery({
     queryKey: queryKeys.sound,
@@ -75,8 +82,6 @@ export function SoundCard({ className }: { className?: string }) {
 
   const status = useActionStatus();
   const schedule = useDebouncedWrite();
-  // Kinds with a slider write in flight — used to ignore the hardware's own
-  // change echoes so they don't clobber an active drag. Lazy-initialized once.
   const pendingRef = useRef<Set<Kind> | undefined>(undefined);
   const pending = (pendingRef.current ??= new Set());
   const [favorites, setFavorites] = useState<Record<Kind, Set<string>>>(() => ({
@@ -96,7 +101,6 @@ export function SoundCard({ className }: { className?: string }) {
     const { kind, volume, muted } = event.payload;
     if (pending.has(kind)) return;
     const prev = volumes[kind];
-    // Skip no-op echoes so we don't thrash the cache.
     if (prev && vpct(prev.volume) === vpct(volume) && prev.muted === muted) {
       return;
     }
@@ -150,27 +154,30 @@ export function SoundCard({ className }: { className?: string }) {
   }
 
   if (soundQuery.isPending && !data) {
-    return <PageSpinner className={className} />;
+    return <PageSpinner />;
   }
 
   const scanStatus = status.message ? status.status : (data?.status ?? 'idle');
   const scanMessage = status.message || (data?.message ?? '');
 
   return (
-    <div className={cn('space-y-4', className)}>
-      <Button
-        disabled={busy}
-        size="sm"
-        onClick={() => void soundQuery.refetch()}
-      >
-        Refresh
-      </Button>
+    <YStack gap="$4">
+      <XStack style={{ alignSelf: 'flex-start' }}>
+        <Button
+          disabled={busy}
+          btnScale="sm"
+          appearance="outline"
+          onPress={() => void soundQuery.refetch()}
+        >
+          Refresh
+        </Button>
+      </XStack>
 
-      {scanMessage && (
+      {scanMessage ? (
         <StatusText status={scanStatus}>{scanMessage}</StatusText>
-      )}
+      ) : null}
 
-      <div className="grid gap-3">
+      <YStack gap="$3">
         <Section
           kind="output"
           label="Output"
@@ -195,22 +202,9 @@ export function SoundCard({ className }: { className?: string }) {
           onVolume={onVolume}
           onToggleFavorite={toggleFavorite}
         />
-      </div>
-    </div>
+      </YStack>
+    </YStack>
   );
-}
-
-interface SectionProps {
-  kind: Kind;
-  label: string;
-  devices: AudioDevice[];
-  vol: VolumeInfo | null;
-  busy: boolean;
-  favs: Set<string>;
-  onSelect: (kind: Kind, id: string) => void;
-  onToggleMute: (kind: Kind) => void;
-  onVolume: (kind: Kind, percent: number) => void;
-  onToggleFavorite: (kind: Kind, id: string) => void;
 }
 
 function Section({
@@ -224,134 +218,90 @@ function Section({
   onToggleMute,
   onVolume,
   onToggleFavorite,
-}: SectionProps) {
+}: {
+  kind: Kind;
+  label: string;
+  devices: AudioDevice[];
+  vol: VolumeInfo | null;
+  busy: boolean;
+  favs: Set<string>;
+  onSelect: (kind: Kind, id: string) => void;
+  onToggleMute: (kind: Kind) => void;
+  onVolume: (kind: Kind, percent: number) => void;
+  onToggleFavorite: (kind: Kind, id: string) => void;
+}) {
   const muted = vol?.muted ?? false;
   const ordered = orderDevices(devices, favs);
   return (
-    <div className="rounded-lg border p-3">
-      <p className="text-sm font-medium">{label}</p>
+    <Card gap="$3" p="$3">
+      <Label fontSize="$3">{label}</Label>
 
       {ordered.length === 0 ? (
-        <p className="text-muted-foreground mt-2 text-xs">No devices.</p>
+        <MutedText fontSize="$2">No devices.</MutedText>
       ) : (
-        <ul className="mt-2 max-h-40 divide-y overflow-y-auto rounded-lg border">
-          {ordered.map((d) => {
+        <SectionList>
+          {ordered.map((d, index) => {
             const isFav = favs.has(d.id);
             return (
-              <li
-                key={d.id}
-                className={cn(
-                  'flex items-center gap-2 px-2 py-1.5 transition-colors',
-                  d.isDefault && 'bg-muted',
-                )}
-              >
-                <button
-                  type="button"
+              <ListRow key={d.id} active={d.isDefault} first={index === 0}>
+                <ListRowContent
+                  active={d.isDefault}
                   disabled={busy}
-                  onClick={() => onSelect(kind, d.id)}
-                  title={
-                    d.isDefault
-                      ? 'Current default'
-                      : `Set as default ${label.toLowerCase()}`
-                  }
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:opacity-50"
+                  label={d.name}
+                  onPress={() => onSelect(kind, d.id)}
+                />
+                <IconButton
+                  active={isFav}
+                  aria-label={isFav ? 'Remove favorite' : 'Add favorite'}
+                  disabled={busy}
+                  onPress={() => onToggleFavorite(kind, d.id)}
                 >
-                  <span
+                  <Star
                     aria-hidden
-                    className={cn(
-                      'size-1.5 shrink-0 rounded-full',
-                      d.isDefault ? 'bg-accent' : 'bg-transparent',
-                    )}
+                    fill={isFav ? 'currentColor' : 'none'}
+                    size={13}
                   />
-                  <span
-                    className={cn(
-                      'truncate text-sm',
-                      d.isDefault
-                        ? 'text-foreground font-medium'
-                        : 'text-muted-foreground',
-                    )}
-                  >
-                    {d.name}
-                  </span>
-                </button>
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <button
-                        type="button"
-                        onClick={() => onToggleFavorite(kind, d.id)}
-                        aria-label={
-                          isFav ? `Unfavorite ${d.name}` : `Favorite ${d.name}`
-                        }
-                        aria-pressed={isFav}
-                        className="hover:bg-muted shrink-0 rounded p-1 transition"
-                      >
-                        <Star
-                          size={13}
-                          aria-hidden
-                          fill={isFav ? 'currentColor' : 'none'}
-                          className={
-                            isFav ? 'text-foreground' : 'text-muted-foreground'
-                          }
-                        />
-                      </button>
-                    }
-                  />
-                  <TooltipContent>
-                    {isFav ? 'Unfavorite' : 'Favorite'}
-                  </TooltipContent>
-                </Tooltip>
-              </li>
+                </IconButton>
+              </ListRow>
             );
           })}
-        </ul>
+        </SectionList>
       )}
 
       {vol ? (
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => onToggleMute(kind)}
+        <SliderRow>
+          <IconButton
             aria-label={
-              muted
-                ? `Unmute ${label.toLowerCase()}`
-                : `Mute ${label.toLowerCase()}`
+              kind === 'output' ? 'Toggle output mute' : 'Toggle input mute'
             }
-            title={muted ? 'Unmute' : 'Mute'}
-            className={cn(
-              'hover:bg-muted shrink-0 rounded-md border p-1.5 transition',
-              muted ? 'text-destructive' : 'text-muted-foreground',
-            )}
+            onPress={() => onToggleMute(kind)}
           >
             {kind === 'output' ? (
               muted ? (
-                <VolumeX size={14} aria-hidden />
+                <VolumeX aria-hidden size={14} />
               ) : (
-                <Volume2 size={14} aria-hidden />
+                <Volume2 aria-hidden size={14} />
               )
             ) : muted ? (
-              <MicOff size={14} aria-hidden />
+              <MicOff aria-hidden size={14} />
             ) : (
-              <Mic size={14} aria-hidden />
+              <Mic aria-hidden size={14} />
             )}
-          </button>
+          </IconButton>
           <Slider
-            min={0}
             max={100}
+            min={0}
             step={1}
             value={vpct(vol.volume)}
-            onChange={(e) => onVolume(kind, Number(e.target.value))}
-            aria-label={`${label} volume`}
+            onChange={(v) => onVolume(kind, v)}
           />
-          <span className="text-muted-foreground w-10 shrink-0 text-right text-xs">
-            {muted ? 'Muted' : `${vpct(vol.volume)}%`}
-          </span>
-        </div>
+          <SliderValue>{muted ? 'Muted' : `${vpct(vol.volume)}%`}</SliderValue>
+        </SliderRow>
       ) : (
-        <p className="text-muted-foreground mt-2 text-xs">
+        <MutedText fontSize="$2" mt="$2">
           No volume control available.
-        </p>
+        </MutedText>
       )}
-    </div>
+    </Card>
   );
 }

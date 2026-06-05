@@ -8,7 +8,7 @@ import { fetchCompanion } from '../companion-query';
 import { STORE_KEY, HEARTBEAT_MS, WRITE_DEBOUNCE_MS } from '../constants';
 import { loadStoredPairing } from '../pairing-query';
 import { queryKeys } from '../query-keys';
-import { statusColors } from '../theme';
+import { status } from '@pane/ui';
 
 // A stable per-control key so debounced writes for one control never cancel a
 // pending write for another (dragging volume must not drop a queued brightness
@@ -151,10 +151,10 @@ export function useControlScreen() {
     connected === null ? 'CONNECTING' : offline ? 'OFFLINE' : 'CONNECTED';
   const statusColor =
     connected === null
-      ? statusColors.connecting
+      ? status.connecting
       : offline
-        ? statusColors.offline
-        : statusColors.connected;
+        ? status.offline
+        : status.connected;
 
   return {
     pairing,

@@ -1,15 +1,12 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { colors } from '../lib/theme';
+import { View, YStack } from '@pane/ui';
 
 /**
- * The dark app shell shared by every screen: full-bleed background + light
- * status bar. `center` vertically/horizontally centers children (loading and
- * permission states); `safeArea={false}` opts out of the safe-area inset for
- * screens that manage their own (the control screen scrolls with
- * `contentInsetAdjustmentBehavior`).
+ * Dark app shell shared by every screen. `center` vertically/horizontally centers
+ * children; `safeArea={false}` opts out for screens that manage their own insets.
  */
 export function Screen({
   children,
@@ -22,22 +19,31 @@ export function Screen({
   safeArea?: boolean;
   style?: ViewStyle;
 }) {
-  const Container = safeArea ? SafeAreaView : View;
+  if (safeArea) {
+    return (
+      <SafeAreaView style={[{ flex: 1, backgroundColor: '#2e2e32' }, style]}>
+        <StatusBar style="light" />
+        <YStack
+          flex={1}
+          items={center ? 'center' : undefined}
+          justify={center ? 'center' : undefined}
+        >
+          {children}
+        </YStack>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <Container style={[styles.shell, center && styles.center, style]}>
+    <View flex={1} background="$background" style={style}>
       <StatusBar style="light" />
-      {children}
-    </Container>
+      <YStack
+        flex={1}
+        items={center ? 'center' : undefined}
+        justify={center ? 'center' : undefined}
+      >
+        {children}
+      </YStack>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  shell: {
-    backgroundColor: colors.background,
-    flex: 1,
-  },
-  center: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

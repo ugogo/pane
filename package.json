@@ -12,7 +12,7 @@
     "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev.ps1",
     "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/stop.ps1",
     "build": "npm run build -w @pane/windows",
-    "typecheck": "npm run typecheck -w @pane/windows",
+    "typecheck": "npm run typecheck -w @pane/ui && npm run typecheck -w @pane/windows && npm run typecheck -w @pane/companion",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix --max-warnings 0",
     "format": "prettier --write .",
@@ -63,7 +63,6 @@
     "lint-staged": "17.0.6",
     "oxc-parser": "0.133.0",
     "prettier": "3.8.3",
-    "prettier-plugin-tailwindcss": "0.8.0",
     "release-it": "^20.2.0",
     "typescript": "^6",
     "typescript-eslint": "8.60.0"

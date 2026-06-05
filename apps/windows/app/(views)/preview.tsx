@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Clipboard, Save, X } from 'lucide-react';
+import { Check, Clipboard, Save, X } from '@tamagui/lucide-icons';
 import { useEffectEvent } from '@/lib/use-effect-event';
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -135,6 +135,7 @@ export default function PreviewPage() {
   const onRefetch = useEffectEvent(() => void fetchLatest(true));
 
   useEffect(() => {
+    // eslint-disable-next-line react-doctor/no-initialize-state -- capture preview fetches on window open
     onFirstFetch();
 
     const unlisten = listen('refresh-capture', () => {
@@ -249,33 +250,33 @@ export default function PreviewPage() {
         }
       `}</style>
       <div
-        className="group border-border bg-card text-card-foreground absolute bottom-0 left-0 h-[200px] w-[250px] overflow-hidden rounded-lg border shadow-lg"
+        className="preview-card preview-card-animated"
         data-tauri-drag-region
         onAnimationEnd={onCardAnimationEnd}
         style={{
           opacity: phase === 'hidden' ? 0 : 1,
-          transformOrigin: '50% 50%',
           animation: PHASE_ANIMATION[phase],
         }}
       >
-        {error && (
-          <p className="text-destructive absolute inset-0 flex items-center justify-center px-3 text-center text-xs">
-            {error}
-          </p>
-        )}
+        {error ? <p className="preview-error">{error}</p> : null}
         {capture && (
           <img
             key={revision}
             src={capture.dataUrl}
             alt="Capture preview"
-            className="pointer-events-none h-full w-full object-contain"
             draggable={false}
             data-tauri-drag-region
+            style={{
+              pointerEvents: 'none',
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+            }}
           />
         )}
 
         {capture && (
-          <div className="bg-background/70 absolute inset-0 flex items-center justify-center gap-2 opacity-0 backdrop-blur-[1px] transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100">
+          <div className="preview-overlay">
             <ActionButton
               icon={actions.copy === 'success' ? Check : Clipboard}
               label={actions.copy === 'success' ? 'Copied' : 'Copy'}
@@ -294,14 +295,14 @@ export default function PreviewPage() {
         <button
           type="button"
           onClick={() => void close()}
-          className="bg-background/85 text-foreground hover:bg-muted absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full opacity-0 transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100"
+          className="preview-close"
           aria-label="Close preview"
         >
-          <X aria-hidden="true" size={14} strokeWidth={2.25} />
+          <X aria-hidden size={14} />
         </button>
 
         {capture && (
-          <span className="bg-background/85 text-muted-foreground pointer-events-none absolute bottom-1.5 left-1.5 rounded px-1.5 py-0.5 font-mono text-[10px] opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+          <span className="preview-size">
             {capture.width} x {capture.height}
           </span>
         )}
@@ -327,9 +328,9 @@ function ActionButton({
       disabled={busy}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onClick}
-      className="border-border bg-background/85 text-foreground hover:bg-muted flex h-8 min-w-[76px] items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold shadow-lg transition active:translate-y-px disabled:cursor-wait"
+      className="preview-action-btn"
     >
-      <Icon aria-hidden="true" size={14} strokeWidth={2.35} />
+      <Icon aria-hidden size={14} />
       {label}
     </button>
   );

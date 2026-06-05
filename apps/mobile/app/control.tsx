@@ -1,8 +1,8 @@
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView } from 'react-native';
+import { Button, Card, Label, MutedText, Text, YStack } from '@pane/ui';
 import { Screen } from '../components/Screen';
 import { ControlSystemControls } from '../lib/control/control-system-controls';
 import { SliderPanel } from '../lib/control/slider-panel';
-import { controlStyles as styles } from '../lib/control/control.styles';
 import { useControlScreen } from '../lib/control/use-control-screen';
 
 export default function ControlScreen() {
@@ -34,15 +34,17 @@ export default function ControlScreen() {
     <Screen safeArea={false}>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.scrollContent}
-        style={styles.scroll}
+        contentContainerStyle={{ gap: 16, padding: 24, paddingBottom: 40 }}
+        style={{ flex: 1 }}
       >
-        <View style={styles.header}>
-          <Text style={[styles.eyebrow, { color: statusColor }]}>
+        <YStack gap="$2">
+          <Text fontSize="$2" fontWeight="700" style={{ color: statusColor }}>
             {statusLabel}
           </Text>
-          <Text style={styles.title}>{displayName}</Text>
-        </View>
+          <Text fontSize="$9" fontWeight="700">
+            {displayName}
+          </Text>
+        </YStack>
 
         <SliderPanel
           label="Brightness"
@@ -54,14 +56,15 @@ export default function ControlScreen() {
         />
 
         {snapshot && snapshot.presets.length > 0 ? (
-          <View style={[styles.panel, offline && styles.panelOffline]}>
-            <Text style={styles.label}>Monitor presets</Text>
-            <View style={styles.chipRow}>
+          <Card offline={offline}>
+            <Label>Monitor presets</Label>
+            <YStack flexDirection="row" flexWrap="wrap" gap="$2" mt="$3">
               {snapshot.presets.map((preset) => (
-                <Pressable
+                <Button
                   key={preset.name}
                   disabled={offline}
-                  style={styles.chip}
+                  btnScale="sm"
+                  appearance="secondary"
                   onPress={() =>
                     runCommandNow({
                       type: 'apply_monitor_preset',
@@ -69,11 +72,11 @@ export default function ControlScreen() {
                     })
                   }
                 >
-                  <Text style={styles.chipText}>{preset.name}</Text>
-                </Pressable>
+                  {preset.name}
+                </Button>
               ))}
-            </View>
-          </View>
+            </YStack>
+          </Card>
         ) : null}
 
         <SliderPanel
@@ -138,17 +141,23 @@ export default function ControlScreen() {
         ) : null}
 
         {offline ? (
-          <Text style={styles.body}>
+          <MutedText>
             Can&apos;t reach Pane. Make sure it&apos;s running on your desktop
             and on the same Wi-Fi. If your desktop IP changed, pair again.
+          </MutedText>
+        ) : null}
+
+        {error ? (
+          <Text color="$red11" fontSize="$3">
+            {error}
           </Text>
         ) : null}
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <Pressable style={styles.linkButton} onPress={unpair}>
-          <Text style={styles.linkText}>Unpair this iPhone</Text>
-        </Pressable>
+        <Button chromeless onPress={unpair}>
+          <MutedText textDecorationLine="underline">
+            Unpair this iPhone
+          </MutedText>
+        </Button>
       </ScrollView>
     </Screen>
   );

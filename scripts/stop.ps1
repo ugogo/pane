@@ -3,10 +3,10 @@
     Kill all dev instances of the Pane app that may be stuck or bugged.
 
 .DESCRIPTION
-    Terminates every dev process in the Tauri (Rust + Vite) family:
+    Terminates every dev process in the Tauri (Rust + Metro) family:
       - pane.exe  (Cargo debug binary)
       - cargo.exe / tauri.exe build/runner processes referencing this repo
-      - node.exe  processes running Vite from this repo
+      - node.exe  processes running Expo/Metro from this repo
 
 .EXAMPLE
     .\scripts\stop.ps1

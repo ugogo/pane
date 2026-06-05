@@ -33,7 +33,6 @@ export default function AreaSelectorPage() {
     start: { x: number; y: number };
     end: { x: number; y: number };
   } | null>(null);
-  // Read only in handlers (never in render), so a ref avoids re-renders.
   const submitting = useRef(false);
   const [error, setError] = useState<string>();
 
@@ -90,8 +89,13 @@ export default function AreaSelectorPage() {
     <div
       role="application"
       aria-label="Drag to select a capture region"
-      className="fixed inset-0 select-none"
-      style={{ background: 'transparent', cursor: 'crosshair' }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'transparent',
+        cursor: 'crosshair',
+        userSelect: 'none',
+      }}
       onMouseDown={(e) => {
         if (submitting.current) return;
         const p = pt(e);
@@ -108,48 +112,55 @@ export default function AreaSelectorPage() {
         void finish(finalRect);
       }}
     >
-      {!rect && (
-        <div
-          className="pointer-events-none fixed inset-0"
-          style={{ background: 'rgba(24, 23, 19, 0.58)' }}
-        />
-      )}
+      {!rect ? <div className="area-selector-dim" /> : null}
 
-      {rect && (
+      {rect ? (
         <div
-          className="border-primary pointer-events-none absolute border"
+          className="area-selector-rect"
           style={{
             left: rect.x,
             top: rect.y,
             width: rect.w,
             height: rect.h,
-            boxShadow:
-              '0 0 0 100vmax rgba(24, 23, 19, 0.58), 0 0 0 1px rgba(255, 254, 250, 0.55)',
           }}
         >
           <span
-            className={`border-border bg-card/90 text-card-foreground absolute left-0 rounded-md border px-1.5 py-0.5 font-mono text-[10px] shadow-lg ${
-              sizeLabelInside ? 'top-1.5' : '-top-6'
-            }`}
+            className="area-selector-pill area-selector-size-label"
+            style={{
+              top: sizeLabelInside ? 6 : -24,
+            }}
           >
             {Math.round(rect.w)} x {Math.round(rect.h)}
           </span>
         </div>
-      )}
+      ) : null}
 
       <div
-        className={`border-border bg-card/90 text-card-foreground pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-md border px-3 py-1.5 text-xs font-medium shadow-lg ${
-          helperAtBottom ? 'bottom-3' : 'top-3'
-        }`}
+        className="area-selector-pill"
+        style={{
+          position: 'absolute',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          top: helperAtBottom ? undefined : 12,
+          bottom: helperAtBottom ? 12 : undefined,
+        }}
       >
         Drag to select - Esc to cancel
       </div>
 
-      {error && (
-        <div className="bg-destructive absolute bottom-3 left-1/2 -translate-x-1/2 rounded-md border border-white/10 px-3 py-1.5 text-xs text-white shadow-lg">
+      {error ? (
+        <div
+          className="area-selector-pill area-selector-error"
+          style={{
+            position: 'absolute',
+            bottom: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+          }}
+        >
           {error}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

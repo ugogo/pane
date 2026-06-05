@@ -1,5 +1,6 @@
 mod accent_popup;
 mod brightness_keys;
+mod child_webview_url;
 mod commands;
 mod power_notify;
 mod tray;

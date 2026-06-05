@@ -1,9 +1,7 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 
-// Redirect to the appropriate route. Handles backward-compat with the old
-// `?view=` query-param scheme used by the Tauri Rust backend to open popup
-// windows. New Rust code should open direct routes (/accent-popup, etc.)
-// instead.
+// Legacy `?view=` redirects only (old URLs). Rust opens child webviews via
+// `child_webview_url` direct paths — see `apps/windows/tauri/src/child_webview_url.rs`.
 export default function Index() {
   const { view, chars } = useLocalSearchParams<{
     view?: string;

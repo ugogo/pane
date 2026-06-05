@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye } from 'lucide-react';
+import { Eye } from '@tamagui/lucide-icons';
+import { Button, Card, Label, MutedText, XStack, YStack } from '@pane/ui';
 import {
   captureFullscreen,
   clearCaptureHotkey,
@@ -13,8 +14,6 @@ import {
   type CaptureHotkeys,
 } from '../../lib/commands';
 import { ShortcutInput } from '../ShortcutInput';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/query-keys';
 import { useActionStatus } from '@/lib/use-action-status';
 import { PageSpinner } from './page-spinner';
@@ -25,7 +24,7 @@ const actionLabels: Record<CaptureAction, string> = {
   area: 'area',
 };
 
-export function CaptureCard({ className }: { className?: string }) {
+export function CaptureCard() {
   const queryClient = useQueryClient();
   const hotkeysQuery = useQuery({
     queryKey: queryKeys.captureHotkeys,
@@ -100,23 +99,23 @@ export function CaptureCard({ className }: { className?: string }) {
   });
 
   if (hotkeysQuery.isPending && !hotkeysQuery.data) {
-    return <PageSpinner className={className} />;
+    return <PageSpinner />;
   }
 
   if (hotkeysQuery.isError) {
     return (
-      <div className={cn('space-y-4', className)}>
+      <YStack gap="$4">
         <StatusText status="warn">
           Could not load saved hotkeys: {String(hotkeysQuery.error)}
         </StatusText>
-      </div>
+      </YStack>
     );
   }
 
   return (
-    <div className={cn('space-y-4', className)}>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Row
+    <YStack gap="$4">
+      <XStack flexWrap="wrap" gap="$3">
+        <CaptureRow
           label="Fullscreen capture"
           actionLabel="Capture full screen"
           shortcutLabel="Fullscreen capture shortcut"
@@ -126,7 +125,7 @@ export function CaptureCard({ className }: { className?: string }) {
           onTrigger={() => trigger.mutate('fullscreen')}
           busy={trigger.isPending}
         />
-        <Row
+        <CaptureRow
           label="Area capture"
           actionLabel="Select area"
           shortcutLabel="Area capture shortcut"
@@ -136,27 +135,27 @@ export function CaptureCard({ className }: { className?: string }) {
           onTrigger={() => trigger.mutate('area')}
           busy={trigger.isPending}
         />
-      </div>
+      </XStack>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <XStack flexDirection="column" gap="$2">
         <Button
-          size="sm"
-          variant="secondary"
           aria-pressed={previewVisible ?? undefined}
-          onClick={() => preview.mutate()}
+          icon={<Eye aria-hidden size={14} />}
+          btnScale="sm"
+          appearance="secondary"
+          onPress={() => preview.mutate()}
         >
-          <Eye aria-hidden="true" className="size-3.5" />
           {previewVisible ? 'Hide floating preview' : 'Show floating preview'}
         </Button>
-        {status.message && (
+        {status.message ? (
           <StatusText status={status.status}>{status.message}</StatusText>
-        )}
-      </div>
-    </div>
+        ) : null}
+      </XStack>
+    </YStack>
   );
 }
 
-function Row({
+function CaptureRow({
   label,
   actionLabel,
   shortcutLabel,
@@ -176,20 +175,15 @@ function Row({
   busy: boolean;
 }) {
   return (
-    <div className="space-y-3 rounded-lg border p-3">
-      <div className="space-y-2">
-        <p className="text-sm font-medium">{label}</p>
-        <Button
-          disabled={busy}
-          className="w-full"
-          size="sm"
-          onClick={onTrigger}
-        >
+    <Card flex={1} gap="$3" p="$3" style={{ minWidth: 280 }}>
+      <YStack gap="$2">
+        <Label fontSize="$3">{label}</Label>
+        <Button disabled={busy} btnScale="sm" width="100%" onPress={onTrigger}>
           {actionLabel}
         </Button>
-      </div>
-      <div className="space-y-1">
-        <p className="text-muted-foreground text-xs">Shortcut</p>
+      </YStack>
+      <YStack gap="$1">
+        <MutedText fontSize="$2">Shortcut</MutedText>
         <ShortcutInput
           value={hotkey}
           onCommit={onCommit}
@@ -197,7 +191,7 @@ function Row({
           ariaLabel={shortcutLabel}
           placeholder="Click and press a chord"
         />
-      </div>
-    </div>
+      </YStack>
+    </Card>
   );
 }

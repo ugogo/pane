@@ -1,19 +1,13 @@
 import { useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
 import { generateKeyPair, ENDPOINTS, type PairResponse } from '@pane/protocol';
+import { Button, MutedText, Text, View, YStack } from '@pane/ui';
 import { Screen } from '../components/Screen';
-import { colors } from '../lib/theme';
 import { parsePairingUri, baseUrl } from '../lib/pairing';
 import { STORE_KEY, DEVICE_NAME } from '../lib/constants';
 import { queryKeys } from '../lib/query-keys';
@@ -25,7 +19,6 @@ export default function PairScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [error, setError] = useState<string>();
   const [pairing, setPairing] = useState(false);
-  // Guard against the camera firing multiple scans for one code.
   const handled = useRef(false);
 
   const onScan = useCallback(
@@ -76,7 +69,7 @@ export default function PairScreen() {
   if (!permission) {
     return (
       <Screen center>
-        <ActivityIndicator color={colors.white} />
+        <ActivityIndicator color="#fafafa" />
       </Screen>
     );
   }
@@ -84,102 +77,68 @@ export default function PairScreen() {
   if (!permission.granted) {
     return (
       <Screen>
-        <View style={styles.content}>
-          <Text style={styles.title}>Pane Companion</Text>
-          <Text style={styles.body}>
+        <YStack flex={1} gap="$5" justify="center" p="$6">
+          <Text fontSize="$9" fontWeight="700">
+            Pane Companion
+          </Text>
+          <MutedText fontSize="$4" lineHeight={22}>
             Camera access is needed to scan the pairing code shown in Pane on
             your desktop.
-          </Text>
-          <Pressable
-            style={styles.button}
-            onPress={() => void requestPermission()}
-          >
-            <Text style={styles.buttonText}>Allow camera</Text>
-          </Pressable>
-        </View>
+          </MutedText>
+          <Button onPress={() => void requestPermission()}>
+            <Text>Allow camera</Text>
+          </Button>
+        </YStack>
       </Screen>
     );
   }
 
   return (
     <Screen>
-      <View style={styles.scannerHeader}>
-        <Text style={styles.title}>Scan Pane</Text>
-        <Text style={styles.body}>
-          Point the camera at the QR code in Pane&apos;s Companion panel.
+      <YStack gap="$2" p="$6">
+        <Text fontSize="$9" fontWeight="700">
+          Scan Pane
         </Text>
-      </View>
-      <View style={styles.cameraWrap}>
+        <MutedText fontSize="$4" lineHeight={22}>
+          Point the camera at the QR code in Pane&apos;s Companion panel.
+        </MutedText>
+      </YStack>
+      <View
+        background="#000000"
+        mx="$6"
+        overflow="hidden"
+        rounded="$8"
+        style={{ aspectRatio: 1 }}
+      >
         <CameraView
           style={StyleSheet.absoluteFill}
           barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
           onBarcodeScanned={({ data }) => void onScan(data)}
         />
         {pairing ? (
-          <View style={styles.cameraOverlay}>
-            <ActivityIndicator color={colors.white} />
-            <Text style={styles.body}>Pairing&hellip;</Text>
+          <View
+            items="center"
+            justify="center"
+            gap="$3"
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              backgroundColor: 'rgba(0,0,0,0.55)',
+            }}
+          >
+            <ActivityIndicator color="#fafafa" />
+            <MutedText>Pairing…</MutedText>
           </View>
         ) : null}
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text color="$red11" fontSize="$3" p="$6">
+          {error}
+        </Text>
+      ) : null}
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  content: {
-    flex: 1,
-    gap: 20,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  scannerHeader: {
-    gap: 8,
-    padding: 24,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  body: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  button: {
-    alignItems: 'center',
-    backgroundColor: colors.accent,
-    borderRadius: 12,
-    paddingVertical: 14,
-  },
-  buttonText: {
-    color: colors.onAccent,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  cameraWrap: {
-    aspectRatio: 1,
-    backgroundColor: colors.cameraBackground,
-    borderRadius: 24,
-    marginHorizontal: 24,
-    overflow: 'hidden',
-  },
-  cameraOverlay: {
-    alignItems: 'center',
-    backgroundColor: colors.cameraOverlay,
-    bottom: 0,
-    gap: 12,
-    justifyContent: 'center',
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
-  error: {
-    color: colors.danger,
-    fontSize: 14,
-    padding: 24,
-  },
-});

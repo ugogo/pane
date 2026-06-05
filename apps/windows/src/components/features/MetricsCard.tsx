@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Button, MutedText, Stat, Switch, XStack, YStack } from '@pane/ui';
 import { getProcessMetrics } from '@/lib/commands';
 import { queryKeys } from '@/lib/query-keys';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
 
@@ -16,7 +14,7 @@ function fmtMs(ms: number) {
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(2)} s`;
 }
 
-export function MetricsCard({ className }: { className?: string }) {
+export function MetricsCard() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const metricsQuery = useQuery({
     queryKey: queryKeys.metrics,
@@ -27,14 +25,14 @@ export function MetricsCard({ className }: { className?: string }) {
   const error = metricsQuery.error ? String(metricsQuery.error) : undefined;
 
   if (metricsQuery.isPending && !metrics && !error) {
-    return <PageSpinner className={className} />;
+    return <PageSpinner />;
   }
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <YStack gap="$4">
       {error ? <StatusText status="fail">{error}</StatusText> : null}
       {metrics ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <XStack flexWrap="wrap" gap="$3">
           <Stat label="Working set" value={fmtMb(metrics.workingSetMb)} />
           <Stat label="Virtual mem" value={fmtMb(metrics.virtualMemoryMb)} />
           <Stat
@@ -42,32 +40,26 @@ export function MetricsCard({ className }: { className?: string }) {
             value={fmtMs(metrics.startupElapsedMs)}
           />
           <Stat label="PID" value={String(metrics.pid)} />
-        </div>
+        </XStack>
       ) : null}
 
-      <div className="flex items-center gap-3">
-        <Button size="sm" onClick={() => void metricsQuery.refetch()}>
+      <XStack gap="$3" items="center">
+        <Button
+          btnScale="sm"
+          appearance="outline"
+          onPress={() => void metricsQuery.refetch()}
+        >
           Refresh
         </Button>
-        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+        <XStack gap="$2" items="center">
           <Switch
-            id="process-metrics-auto-refresh"
             aria-label="Auto-refresh process metrics"
             checked={autoRefresh}
             onCheckedChange={setAutoRefresh}
           />
-          <label htmlFor="process-metrics-auto-refresh">Auto-refresh</label>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border p-3">
-      <div className="text-muted-foreground text-xs">{label}</div>
-      <div className="mt-1 font-mono text-sm font-medium">{value}</div>
-    </div>
+          <MutedText fontSize="$3">Auto-refresh</MutedText>
+        </XStack>
+      </XStack>
+    </YStack>
   );
 }

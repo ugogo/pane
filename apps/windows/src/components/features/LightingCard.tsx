@@ -1,6 +1,18 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Cpu, Monitor, Mouse } from 'lucide-react';
+import { Cpu, Monitor, Mouse } from '@tamagui/lucide-icons';
+import {
+  Button,
+  Card,
+  DeviceIcon,
+  MutedPanel,
+  MutedText,
+  Slider,
+  Text,
+  XStack,
+  YStack,
+  colors,
+} from '@pane/ui';
 import {
   applyDxLight,
   applyDynamicLighting,
@@ -13,9 +25,6 @@ import { fetchLights, lightKey, type Light } from '@/lib/lights-query';
 import { queryKeys } from '@/lib/query-keys';
 import type { Status } from '@/lib/status';
 import { useActionStatus } from '@/lib/use-action-status';
-import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { cn } from '@/lib/utils';
 import { PageSpinner } from './page-spinner';
 import { StatusBadge, StatusText } from './status-ui';
 
@@ -41,8 +50,6 @@ function lightSubtitle(l: Light) {
   }
 }
 
-// Static component (not a value computed during render) so the compiler can
-// track it.
 function LightIcon({ light }: { light: Light }) {
   switch (light.kind) {
     case 'dynamic':
@@ -72,27 +79,25 @@ function rgbToHex(r: number, g: number, b: number) {
   return `#${h(r)}${h(g)}${h(b)}`;
 }
 
-interface LightRowProps {
+function LightRow({
+  light,
+  initialState,
+  disabledReason,
+}: {
   light: Light;
   initialState?: LightState;
   disabledReason?: string;
-}
-
-function LightRow({ light, initialState, disabledReason }: LightRowProps) {
-  // Lazy initializers so the persisted state seeds the controls once, on
-  // first mount. Subsequent refreshes don't clobber user input.
+}) {
   const [color, setColor] = useState<string>(() =>
     initialState
       ? rgbToHex(initialState.r, initialState.g, initialState.b)
-      : '#ffffff',
+      : colors.white,
   );
   const [brightness, setBrightness] = useState<number>(() => {
-    if (!initialState) return 0.75;
-    // If the user last turned this off, fall back to a sane default so they
-    // can hit Apply without having to also drag the slider up.
+    if (!initialState) return 75;
     return initialState.on && initialState.brightness > 0
-      ? initialState.brightness
-      : 0.75;
+      ? Math.round(initialState.brightness * 100)
+      : 75;
   });
   const [busy, setBusy] = useState(false);
   const result = useActionStatus();
@@ -109,6 +114,7 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
     setBusy(true);
     try {
       let message = '';
+      const b = brightness / 100;
       switch (light.kind) {
         case 'dynamic': {
           const res = await applyDynamicLighting(
@@ -116,19 +122,19 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
             rgb.r,
             rgb.g,
             rgb.b,
-            brightness,
+            b,
           );
           message = res.detail;
           break;
         }
         case 'msi': {
-          await applyMsiLighting(rgb.r, rgb.g, rgb.b, brightness);
-          message = `MSI: rgb(${rgb.r},${rgb.g},${rgb.b}) at ${Math.round(brightness * 100)}%.`;
+          await applyMsiLighting(rgb.r, rgb.g, rgb.b, b);
+          message = `MSI: rgb(${rgb.r},${rgb.g},${rgb.b}) at ${brightness}%.`;
           break;
         }
         case 'dxlight': {
-          await applyDxLight(rgb.r, rgb.g, rgb.b, brightness);
-          message = `DX Light: rgb(${rgb.r},${rgb.g},${rgb.b}) at ${Math.round(brightness * 100)}%.`;
+          await applyDxLight(rgb.r, rgb.g, rgb.b, b);
+          message = `DX Light: rgb(${rgb.r},${rgb.g},${rgb.b}) at ${brightness}%.`;
           break;
         }
       }
@@ -146,7 +152,6 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
     try {
       switch (light.kind) {
         case 'dynamic':
-          // No dedicated off — paint black at 0% brightness.
           await applyDynamicLighting(light.id, 0, 0, 0, 0);
           break;
         case 'msi':
@@ -165,77 +170,74 @@ function LightRow({ light, initialState, disabledReason }: LightRowProps) {
   }
 
   return (
-    <div className="rounded-lg border p-3">
-      <div className="flex items-start gap-3">
-        <div className="bg-muted text-muted-foreground mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border">
+    <Card gap="$3" p="$3">
+      <XStack flexWrap="wrap" gap="$3" items="center">
+        <DeviceIcon>
           <LightIcon light={light} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{lightTitle(light)}</p>
-          <p className="text-muted-foreground truncate text-xs">
+        </DeviceIcon>
+        <YStack flex={1} style={{ minWidth: 0 }}>
+          <Text fontSize="$3" fontWeight="600" numberOfLines={1}>
+            {lightTitle(light)}
+          </Text>
+          <MutedText fontSize="$2" numberOfLines={1}>
             {lightSubtitle(light)}
-          </p>
-        </div>
+          </MutedText>
+        </YStack>
         <StatusBadge status={visibleStatus} />
-      </div>
+      </XStack>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-[auto_1fr_auto_auto]">
+      <XStack flexWrap="wrap" gap="$3" items="center">
         <input
           type="color"
           aria-label={`Color for ${lightTitle(light)}`}
+          className="color-input"
           disabled={disabled}
-          className="bg-background h-9 w-12 rounded-md border p-1 disabled:cursor-not-allowed disabled:opacity-50"
           value={color}
           onChange={(e) => setColor(e.target.value)}
         />
-
-        <label className="flex flex-col gap-1">
-          <span className="text-muted-foreground text-xs">
-            Brightness {Math.round(brightness * 100)}%
-          </span>
+        <YStack flex={1} gap="$1" style={{ minWidth: 160 }}>
+          <MutedText fontSize="$2">Brightness {brightness}%</MutedText>
           <Slider
-            min={0}
-            max={1}
-            step={0.01}
-            value={brightness}
-            onChange={(e) => setBrightness(Number(e.target.value))}
             disabled={disabled}
+            max={100}
+            min={0}
+            step={1}
+            value={brightness}
+            onChange={setBrightness}
           />
-        </label>
-
+        </YStack>
         <Button
           disabled={busy || disabled}
-          size="sm"
-          onClick={() => void apply()}
+          btnScale="sm"
+          appearance="outline"
+          onPress={() => void apply()}
         >
           Apply
         </Button>
         <Button
           disabled={busy || disabled}
-          size="sm"
-          variant="ghost"
-          onClick={() => void turnOff()}
+          btnScale="xs"
+          appearance="ghost"
+          onPress={() => void turnOff()}
         >
           Off
         </Button>
-      </div>
+      </XStack>
 
-      {disabledReason && (
-        <p className="bg-muted text-muted-foreground mt-3 rounded-lg border px-3 py-2 text-xs">
-          {disabledReason}
-        </p>
-      )}
+      {disabledReason ? (
+        <MutedPanel>
+          <MutedText fontSize="$2">{disabledReason}</MutedText>
+        </MutedPanel>
+      ) : null}
 
-      {result.message && (
-        <StatusText className="mt-2 text-xs" status={result.status}>
-          {result.message}
-        </StatusText>
-      )}
-    </div>
+      {result.message ? (
+        <StatusText status={result.status}>{result.message}</StatusText>
+      ) : null}
+    </Card>
   );
 }
 
-export function LightingCard({ className }: { className?: string }) {
+export function LightingCard() {
   const lightsQuery = useQuery({
     queryKey: queryKeys.lights,
     queryFn: fetchLights,
@@ -285,16 +287,17 @@ export function LightingCard({ className }: { className?: string }) {
   const keyedLights = lights.map((l) => ({ key: lightKey(l), light: l }));
 
   if (lightsQuery.isPending && !lightsQuery.data) {
-    return <PageSpinner className={className} />;
+    return <PageSpinner />;
   }
 
   return (
-    <div className={cn('space-y-4', className)}>
-      <div className="flex items-center gap-2">
+    <YStack gap="$4">
+      <XStack gap="$2">
         <Button
           disabled={busy}
-          size="sm"
-          onClick={() => {
+          btnScale="sm"
+          appearance="outline"
+          onPress={() => {
             setActionMessage(null);
             void lightsQuery.refetch();
           }}
@@ -303,19 +306,19 @@ export function LightingCard({ className }: { className?: string }) {
         </Button>
         <Button
           disabled={busy || keyedLights.length === 0}
-          size="sm"
-          variant="ghost"
-          onClick={() => void restore()}
+          btnScale="xs"
+          appearance="ghost"
+          onPress={() => void restore()}
         >
           Restore
         </Button>
-      </div>
-      {displayScan.message && (
+      </XStack>
+      {displayScan.message ? (
         <StatusText status={displayScan.status}>
           {displayScan.message}
         </StatusText>
-      )}
-      <div className="grid gap-3">
+      ) : null}
+      <YStack gap="$3">
         {keyedLights.map(({ key, light }) => (
           <LightRow
             key={key}
@@ -326,7 +329,7 @@ export function LightingCard({ className }: { className?: string }) {
             }
           />
         ))}
-      </div>
-    </div>
+      </YStack>
+    </YStack>
   );
 }

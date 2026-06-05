@@ -1,15 +1,10 @@
-import { Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Loader2 } from '@tamagui/lucide-icons';
+import { YStack } from '@pane/ui';
 
-export function PageSpinner({ className }: { className?: string }) {
+export function PageSpinner() {
   return (
-    <div className={cn('grid min-h-[280px] place-items-center', className)}>
-      <output aria-label="Loading" className="grid place-items-center">
-        <Loader2
-          aria-hidden="true"
-          className="text-muted-foreground size-5 animate-spin"
-        />
-      </output>
-    </div>
+    <YStack items="center" justify="center" style={{ minHeight: 280 }}>
+      <Loader2 aria-hidden color="$placeholderColor" size={20} />
+    </YStack>
   );
 }

@@ -15,23 +15,23 @@ with more modules intended to fit into the same dashboard over time.
 
 ## Stack
 
-- **Frontend**: TypeScript + React + shadcn/ui on Tailwind v4 (Vite)
+- **Frontend**: TypeScript + React + Expo Router + Tamagui (`@pane/ui`) on Metro (Windows web + companion native)
 - **Backend**: Rust + Tauri 2
-- **Entry point**: `apps/windows/src/App.tsx` -> `apps/windows/tauri/src/lib.rs`
+- **Entry point**: `apps/windows/app/` -> `apps/windows/tauri/src/lib.rs`
 
 ## Commands
 
 ```powershell
-npm run dev          # stop any existing dev session, then start fresh (Tauri + Vite)
+npm run dev          # stop any existing dev session, then start fresh (Tauri + Metro)
 npm run build        # production build
 npm run typecheck    # TypeScript check
 npm run stop         # kill dev without restarting
 ```
 
-`npm run dev` always restarts: it stops leftover `pane.exe`, `cargo`, and Vite
+`npm run dev` always restarts: it stops leftover `pane.exe`, `cargo`, and Metro
 processes for this repo before launching. Concurrent calls serialize via a
 repo-scoped lock — the later call wins. Prefer `npm run dev` over raw
-`tauri dev` or `npx vite`.
+`tauri dev` or `npx expo start --web`.
 
 For CDP-driven WebView2 testing:
 
@@ -52,12 +52,10 @@ shared `@pane/protocol` contract, never on each other.
 
 ```
 apps/
-  windows/                       # Windows Tauri app (one app = FE + Rust)
-  |-- index.html, vite.config.ts, tsconfig.json, package.json
-  |-- src/                       # React + TypeScript frontend
-  |   |-- App.tsx
-  |   |-- components/features/   # One component per feature area
-  |   `-- lib/commands.ts        # Typed invoke() wrappers for Rust commands
+  windows/                       # Windows Tauri app (Expo Router + Metro web + Rust)
+  |-- app/                       # Expo Router routes + shell.css
+  |-- src/                       # Feature components, lib/, commands
+  |-- metro.config.js, babel.config.js, tsconfig.json, package.json
   `-- tauri/                     # Rust backend
       |-- tauri.conf.json
       `-- src/
@@ -65,7 +63,9 @@ apps/
           `-- commands/          # capture, hotkeys, lighting, metrics, startup, windows
   mobile/                        # Expo / React Native phone companion (@pane/companion)
 packages/
-  protocol/                      # @pane/protocol — shared HTTP wire contract (plain .ts)
+  protocol/                      # @pane/protocol — shared HTTP wire contract
+  query/                         # @pane/query — shared React Query hooks
+  ui/                            # @pane/ui — Tamagui design system
 ```
 
 ## Settings

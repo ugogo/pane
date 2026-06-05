@@ -1,0 +1,56 @@
+/** Hex tokens converted from apps/windows/app/global.css oklch (desktop source of truth). */
+
+const colors = {
+  /** Titlebar + sidebar acrylic (see shell.css). */
+  shellNav: 'rgb(31 24 28 / 0.9)',
+  /** Main scroll area — same family as nav, slightly darker. */
+  shellContent: 'rgb(20 15 18 / 0.98)',
+  background: '#141012',
+  foreground: '#fafafa',
+  card: '#252022',
+  cardForeground: '#fafafa',
+  popover: '#252022',
+  popoverForeground: '#fafafa',
+  primary: '#ebebeb',
+  primaryForeground: '#343434',
+  secondary: '#342c30',
+  secondaryForeground: '#fafafa',
+  muted: '#342c30',
+  mutedForeground: '#b8b8b8',
+  accent: '#3d524c',
+  accentForeground: '#fafafa',
+  destructive: '#f87171',
+  border: 'rgba(255, 255, 255, 0.11)',
+  input: 'rgba(255, 255, 255, 0.15)',
+  ring: '#6b9e94',
+  white: '#ffffff',
+  black: '#0b0b0c',
+  /** Status / feedback (badges, scan messages). */
+  statusPass: '#a8e6c8',
+  statusPassBg: 'rgba(61, 82, 76, 0.35)',
+  statusWarn: '#fbbf24',
+  statusFailBg: 'rgba(248, 113, 113, 0.15)',
+  errorSurface: 'rgba(248, 113, 113, 0.1)',
+  errorBorder: 'rgba(248, 113, 113, 0.25)',
+};
+
+const radius = {
+  sm: 6,
+  md: 8,
+  lg: 10,
+  xl: 14,
+};
+
+/** Connection-state accents for companion status line. */
+const status = {
+  connecting: colors.mutedForeground,
+  offline: colors.destructive,
+  connected: colors.ring,
+  pass: colors.statusPass,
+  passBg: colors.statusPassBg,
+  warn: colors.statusWarn,
+  fail: colors.destructive,
+  failBg: colors.statusFailBg,
+};
+
+module.exports = { colors, radius, status };

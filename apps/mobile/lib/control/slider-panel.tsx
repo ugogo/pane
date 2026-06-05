@@ -1,11 +1,8 @@
-import { Pressable, Text, View } from 'react-native';
-import { Slider } from '../../components/Slider';
-import { controlStyles as styles } from './control.styles';
+import { Button, Card, Label, MutedText, Slider, XStack } from '@pane/ui';
 
 /**
- * The shared "labeled value + slider (+ optional action button)" panel used by
- * the brightness, volume, and light controls. Collapses three near-identical
- * blocks that previously lived inline in the control screen.
+ * Labeled value + native slider (+ optional secondary action) for brightness,
+ * volume, and light controls.
  */
 export function SliderPanel({
   label,
@@ -24,32 +21,32 @@ export function SliderPanel({
   offline: boolean;
   onValueChange?: (value: number) => void;
   onChange: (value: number) => void;
-  /** Defaults to `offline`; pass e.g. `offline || muted` to disable separately. */
   sliderDisabled?: boolean;
   secondaryLabel?: string;
   onSecondary?: () => void;
 }) {
   return (
-    <View style={[styles.panel, offline && styles.panelOffline]}>
-      <View style={styles.rowBetween}>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={styles.value}>{valueText}</Text>
-      </View>
+    <Card offline={offline}>
+      <XStack items="center" justify="space-between">
+        <Label>{label}</Label>
+        <MutedText>{valueText}</MutedText>
+      </XStack>
       <Slider
-        value={value}
-        onValueChange={onValueChange}
-        onChange={onChange}
         disabled={sliderDisabled ?? offline}
+        value={value}
+        onChange={onChange}
+        onValueChange={onValueChange}
       />
       {secondaryLabel && onSecondary ? (
-        <Pressable
+        <Button
           disabled={offline}
-          style={styles.secondaryButton}
+          btnScale="sm"
+          appearance="secondary"
           onPress={onSecondary}
         >
-          <Text style={styles.secondaryButtonText}>{secondaryLabel}</Text>
-        </Pressable>
+          {secondaryLabel}
+        </Button>
       ) : null}
-    </View>
+    </Card>
   );
 }

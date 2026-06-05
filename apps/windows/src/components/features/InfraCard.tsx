@@ -1,5 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Moon } from 'lucide-react';
+import { Moon } from '@tamagui/lucide-icons';
+import {
+  Button,
+  Card,
+  Label,
+  MutedText,
+  Switch,
+  XStack,
+  YStack,
+} from '@pane/ui';
 import {
   getRunAtStartup,
   setRunAtStartup,
@@ -7,13 +16,10 @@ import {
 } from '@/lib/commands';
 import { queryKeys } from '@/lib/query-keys';
 import { useActionStatus } from '@/lib/use-action-status';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
 
-export function InfraCard({ className }: { className?: string }) {
+export function InfraCard() {
   const queryClient = useQueryClient();
   const startupQuery = useQuery({
     queryKey: queryKeys.runAtStartup,
@@ -44,55 +50,59 @@ export function InfraCard({ className }: { className?: string }) {
     runAtStartup === null &&
     !startupStatus.message
   ) {
-    return <PageSpinner className={className} />;
+    return <PageSpinner />;
   }
 
   return (
-    <div className={cn('space-y-3', className)}>
-      <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
-        <div>
-          <p className="text-sm font-medium">Start with Windows</p>
-          <p className="text-muted-foreground text-sm">
-            {__DEV__
-              ? 'Disabled in dev so the debug binary is not registered.'
-              : 'Keep capture and accents available after sign-in.'}
-          </p>
-        </div>
-        <Switch
-          aria-label="Run at startup"
-          disabled={runAtStartup === null || __DEV__}
-          checked={runAtStartup ?? false}
-          onCheckedChange={(checked) => startupToggle.mutate(checked)}
-        />
-      </div>
-      {startupStatus.message && (
+    <YStack gap="$3">
+      <Card p="$3">
+        <XStack gap="$4" items="center" justify="space-between">
+          <YStack flex={1} gap="$1">
+            <Label fontSize="$3">Start with Windows</Label>
+            <MutedText fontSize="$3">
+              {__DEV__
+                ? 'Disabled in dev so the debug binary is not registered.'
+                : 'Keep capture and accents available after sign-in.'}
+            </MutedText>
+          </YStack>
+          <Switch
+            aria-label="Run at startup"
+            checked={runAtStartup ?? false}
+            disabled={runAtStartup === null || __DEV__}
+            onCheckedChange={(enabled) => startupToggle.mutate(enabled)}
+          />
+        </XStack>
+      </Card>
+      {startupStatus.message ? (
         <StatusText status={startupStatus.status}>
           {startupStatus.message}
         </StatusText>
-      )}
+      ) : null}
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
-        <div>
-          <p className="text-sm font-medium">Sleep computer</p>
-          <p className="text-muted-foreground text-sm">
-            Put Windows into sleep mode now.
-          </p>
-        </div>
-        <Button
-          aria-label="Sleep computer"
-          size="sm"
-          variant="secondary"
-          onClick={() => sleep.mutate()}
-        >
-          <Moon aria-hidden="true" />
-          Sleep
-        </Button>
-      </div>
-      {sleepStatus.message && (
+      <Card p="$3">
+        <XStack gap="$4" items="center" justify="space-between">
+          <YStack flex={1} gap="$1">
+            <Label fontSize="$3">Sleep computer</Label>
+            <MutedText fontSize="$3">
+              Put Windows into sleep mode now.
+            </MutedText>
+          </YStack>
+          <Button
+            aria-label="Sleep computer"
+            icon={<Moon aria-hidden size={16} />}
+            btnScale="sm"
+            appearance="secondary"
+            onPress={() => sleep.mutate()}
+          >
+            Sleep
+          </Button>
+        </XStack>
+      </Card>
+      {sleepStatus.message ? (
         <StatusText status={sleepStatus.status}>
           {sleepStatus.message}
         </StatusText>
-      )}
-    </div>
+      ) : null}
+    </YStack>
   );
 }

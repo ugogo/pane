@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { useLocalSearchParams } from 'expo-router';
+import { Text } from '@pane/ui';
 import { accentSelect } from '@/lib/commands';
 
 interface AccentPayload {
@@ -12,12 +13,9 @@ export default function AccentPopupPage() {
   const [accents, setAccents] = useState<string[]>(() =>
     chars ? chars.split(',').filter(Boolean) : [],
   );
-  // Index highlighted for keyboard navigation; driven by the Rust hook, which
-  // owns the keyboard while the popup is up.
   const [selected, setSelected] = useState(0);
 
   useEffect(() => {
-    // Clear inherited app backgrounds so this overlay window is transparent.
     document.documentElement.style.background = 'transparent';
     document.body.style.background = 'transparent';
   }, []);
@@ -33,8 +31,6 @@ export default function AccentPopupPage() {
   }, []);
 
   useEffect(() => {
-    // The Rust keyboard hook owns navigation and pushes the highlighted index
-    // here via `eval` (the popup is never focused, so events are throttled).
     (window as Window & { __accentSel?: (i: number) => void }).__accentSel = (
       i: number,
     ) => setSelected(i);
@@ -47,32 +43,31 @@ export default function AccentPopupPage() {
   if (accents.length === 0) return null;
 
   return (
-    <div className="border-border bg-card text-card-foreground fixed inset-0 flex gap-1 rounded-lg border p-1.5 shadow-lg">
-      {accents.map((ch, i) => (
-        <button
-          key={ch}
-          type="button"
-          aria-label={`Select ${ch}, shortcut ${i + 1}`}
-          aria-current={i === selected ? 'true' : undefined}
-          onClick={() => void accentSelect(ch)}
-          className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md transition-colors ${
-            i === selected
-              ? 'bg-primary text-primary-foreground'
-              : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-          }`}
-        >
-          <span className="text-lg leading-none">{ch}</span>
-          <span
-            className={`text-[9px] leading-none ${
-              i === selected
-                ? 'text-primary-foreground/75'
-                : 'text-muted-foreground/60'
-            }`}
+    <div className="accent-popup-root">
+      {accents.map((ch, i) => {
+        const active = i === selected;
+        return (
+          <button
+            key={ch}
+            type="button"
+            aria-label={`Select ${ch}, shortcut ${i + 1}`}
+            aria-current={active ? 'true' : undefined}
+            className={
+              active
+                ? 'accent-popup-chip accent-popup-chip-active'
+                : 'accent-popup-chip'
+            }
+            onClick={() => void accentSelect(ch)}
           >
-            {i + 1}
-          </span>
-        </button>
-      ))}
+            <Text fontSize="$6" lineHeight={1}>
+              {ch}
+            </Text>
+            <Text fontSize={9} lineHeight={1} opacity={active ? 0.75 : 0.6}>
+              {i + 1}
+            </Text>
+          </button>
+        );
+      })}
     </div>
   );
 }

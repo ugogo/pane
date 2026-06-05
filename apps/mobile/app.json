@@ -13,6 +13,7 @@
       "pairingProtocolVersion": 1
     },
     "plugins": [
+      "expo-dev-client",
       "expo-router",
       "expo-secure-store",
       [

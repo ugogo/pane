@@ -19,7 +19,7 @@ jobs:
   # Frontend quality gates need neither Rust nor Windows, so run them on the
   # faster/cheaper Linux runner. This job also produces the dist/ bundle and
   # hands it to the Rust job as an artifact, so Windows never runs npm ci or
-  # vite build.
+  # Expo web build.
   frontend:
     runs-on: ubuntu-latest
 
@@ -60,7 +60,7 @@ jobs:
   # tauri:gen `cargo build` must run on Windows. tauri-build reads
   # tauri.conf.json frontendDist (../dist), so it needs dist/ to exist — supplied
   # by the frontend job's artifact rather than rebuilt here. That lets this job
-  # skip npm ci and vite build entirely; it only needs node for the gen script.
+  # skip npm ci and Expo web build entirely; it only needs node for the gen script.
   rust:
     runs-on: windows-latest
     needs: frontend

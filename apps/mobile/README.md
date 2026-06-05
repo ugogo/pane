@@ -4,29 +4,27 @@ React Native / Expo companion app for controlling a paired Pane desktop instance
 from an iPhone. See [`docs/2026-06-01-mobile-companion-plan.md`](../../docs/2026-06-01-mobile-companion-plan.md)
 for the full plan and slice roadmap.
 
-## Run it on your iPhone (Expo Go)
+## Run on your iPhone (dev client)
 
-Dev iteration uses [Expo Go](https://expo.dev/go) — free, no Apple Developer
-Program membership, hot reload on a physical device. The phone and PC must be on
-the **same Wi-Fi network**.
+Control UI uses native sliders and Tamagui components that require a **custom dev
+client** — **Expo Go is not supported** for the control screen.
 
-1. Install **Expo Go** from the App Store on your iPhone.
-2. Start the bundler — from the **repo root** (no `cd` needed):
+1. Install dependencies from the repo root:
    ```powershell
    npm run companion:install
+   ```
+2. Build and run on a physical device (from repo root):
+   ```powershell
    npm run companion
    ```
-   (Or run `npm install` / `npm start` directly inside `apps/mobile`.)
-3. Scan the QR shown in the terminal with the iPhone **Camera** app to open the
-   project in Expo Go. (This is the _dev-server_ QR — different from Pane's
-   _pairing_ QR below.)
-4. Edit `App.tsx` and the app hot-reloads.
+   This runs `expo run:ios --device` in `apps/mobile`. The phone and PC must be
+   on the **same Wi-Fi network**.
+3. Edit screens under `apps/mobile/app/` — Metro hot-reloads on device.
 
-If Metro serves a stale bundle (or after upgrading the SDK), start with a clean
-cache — `npm run companion:clear` from the repo root. Do **not** use
-`npm exec -w @pane/companion -- expo start -c`: `npm exec` keeps the
-repo-root working directory, so Expo inspects the root project (which has no
-`expo` dependency) and fails with _"module `expo` is not installed."_
+For a clean Metro cache: `npm run companion:clear`.
+
+Expo Go may still work for non-control experiments, but pairing + sliders expect
+the dev client build.
 
 ## Pairing flow
 
@@ -44,8 +42,7 @@ credentials.
 
 ### Expected prompts
 
-- **iOS local network** — Expo Go asks once; allow it or requests to the desktop
-  are silently blocked.
+- **iOS local network** — allow it or requests to the desktop are silently blocked.
 - **Windows Firewall** — allow Pane on Private networks the first time the
   companion server binds, or the phone cannot reach the port.
 
@@ -53,8 +50,8 @@ credentials.
 
 - Implemented: QR scan → pair → signed commands → brightness, presets, volume,
   lighting, accent popup, startup, snapshot, and events.
-- **Expo Go transport:** HTTP over the LAN plus signed authenticated requests.
-  This preserves the free iPhone workflow, but it is still a trusted-network
+- **Dev client transport:** HTTP over the LAN plus signed authenticated requests.
+  This preserves iteration on a physical device, but it is still a trusted-network
   transport because the pairing token and bearer token are not encrypted on the
   wire.
 - Native-only features — Bonjour/mDNS discovery, certificate pinning, and custom

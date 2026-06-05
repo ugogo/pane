@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Start Pane dev (Tauri + Vite) as a single instance.
+    Start Pane dev (Tauri + Metro) as a single instance.
 
 .DESCRIPTION
     Ensures only one dev session runs at a time for this repo:
@@ -13,7 +13,7 @@
          starting fresh.
       4. Run the local Tauri CLI (blocking).
 
-    Prefer this over raw `tauri dev` or `npx vite`.
+    Prefer this over raw `tauri dev` or `npx expo start --web`.
 
 .EXAMPLE
     .\scripts\dev.ps1
@@ -63,7 +63,7 @@ function Add-WebView2BrowserArgument {
 function Invoke-TauriDev {
     # The Tauri CLI is hoisted to the workspace-root node_modules, but it must
     # run from the Windows app dir so it finds apps/windows/tauri/tauri.conf.json
-    # and runs the before-commands (npx vite) against apps/windows.
+    # and runs the before-commands (npx expo start --web) against apps/windows.
     $tauriCli = Join-Path $root "node_modules/@tauri-apps/cli/tauri.js"
     if (-not (Test-Path $tauriCli)) {
         Fail "Tauri CLI not installed. Run npm install first."

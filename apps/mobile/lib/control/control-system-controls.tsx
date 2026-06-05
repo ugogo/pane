@@ -1,6 +1,5 @@
-import { Pressable, Switch, Text, View } from 'react-native';
 import type { CompanionCommand, CompanionSnapshot } from '@pane/protocol';
-import { controlStyles as styles } from './control.styles';
+import { Button, Card, Label, Switch, Text, XStack } from '@pane/ui';
 
 export function ControlSystemControls({
   offline,
@@ -14,34 +13,35 @@ export function ControlSystemControls({
   onSleep: () => void;
 }) {
   return (
-    <View style={[styles.panel, offline && styles.panelOffline]}>
-      <View style={styles.rowBetween}>
-        <Text style={styles.label}>Accent popup</Text>
+    <Card offline={offline} gap="$4">
+      <XStack items="center" justify="space-between">
+        <Label>Accent popup</Label>
         <Switch
-          disabled={offline}
+          {...(offline ? { disabled: true } : {})}
           value={snapshot.accentPopupEnabled}
-          onValueChange={(enabled) =>
+          onValueChange={(enabled: boolean) =>
             onCommand({ type: 'set_accent_popup_enabled', enabled })
           }
         />
-      </View>
-      <View style={styles.rowBetween}>
-        <Text style={styles.label}>Run at startup</Text>
+      </XStack>
+      <XStack items="center" justify="space-between">
+        <Label>Run at startup</Label>
         <Switch
-          disabled={offline}
+          {...(offline ? { disabled: true } : {})}
           value={snapshot.runAtStartup}
-          onValueChange={(enabled) =>
+          onValueChange={(enabled: boolean) =>
             onCommand({ type: 'set_run_at_startup', enabled })
           }
         />
-      </View>
-      <Pressable
+      </XStack>
+      <Button
         disabled={offline}
-        style={styles.secondaryButton}
+        btnScale="sm"
+        appearance="secondary"
         onPress={onSleep}
       >
-        <Text style={styles.secondaryButtonText}>Sleep computer</Text>
-      </Pressable>
-    </View>
+        <Text>Sleep computer</Text>
+      </Button>
+    </Card>
   );
 }
