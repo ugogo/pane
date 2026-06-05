@@ -43,7 +43,7 @@ export function MetricsCard() {
         </XStack>
       ) : null}
 
-      <XStack gap="$3" items="center">
+      <XStack gap="$3" alignItems="center">
         <Button
           btnScale="sm"
           appearance="outline"
@@ -51,7 +51,7 @@ export function MetricsCard() {
         >
           Refresh
         </Button>
-        <XStack gap="$2" items="center">
+        <XStack gap="$2" alignItems="center">
           <Switch
             aria-label="Auto-refresh process metrics"
             checked={autoRefresh}

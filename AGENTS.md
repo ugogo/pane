@@ -78,12 +78,13 @@ npm run rust:clippy    # cargo clippy --all-targets -- -D warnings
 
 ## UI Guidelines
 
-- Shared design system: [`packages/ui`](packages/ui) (`@pane/ui`) — Tamagui theme **`pane`** (tokens from desktop `global.css` / `shell.css`).
+- Shared design system: [`packages/ui`](packages/ui) (`@pane/ui`) — Tamagui theme **`dark`** with Pane tokens (token values mirror desktop `global.css` / `shell.css`).
 - Use `Button`, `Card`, `Switch` (`native` on mobile), `Slider` (native range / `@react-native-community/slider`), `QRCode`, layout stacks from `@pane/ui` before adding one-off primitives.
 - Wrap app roots with `UIProvider`. Both apps use `@tamagui/babel-plugin` pointing at `packages/ui/tamagui.config.cjs`.
+- Reusable motion belongs in `@pane/ui`: use Tamagui animations and shared wrappers such as `PageTransition` / `PopupTransition` for page, modal, popup, preview, and cross-platform component motion. Keep CSS animations for Windows-only chrome, DOM-specific hover polish, and specialized webview flows that are tightly coupled to Tauri window readiness.
 - Windows-only chrome: `apps/windows/app/shell.css` for titlebar/sidebar glass and `data-tauri-drag-region` — not in `@pane/ui`.
 - Optimize the main window for the default 800–900 px width.
-- Icons: `@tamagui/lucide-icons` (re-export from `@pane/ui` when needed). Do not add other icon libraries.
+- Icons: `@tamagui/lucide-icons-2` (re-export from `@pane/ui` when needed). Do not add other icon libraries.
 - Companion dev requires a **dev client** build (`npm run companion` → `expo run:ios --device`); Expo Go is not supported for native sliders/Tamagui controls.
 
 ## Rust / Tauri guidelines

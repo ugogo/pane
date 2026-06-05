@@ -1,12 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Sun,
-  Contrast,
-  Sunset,
-  Trash2,
-  RotateCcw,
-} from '@tamagui/lucide-icons';
+import { Sun, Contrast, Sunset, Trash2, RotateCcw } from '@pane/ui';
 import {
   Button,
   Card,
@@ -333,7 +327,7 @@ function PresetBar({
   onSave: () => void;
 }) {
   return (
-    <XStack flexWrap="wrap" gap="$2" items="center">
+    <XStack flexWrap="wrap" gap="$2" alignItems="center">
       <Button
         disabled={busy}
         btnScale="sm"
@@ -391,7 +385,7 @@ function MonitorRow({
 }) {
   const name = m.name || `Monitor ${m.id}`;
   return (
-    <Card gap="$2" p="$3">
+    <Card gap="$2" padding="$3">
       <Text fontSize="$3" fontWeight="600" numberOfLines={1}>
         {name}
       </Text>
@@ -449,13 +443,13 @@ function MonitorRow({
       !m.greenGain.supported &&
       !m.blueGain.supported ? (
         <MutedText
-          background="$gray3"
+          backgroundColor="$gray3"
           borderColor="$borderColor"
           borderWidth={1}
           fontSize="$2"
-          mt="$2"
-          p="$3"
-          rounded="$4"
+          marginTop="$2"
+          padding="$3"
+          borderRadius="$4"
         >
           DDC/CI unavailable. Enable DDC/CI in this monitor&apos;s on-screen
           menu.

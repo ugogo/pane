@@ -35,8 +35,8 @@ export function AccentCard() {
 
   return (
     <YStack gap="$3">
-      <Card p="$3">
-        <XStack gap="$4" items="center" justify="space-between">
+      <Card padding="$3">
+        <XStack gap="$4" alignItems="center" justifyContent="space-between">
           <YStack flex={1} gap="$1">
             <Label fontSize="$3">Enabled</Label>
             <MutedText fontSize="$3">

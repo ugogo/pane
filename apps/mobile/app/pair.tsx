@@ -6,7 +6,7 @@ import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
 import { generateKeyPair, ENDPOINTS, type PairResponse } from '@pane/protocol';
-import { Button, MutedText, Text, View, YStack } from '@pane/ui';
+import { Button, colors, MutedText, Text, View, YStack } from '@pane/ui';
 import { Screen } from '../components/Screen';
 import { parsePairingUri, baseUrl } from '../lib/pairing';
 import { STORE_KEY, DEVICE_NAME } from '../lib/constants';
@@ -69,7 +69,7 @@ export default function PairScreen() {
   if (!permission) {
     return (
       <Screen center>
-        <ActivityIndicator color="#fafafa" />
+        <ActivityIndicator color={colors.foreground} />
       </Screen>
     );
   }
@@ -77,7 +77,7 @@ export default function PairScreen() {
   if (!permission.granted) {
     return (
       <Screen>
-        <YStack flex={1} gap="$5" justify="center" p="$6">
+        <YStack flex={1} gap="$5" justifyContent="center" padding="$6">
           <Text fontSize="$9" fontWeight="700">
             Pane Companion
           </Text>
@@ -95,7 +95,7 @@ export default function PairScreen() {
 
   return (
     <Screen>
-      <YStack gap="$2" p="$6">
+      <YStack gap="$2" padding="$6">
         <Text fontSize="$9" fontWeight="700">
           Scan Pane
         </Text>
@@ -104,10 +104,10 @@ export default function PairScreen() {
         </MutedText>
       </YStack>
       <View
-        background="#000000"
-        mx="$6"
+        backgroundColor="$black"
+        marginHorizontal="$6"
         overflow="hidden"
-        rounded="$8"
+        borderRadius="$8"
         style={{ aspectRatio: 1 }}
       >
         <CameraView
@@ -117,8 +117,8 @@ export default function PairScreen() {
         />
         {pairing ? (
           <View
-            items="center"
-            justify="center"
+            alignItems="center"
+            justifyContent="center"
             gap="$3"
             style={{
               position: 'absolute',
@@ -126,16 +126,16 @@ export default function PairScreen() {
               right: 0,
               bottom: 0,
               left: 0,
-              backgroundColor: 'rgba(0,0,0,0.55)',
+              backgroundColor: colors.scrim,
             }}
           >
-            <ActivityIndicator color="#fafafa" />
+            <ActivityIndicator color={colors.foreground} />
             <MutedText>Pairing…</MutedText>
           </View>
         ) : null}
       </View>
       {error ? (
-        <Text color="$red11" fontSize="$3" p="$6">
+        <Text color="$red11" fontSize="$3" padding="$6">
           {error}
         </Text>
       ) : null}

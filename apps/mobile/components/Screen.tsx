@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { View, YStack } from '@pane/ui';
+import { usePathname } from 'expo-router';
+import { colors, PageTransition, View } from '@pane/ui';
 
 /**
  * Dark app shell shared by every screen. `center` vertically/horizontally centers
@@ -19,31 +20,33 @@ export function Screen({
   safeArea?: boolean;
   style?: ViewStyle;
 }) {
+  const pathname = usePathname();
+  const content = (
+    <PageTransition
+      motionKey={pathname}
+      flex={1}
+      alignItems={center ? 'center' : undefined}
+      justifyContent={center ? 'center' : undefined}
+    >
+      {children}
+    </PageTransition>
+  );
+
   if (safeArea) {
     return (
-      <SafeAreaView style={[{ flex: 1, backgroundColor: '#2e2e32' }, style]}>
+      <SafeAreaView
+        style={[{ flex: 1, backgroundColor: colors.background }, style]}
+      >
         <StatusBar style="light" />
-        <YStack
-          flex={1}
-          items={center ? 'center' : undefined}
-          justify={center ? 'center' : undefined}
-        >
-          {children}
-        </YStack>
+        {content}
       </SafeAreaView>
     );
   }
 
   return (
-    <View flex={1} background="$background" style={style}>
+    <View flex={1} backgroundColor="$background" style={style}>
       <StatusBar style="light" />
-      <YStack
-        flex={1}
-        items={center ? 'center' : undefined}
-        justify={center ? 'center' : undefined}
-      >
-        {children}
-      </YStack>
+      {content}
     </View>
   );
 }

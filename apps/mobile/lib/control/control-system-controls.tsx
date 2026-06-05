@@ -14,7 +14,7 @@ export function ControlSystemControls({
 }) {
   return (
     <Card offline={offline} gap="$4">
-      <XStack items="center" justify="space-between">
+      <XStack alignItems="center" justifyContent="space-between">
         <Label>Accent popup</Label>
         <Switch
           {...(offline ? { disabled: true } : {})}
@@ -24,7 +24,7 @@ export function ControlSystemControls({
           }
         />
       </XStack>
-      <XStack items="center" justify="space-between">
+      <XStack alignItems="center" justifyContent="space-between">
         <Label>Run at startup</Label>
         <Switch
           {...(offline ? { disabled: true } : {})}

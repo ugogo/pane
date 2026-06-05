@@ -37,7 +37,7 @@ export function SliderField({
 
   if (Platform.OS === 'web') {
     return (
-      <YStack flex={1} minW={0}>
+      <YStack flex={1} minWidth={0}>
         <Slider
           disabled={disabled}
           max={max}
@@ -46,10 +46,15 @@ export function SliderField({
           value={[clamped]}
           onValueChange={(values) => handleChange(values[0] ?? clamped)}
         >
-          <Slider.Track bg="$gray4" height={6} rounded={1000}>
-            <Slider.TrackActive bg="$green9" />
+          <Slider.Track backgroundColor="$gray4" height={6} borderRadius={1000}>
+            <Slider.TrackActive backgroundColor="$green9" />
           </Slider.Track>
-          <Slider.Thumb bg="$color" borderWidth={0} index={0} size="$1" />
+          <Slider.Thumb
+            backgroundColor="$color"
+            borderWidth={0}
+            index={0}
+            size="$1"
+          />
         </Slider>
       </YStack>
     );

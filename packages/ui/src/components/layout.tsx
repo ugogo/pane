@@ -17,7 +17,7 @@ export const SectionListFrame = styled(YStack, {
   borderColor: '$borderColor',
   borderWidth: 1,
   overflow: 'hidden',
-  rounded: '$4',
+  borderRadius: '$4',
 });
 
 export function SectionList({
@@ -26,8 +26,8 @@ export function SectionList({
   ...props
 }: ComponentProps<typeof SectionListFrame> & { maxHeight?: number }) {
   return (
-    <SectionListFrame maxH={maxHeight} {...props}>
-      <ScrollView flex={1} maxH={maxHeight} showsVerticalScrollIndicator>
+    <SectionListFrame maxHeight={maxHeight} {...props}>
+      <ScrollView flex={1} maxHeight={maxHeight} showsVerticalScrollIndicator>
         {children}
       </ScrollView>
     </SectionListFrame>
@@ -37,14 +37,14 @@ export function SectionList({
 export const ListRow = styled(XStack, {
   borderColor: '$borderColor',
   gap: '$2',
-  items: 'center',
-  px: '$2.5',
-  py: '$2',
+  alignItems: 'center',
+  paddingHorizontal: '$2.5',
+  paddingVertical: '$2',
 
   variants: {
     active: {
-      true: { bg: '$green4' },
-      false: { bg: 'transparent' },
+      true: { backgroundColor: '$green4' },
+      false: { backgroundColor: 'transparent' },
     },
     first: {
       true: { borderTopWidth: 0 },
@@ -63,9 +63,9 @@ export const ListRowButton = styled(Button, {
   flex: 1,
   fontSize: '$3',
   height: 'auto',
-  justify: 'flex-start',
-  minH: 28,
-  px: 0,
+  justifyContent: 'flex-start',
+  minHeight: 28,
+  paddingHorizontal: 0,
 
   variants: {
     active: {
@@ -81,13 +81,13 @@ export const ListRowButton = styled(Button, {
 
 export const ListDot = styled(YStack, {
   height: 6,
-  rounded: 1000,
+  borderRadius: 1000,
   width: 6,
 
   variants: {
     active: {
-      true: { bg: '$green9' },
-      false: { bg: 'transparent' },
+      true: { backgroundColor: '$green9' },
+      false: { backgroundColor: 'transparent' },
     },
   } as const,
 
@@ -97,16 +97,16 @@ export const ListDot = styled(YStack, {
 });
 
 export const IconButton = styled(Button, {
-  bg: '$gray3',
+  backgroundColor: '$gray3',
   borderColor: '$borderColor',
   borderWidth: 1,
   chromeless: true,
   height: 28,
-  minW: 28,
-  px: 0,
-  rounded: '$3',
+  minWidth: 28,
+  paddingHorizontal: 0,
+  borderRadius: '$3',
   width: 28,
-  pressStyle: { bg: '$gray4' },
+  pressStyle: { backgroundColor: '$gray4' },
 
   variants: {
     active: {
@@ -121,53 +121,53 @@ export const IconButton = styled(Button, {
 });
 
 export const StatFrame = styled(YStack, {
-  bg: '$gray2',
+  backgroundColor: '$gray2',
   borderColor: '$borderColor',
   borderWidth: 1,
   flex: 1,
-  minW: 140,
-  p: '$3',
-  rounded: '$4',
+  minWidth: 140,
+  padding: '$3',
+  borderRadius: '$4',
 });
 
 export const MutedPanel = styled(YStack, {
-  bg: '$gray3',
+  backgroundColor: '$gray3',
   borderColor: '$borderColor',
   borderWidth: 1,
   gap: '$3',
-  p: '$3',
-  rounded: '$4',
+  padding: '$3',
+  borderRadius: '$4',
 });
 
 export const DeviceIcon = styled(XStack, {
-  bg: '$gray3',
+  backgroundColor: '$gray3',
   borderColor: '$borderColor',
   borderWidth: 1,
   height: 32,
-  items: 'center',
-  justify: 'center',
-  rounded: '$3',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: '$3',
   width: 32,
 });
 
 export const SliderRow = styled(XStack, {
   gap: '$2.5',
-  items: 'center',
-  mt: '$2',
+  alignItems: 'center',
+  marginTop: '$2',
 });
 
 export const SliderLabel = styled(XStack, {
   gap: '$1',
-  items: 'center',
-  shrink: 0,
+  alignItems: 'center',
+  flexShrink: 0,
   width: 92,
 });
 
 export const SliderValue = styled(Text, {
   color: '$placeholderColor',
   fontSize: '$2',
-  shrink: 0,
-  text: 'right',
+  flexShrink: 0,
+  textAlign: 'right',
   width: 44,
 });
 
@@ -175,35 +175,35 @@ export const PresetGroup = styled(XStack, {
   borderColor: '$borderColor',
   borderWidth: 1,
   overflow: 'hidden',
-  rounded: '$4',
+  borderRadius: '$4',
 });
 
 export const PresetNameButton = styled(Button, {
-  bg: '$gray3',
+  backgroundColor: '$gray3',
   chromeless: true,
   color: '$color',
   fontSize: '$2',
   fontWeight: '600',
   height: TOOLBAR_HEIGHT,
-  minH: TOOLBAR_HEIGHT,
-  pressStyle: { bg: '$gray4' },
-  px: '$2.5',
-  py: 0,
-  rounded: 0,
+  minHeight: TOOLBAR_HEIGHT,
+  pressStyle: { backgroundColor: '$gray4' },
+  paddingHorizontal: '$2.5',
+  paddingVertical: 0,
+  borderRadius: 0,
 });
 
 export const PresetIconButton = styled(Button, {
-  bg: '$gray3',
+  backgroundColor: '$gray3',
   borderColor: '$borderColor',
   borderLeftWidth: 1,
   chromeless: true,
   color: '$placeholderColor',
   height: TOOLBAR_HEIGHT,
-  minH: TOOLBAR_HEIGHT,
-  minW: TOOLBAR_HEIGHT,
-  pressStyle: { bg: '$gray4' },
-  px: 0,
-  rounded: 0,
+  minHeight: TOOLBAR_HEIGHT,
+  minWidth: TOOLBAR_HEIGHT,
+  pressStyle: { backgroundColor: '$gray4' },
+  paddingHorizontal: 0,
+  borderRadius: 0,
   width: TOOLBAR_HEIGHT,
 });
 
@@ -224,7 +224,7 @@ export function Stat({
         color="$color"
         fontSize="$3"
         fontWeight="600"
-        mt="$1"
+        marginTop="$1"
         style={{ fontFamily: 'monospace' }}
       >
         {value}
@@ -246,7 +246,7 @@ export function ListRowContent({
 }) {
   return (
     <ListRowButton active={active} disabled={disabled} onPress={onPress}>
-      <XStack flex={1} gap="$2" items="center" minW={0}>
+      <XStack flex={1} gap="$2" alignItems="center" minWidth={0}>
         <ListDot active={active} />
         <SizableText
           color={active ? '$color' : listMutedColor}

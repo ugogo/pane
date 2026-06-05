@@ -27,17 +27,33 @@ export function SwitchField({
 
   return (
     <Switch
-      bg={isChecked ? '$green4' : '$gray3'}
+      backgroundColor={isChecked ? '$green4' : '$gray3'}
       borderColor={isChecked ? '$green9' : '$borderColor'}
       borderWidth={1}
       checked={isChecked}
       disabled={disabled}
-      size="$3"
+      style={
+        Platform.OS === 'web'
+          ? {
+              transition:
+                'background-color 160ms ease, border-color 160ms ease',
+            }
+          : undefined
+      }
       {...(useNative ? { native: 'mobile' as const } : {})}
       onCheckedChange={(next) => onChange?.(next)}
       {...props}
     >
-      <Switch.Thumb animation="quick" bg="$color" />
+      <Switch.Thumb
+        backgroundColor="$gray12"
+        style={
+          Platform.OS === 'web'
+            ? {
+                transition: 'transform 160ms ease, background-color 160ms ease',
+              }
+            : undefined
+        }
+      />
     </Switch>
   );
 }

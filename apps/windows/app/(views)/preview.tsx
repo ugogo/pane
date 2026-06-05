@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Clipboard, Save, X } from '@tamagui/lucide-icons';
+import { Check, Clipboard, Save, X } from '@pane/ui';
 import { useEffectEvent } from '@/lib/use-effect-event';
 import { listen } from '@tauri-apps/api/event';
 import {

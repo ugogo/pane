@@ -1,9 +1,10 @@
 import { defaultConfig } from '@tamagui/config/v5';
+import { animations as paneAnimations } from '@tamagui/config/v5-css';
 import { createTamagui } from 'tamagui';
 
 import { colors } from './tokens';
 
-const paneTheme = {
+const appTheme = {
   ...defaultConfig.themes.dark,
   background: colors.background,
   backgroundHover: colors.card,
@@ -46,7 +47,7 @@ const paneTheme = {
   red9: colors.destructive,
   red10: colors.destructive,
   red11: colors.destructive,
-  green4: 'rgba(61, 82, 76, 0.22)',
+  green4: colors.accentSubtle,
   green9: colors.accent,
   green10: colors.accent,
   green11: colors.accentForeground,
@@ -63,10 +64,14 @@ const paneTheme = {
 
 export const tamaguiConfig = createTamagui({
   ...defaultConfig,
+  animations: paneAnimations,
+  settings: {
+    ...defaultConfig.settings,
+    onlyAllowShorthands: false,
+  },
   themes: {
     ...defaultConfig.themes,
-    pane: paneTheme,
-    pane_dark: paneTheme,
+    dark: appTheme,
   },
 });
 

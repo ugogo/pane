@@ -2,12 +2,12 @@ import type { ComponentProps, ReactNode } from 'react';
 import { Card, styled, Text, YStack } from 'tamagui';
 
 export const CardFrame = styled(Card, {
-  bg: '$gray2',
+  backgroundColor: '$gray2',
   borderColor: '$borderColor',
   borderWidth: 1,
   gap: '$4',
-  p: '$5',
-  rounded: '$6',
+  padding: '$5',
+  borderRadius: '$6',
 
   variants: {
     offline: {

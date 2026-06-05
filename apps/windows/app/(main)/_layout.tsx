@@ -17,13 +17,14 @@ import {
   Square,
   Volume2,
   X,
-} from '@tamagui/lucide-icons';
+} from '@pane/ui';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
   Button,
   Card,
   Label,
   MutedText,
+  PageTransition,
   Text,
   colors,
   ScrollView,
@@ -111,9 +112,9 @@ export default function MainLayout() {
         <AppTitlebar />
         <YStack
           flex={1}
-          background="$background"
-          items="center"
-          justify="center"
+          backgroundColor="$background"
+          alignItems="center"
+          justifyContent="center"
         >
           <Loader2 aria-hidden color="$placeholderColor" size={16} />
         </YStack>
@@ -152,76 +153,78 @@ function AppShell({
     <YStack height="100vh" overflow="hidden">
       <AppTitlebar />
 
-      <XStack flex={1} style={{ minHeight: 0 }}>
+      <div className="app-main-frame">
         <div className="app-sidebar">
-          <nav
-            aria-label="Pane modules"
-            style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
-          >
+          <nav aria-label="Pane modules" className="app-nav-list">
             {modules.map(({ path, label, icon: Icon }) => {
               const isActive = pathname === path;
               return (
-                <Link key={path} href={path} asChild>
-                  <a
-                    href={path}
-                    className={
-                      isActive
-                        ? 'app-nav-link app-nav-link-active'
-                        : 'app-nav-link'
-                    }
-                  >
-                    <Icon aria-hidden size={16} />
-                    <span>{label}</span>
-                  </a>
+                <Link
+                  key={path}
+                  href={path}
+                  className={
+                    isActive
+                      ? 'app-nav-link app-nav-link-active'
+                      : 'app-nav-link'
+                  }
+                >
+                  <Icon aria-hidden size={16} />
+                  <span>{label}</span>
                 </Link>
               );
             })}
           </nav>
         </div>
 
-        <ScrollView ref={contentScrollRef} flex={1} bg="$background">
+        <ScrollView
+          ref={contentScrollRef}
+          flex={1}
+          backgroundColor="$background"
+        >
           <YStack
             borderBottomWidth={1}
             borderColor="$borderColor"
             gap="$1"
-            p="$6"
-            px="$8"
-            bg="$background"
+            padding="$6"
+            paddingHorizontal="$8"
+            backgroundColor="$background"
             style={{ position: 'sticky', top: 0, zIndex: 10 }}
           >
             <XStack
               gap="$4"
-              items="flex-start"
-              justify="space-between"
+              alignItems="flex-start"
+              justifyContent="space-between"
               width="100%"
               style={{ maxWidth: 760, alignSelf: 'center' }}
             >
-              <YStack flex={1} gap="$1">
+              <YStack flex={1} gap="$1" style={{ minWidth: 0 }}>
                 <Text fontSize="$8" fontWeight="600">
                   {activeModule.title}
                 </Text>
                 <MutedText fontSize="$3">{activeModule.description}</MutedText>
               </YStack>
               <MutedText
-                background="$gray2"
+                backgroundColor="$gray2"
                 borderColor="$borderColor"
                 borderWidth={1}
                 style={{ fontFamily: 'monospace' }}
                 fontSize="$2"
-                px="$2"
-                py="$1"
-                rounded="$3"
+                paddingHorizontal="$2"
+                paddingVertical="$1"
+                borderRadius="$3"
               >
                 {appVersion ?? 'version unavailable'}
               </MutedText>
             </XStack>
           </YStack>
 
-          <YStack
-            bg="$background"
+          <PageTransition
+            key={pathname}
+            motionKey={pathname}
+            backgroundColor="$background"
             gap="$5"
-            p="$6"
-            px="$8"
+            padding="$6"
+            paddingHorizontal="$8"
             width="100%"
             style={{ maxWidth: 760, alignSelf: 'center' }}
           >
@@ -231,9 +234,9 @@ function AppShell({
               onRestart={() => void restartToApplyUpdate()}
             />
             <Slot />
-          </YStack>
+          </PageTransition>
         </ScrollView>
-      </XStack>
+      </div>
     </YStack>
   );
 }
@@ -309,13 +312,13 @@ function UpdateNotice({
     return (
       <Card
         gap="$2"
-        p="$3"
+        padding="$3"
         style={{
           backgroundColor: colors.errorSurface,
           borderColor: colors.errorBorder,
         }}
       >
-        <XStack gap="$2" items="flex-start">
+        <XStack gap="$2" alignItems="flex-start">
           <AlertTriangle aria-hidden color="$red11" size={16} />
           <YStack flex={1} gap="$1">
             <Text color="$red11" fontWeight="600">
@@ -332,9 +335,9 @@ function UpdateNotice({
 
   if (state.status === 'installed') {
     return (
-      <Card p="$3">
-        <XStack gap="$3" items="center" justify="space-between">
-          <XStack gap="$2" items="flex-start" style={{ minWidth: 0 }}>
+      <Card padding="$3">
+        <XStack gap="$3" alignItems="center" justifyContent="space-between">
+          <XStack gap="$2" alignItems="flex-start" style={{ minWidth: 0 }}>
             <CheckCircle2 aria-hidden size={16} />
             <YStack style={{ minWidth: 0 }}>
               <Label>Pane {state.version} is installed</Label>
@@ -368,9 +371,9 @@ function UpdateNotice({
     : null;
 
   return (
-    <Card gap="$3" p="$3">
-      <XStack gap="$3" items="center" justify="space-between">
-        <XStack gap="$2" items="flex-start" style={{ minWidth: 0 }}>
+    <Card gap="$3" padding="$3">
+      <XStack gap="$3" alignItems="center" justifyContent="space-between">
+        <XStack gap="$2" alignItems="flex-start" style={{ minWidth: 0 }}>
           {isInstalling ? (
             <Loader2 aria-hidden size={16} />
           ) : (
@@ -400,18 +403,18 @@ function UpdateNotice({
       </XStack>
 
       {isInstalling ? (
-        <XStack gap="$3" items="center">
+        <XStack gap="$3" alignItems="center">
           <View
-            background="$gray3"
+            backgroundColor="$gray3"
             flex={1}
             height={6}
             overflow="hidden"
-            rounded={999}
+            borderRadius={999}
           >
             <View
-              background="$gray9"
+              backgroundColor="$gray9"
               height="100%"
-              rounded={999}
+              borderRadius={999}
               width={`${progress ?? 10}%`}
             />
           </View>

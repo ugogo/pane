@@ -3,20 +3,21 @@ import { styled, YStack, type YStackProps } from 'tamagui';
 
 import { colors } from '../tokens';
 
-export type QRCodeProps = {
+export type QRCodeProps = Omit<YStackProps, 'backgroundColor'> & {
   value: string;
   size?: number;
   /** Error correction: L, M, Q, H */
   level?: 'L' | 'M' | 'Q' | 'H';
   backgroundColor?: string;
   color?: string;
+  containerBackgroundColor?: YStackProps['backgroundColor'];
   quietZone?: number;
-} & YStackProps;
+};
 
 const QRCodeFrame = styled(YStack, {
-  items: 'center',
-  p: '$3',
-  rounded: '$3',
+  alignItems: 'center',
+  padding: '$3',
+  borderRadius: '$3',
 });
 
 export function QRCode({
@@ -25,12 +26,12 @@ export function QRCode({
   level = 'M',
   backgroundColor = colors.white,
   color = colors.black,
+  containerBackgroundColor = '$white',
   quietZone = 0,
-  bg = '$white' as const,
   ...containerProps
 }: QRCodeProps) {
   return (
-    <QRCodeFrame bg={bg} {...containerProps}>
+    <QRCodeFrame backgroundColor={containerBackgroundColor} {...containerProps}>
       <QRCodeSvg
         backgroundColor={backgroundColor}
         color={color}

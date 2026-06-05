@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, QrCode, Wifi, X } from '@tamagui/lucide-icons';
+import { Copy, QrCode, Wifi, X } from '@pane/ui';
 import {
   Button,
   Card,
@@ -63,10 +63,10 @@ export function CompanionCard() {
 
   return (
     <YStack gap="$3">
-      <Card p="$3">
-        <XStack gap="$4" items="center" justify="space-between">
+      <Card padding="$3">
+        <XStack gap="$4" alignItems="center" justifyContent="space-between">
           <YStack flex={1} gap="$1" style={{ minWidth: 0 }}>
-            <XStack gap="$2" items="center">
+            <XStack gap="$2" alignItems="center">
               <Label fontSize="$3">Local companion</Label>
               <StatusBadge status={status?.enabled ? 'pass' : 'disabled'} />
             </XStack>
@@ -87,8 +87,8 @@ export function CompanionCard() {
         </XStack>
       </Card>
 
-      <Card gap="$3" p="$3">
-        <XStack gap="$3" items="center" justify="space-between">
+      <Card gap="$3" padding="$3">
+        <XStack gap="$3" alignItems="center" justifyContent="space-between">
           <YStack flex={1} style={{ minWidth: 0 }}>
             <Label fontSize="$3">Pairing session</Label>
             <MutedText fontSize="$3">
@@ -97,7 +97,7 @@ export function CompanionCard() {
                 : 'No active pairing window'}
             </MutedText>
           </YStack>
-          <XStack gap="$2" shrink={0}>
+          <XStack gap="$2" flexShrink={0}>
             {pairing ? (
               <Button
                 aria-label="Cancel pairing"
@@ -122,7 +122,7 @@ export function CompanionCard() {
 
         {pairing ? (
           <MutedPanel>
-            <XStack gap="$3" items="center" justify="space-between">
+            <XStack gap="$3" alignItems="center" justifyContent="space-between">
               <Label fontSize="$3">Scan to pair</Label>
               <Button
                 icon={<Copy aria-hidden size={16} />}
@@ -135,7 +135,7 @@ export function CompanionCard() {
                 Copy URI
               </Button>
             </XStack>
-            <YStack items="center" mt="$3">
+            <YStack alignItems="center" marginTop="$3">
               <QRCode
                 level="M"
                 quietZone={0}
@@ -143,15 +143,19 @@ export function CompanionCard() {
                 value={pairing.pairingUri}
               />
             </YStack>
-            <MutedText fontSize="$2" mt="$2" style={{ textAlign: 'center' }}>
+            <MutedText
+              fontSize="$2"
+              marginTop="$2"
+              style={{ textAlign: 'center' }}
+            >
               Open Pane Companion on your iPhone and scan this code.
             </MutedText>
           </MutedPanel>
         ) : null}
       </Card>
 
-      <Card gap="$3" p="$3">
-        <XStack gap="$2" items="center">
+      <Card gap="$3" padding="$3">
+        <XStack gap="$2" alignItems="center">
           <Wifi aria-hidden color="$placeholderColor" size={14} />
           <Label fontSize="$3">Trusted devices</Label>
         </XStack>
@@ -161,8 +165,8 @@ export function CompanionCard() {
         ) : (
           <YStack gap="$2">
             {devices.map((device) => (
-              <XStack key={device.id} gap="$2" items="center">
-                <YStack flex={1} minW={0}>
+              <XStack key={device.id} gap="$2" alignItems="center">
+                <YStack flex={1} minWidth={0}>
                   <Text fontSize="$3" fontWeight="600" numberOfLines={1}>
                     {device.name}
                   </Text>

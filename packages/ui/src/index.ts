@@ -27,6 +27,12 @@ export { Badge, type BadgeProps, type BadgeVariant } from './components/badge';
 export { Label, MutedText, Text, type TextProps } from './components/text';
 export { QRCode, type QRCodeProps } from './components/qrcode';
 export {
+  PageTransition,
+  PopupTransition,
+  type PageTransitionProps,
+  type PopupTransitionProps,
+} from './components/motion';
+export {
   DeviceIcon,
   IconButton,
   ListDot,
@@ -58,4 +64,7 @@ export {
   Sheet,
   Input,
   TextArea,
+  AnimatePresence,
 } from 'tamagui';
+
+export * from '@tamagui/lucide-icons-2';

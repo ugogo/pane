@@ -1,6 +1,7 @@
 import { Redirect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator } from 'react-native';
+import { colors } from '@pane/ui';
 import { Screen } from '../components/Screen';
 import { loadStoredPairing } from '../lib/pairing-query';
 import { queryKeys } from '../lib/query-keys';
@@ -14,7 +15,7 @@ export default function Index() {
   if (pairingQuery.isPending) {
     return (
       <Screen center>
-        <ActivityIndicator color="#fafafa" />
+        <ActivityIndicator color={colors.foreground} />
       </Screen>
     );
   }

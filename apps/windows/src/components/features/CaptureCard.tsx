@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye } from '@tamagui/lucide-icons';
+import { Eye } from '@pane/ui';
 import { Button, Card, Label, MutedText, XStack, YStack } from '@pane/ui';
 import {
   captureFullscreen,
@@ -175,7 +175,7 @@ function CaptureRow({
   busy: boolean;
 }) {
   return (
-    <Card flex={1} gap="$3" p="$3" style={{ minWidth: 280 }}>
+    <Card flex={1} gap="$3" padding="$3" style={{ minWidth: 280 }}>
       <YStack gap="$2">
         <Label fontSize="$3">{label}</Label>
         <Button disabled={busy} btnScale="sm" width="100%" onPress={onTrigger}>

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Volume2, VolumeX, Mic, MicOff, Star } from '@tamagui/lucide-icons';
+import { Volume2, VolumeX, Mic, MicOff, Star } from '@pane/ui';
 import {
   Button,
   Card,
@@ -51,7 +51,7 @@ const setVolumeFor: Record<Kind, (v: number) => Promise<void>> = {
   output: setOutputVolume,
   input: setInputVolume,
 };
-const setMuteFor: Record<Kind, (m: boolean) => Promise<void>> = {
+const setMuteFor: Record<Kind, (muted: boolean) => Promise<void>> = {
   output: setOutputMute,
   input: setInputMute,
 };
@@ -233,7 +233,7 @@ function Section({
   const muted = vol?.muted ?? false;
   const ordered = orderDevices(devices, favs);
   return (
-    <Card gap="$3" p="$3">
+    <Card gap="$3" padding="$3">
       <Label fontSize="$3">{label}</Label>
 
       {ordered.length === 0 ? (
@@ -298,7 +298,7 @@ function Section({
           <SliderValue>{muted ? 'Muted' : `${vpct(vol.volume)}%`}</SliderValue>
         </SliderRow>
       ) : (
-        <MutedText fontSize="$2" mt="$2">
+        <MutedText fontSize="$2" marginTop="$2">
           No volume control available.
         </MutedText>
       )}

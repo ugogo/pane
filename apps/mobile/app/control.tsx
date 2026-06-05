@@ -58,7 +58,7 @@ export default function ControlScreen() {
         {snapshot && snapshot.presets.length > 0 ? (
           <Card offline={offline}>
             <Label>Monitor presets</Label>
-            <YStack flexDirection="row" flexWrap="wrap" gap="$2" mt="$3">
+            <YStack flexDirection="row" flexWrap="wrap" gap="$2" marginTop="$3">
               {snapshot.presets.map((preset) => (
                 <Button
                   key={preset.name}

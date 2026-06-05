@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Cpu, Monitor, Mouse } from '@tamagui/lucide-icons';
+import { Cpu, Monitor, Mouse } from '@pane/ui';
 import {
   Button,
   Card,
@@ -170,8 +170,8 @@ function LightRow({
   }
 
   return (
-    <Card gap="$3" p="$3">
-      <XStack flexWrap="wrap" gap="$3" items="center">
+    <Card gap="$3" padding="$3">
+      <XStack flexWrap="wrap" gap="$3" alignItems="center">
         <DeviceIcon>
           <LightIcon light={light} />
         </DeviceIcon>
@@ -186,7 +186,7 @@ function LightRow({
         <StatusBadge status={visibleStatus} />
       </XStack>
 
-      <XStack flexWrap="wrap" gap="$3" items="center">
+      <XStack flexWrap="wrap" gap="$3" alignItems="center">
         <input
           type="color"
           aria-label={`Color for ${lightTitle(light)}`}

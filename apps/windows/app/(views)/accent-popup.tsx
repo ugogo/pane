@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { useLocalSearchParams } from 'expo-router';
-import { Text } from '@pane/ui';
+import { PopupTransition, Text } from '@pane/ui';
 import { accentSelect } from '@/lib/commands';
 
 interface AccentPayload {
@@ -43,31 +43,33 @@ export default function AccentPopupPage() {
   if (accents.length === 0) return null;
 
   return (
-    <div className="accent-popup-root">
-      {accents.map((ch, i) => {
-        const active = i === selected;
-        return (
-          <button
-            key={ch}
-            type="button"
-            aria-label={`Select ${ch}, shortcut ${i + 1}`}
-            aria-current={active ? 'true' : undefined}
-            className={
-              active
-                ? 'accent-popup-chip accent-popup-chip-active'
-                : 'accent-popup-chip'
-            }
-            onClick={() => void accentSelect(ch)}
-          >
-            <Text fontSize="$6" lineHeight={1}>
-              {ch}
-            </Text>
-            <Text fontSize={9} lineHeight={1} opacity={active ? 0.75 : 0.6}>
-              {i + 1}
-            </Text>
-          </button>
-        );
-      })}
-    </div>
+    <PopupTransition motionKey={accents.join(',')} style={{ display: 'block' }}>
+      <div className="accent-popup-root">
+        {accents.map((ch, i) => {
+          const active = i === selected;
+          return (
+            <button
+              key={ch}
+              type="button"
+              aria-label={`Select ${ch}, shortcut ${i + 1}`}
+              aria-current={active ? 'true' : undefined}
+              className={
+                active
+                  ? 'accent-popup-chip accent-popup-chip-active'
+                  : 'accent-popup-chip'
+              }
+              onClick={() => void accentSelect(ch)}
+            >
+              <Text fontSize="$6" lineHeight={1}>
+                {ch}
+              </Text>
+              <Text fontSize={9} lineHeight={1} opacity={active ? 0.75 : 0.6}>
+                {i + 1}
+              </Text>
+            </button>
+          );
+        })}
+      </div>
+    </PopupTransition>
   );
 }

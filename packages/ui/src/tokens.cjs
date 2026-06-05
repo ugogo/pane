@@ -18,6 +18,7 @@ const colors = {
   muted: '#342c30',
   mutedForeground: '#b8b8b8',
   accent: '#3d524c',
+  accentSubtle: 'rgba(61, 82, 76, 0.22)',
   accentForeground: '#fafafa',
   destructive: '#f87171',
   border: 'rgba(255, 255, 255, 0.11)',
@@ -25,6 +26,8 @@ const colors = {
   ring: '#6b9e94',
   white: '#ffffff',
   black: '#0b0b0c',
+  blackSolid: '#000000',
+  scrim: 'rgba(0, 0, 0, 0.55)',
   /** Status / feedback (badges, scan messages). */
   statusPass: '#a8e6c8',
   statusPassBg: 'rgba(61, 82, 76, 0.35)',

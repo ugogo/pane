@@ -10,7 +10,7 @@ export function UIProvider({
   children: ReactNode;
 }) {
   return (
-    <TamaguiProvider config={tamaguiConfig} defaultTheme="pane" {...props}>
+    <TamaguiProvider config={tamaguiConfig} defaultTheme="dark" {...props}>
       {children}
     </TamaguiProvider>
   );

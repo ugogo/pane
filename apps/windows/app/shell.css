@@ -3,8 +3,8 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  /* Keep in sync with paneColors.shellNav in packages/ui/src/tokens.cjs */
-  background: rgb(31 24 28 / 0.9);
+  /* Keep in sync with colors.shellNav in packages/ui/src/tokens.cjs */
+  background: var(--app-shell-nav);
   backdrop-filter: blur(34px) saturate(1.35) brightness(0.68);
   -webkit-backdrop-filter: blur(34px) saturate(1.35) brightness(0.68);
 }
@@ -15,10 +15,10 @@
   align-items: center;
   height: 36px;
   user-select: none;
-  border-bottom: 1px solid rgb(255 255 255 / 0.11);
+  border-bottom: 1px solid var(--app-border);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.08),
-    inset 0 -1px 0 rgb(0 0 0 / 0.2);
+    inset 0 1px 0 var(--app-white-08),
+    inset 0 -1px 0 var(--app-black-20);
 }
 
 .app-sidebar {
@@ -26,10 +26,10 @@
   width: 200px;
   box-sizing: border-box;
   padding: 20px 16px;
-  border-right: 1px solid rgb(255 255 255 / 0.14);
+  border-right: 1px solid var(--app-border-medium);
   box-shadow:
-    inset -1px 0 0 rgb(0 0 0 / 0.16),
-    inset 1px 0 0 rgb(255 255 255 / 0.12);
+    inset -1px 0 0 var(--app-black-16),
+    inset 1px 0 0 var(--app-white-12);
 }
 
 .app-sidebar > * {
@@ -37,11 +37,25 @@
   z-index: 1;
 }
 
+.app-main-frame {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  min-height: 0;
+  min-width: 0;
+}
+
+.app-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .app-window-control {
   display: grid;
   width: 46px;
   height: 36px;
-  color: rgb(255 255 255 / 0.72);
+  color: var(--app-foreground-control);
   place-items: center;
   transition:
     color 120ms ease,
@@ -53,13 +67,13 @@
 }
 
 .app-window-control:hover {
-  color: rgb(255 255 255 / 0.96);
-  background: rgb(255 255 255 / 0.09);
+  color: var(--app-foreground-control-hover);
+  background: var(--app-white-09);
 }
 
 .app-window-control-close:hover {
-  color: white;
-  background: rgb(196 43 28 / 0.9);
+  color: var(--app-foreground);
+  background: var(--app-close-hover);
 }
 
 .app-nav-link {
@@ -70,7 +84,7 @@
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 14px;
-  color: rgb(255 255 255 / 0.62);
+  color: var(--app-foreground-subtle);
   text-decoration: none;
   transition:
     background-color 120ms ease,
@@ -78,19 +92,31 @@
 }
 
 .app-nav-link:hover {
-  background: rgb(255 255 255 / 0.08);
-  color: white;
+  background: var(--app-white-08);
+  color: var(--app-foreground);
 }
 
 .app-nav-link-active {
-  background: rgb(255 255 255 / 0.1);
-  color: white;
+  background: var(--app-white-10);
+  color: var(--app-foreground);
 }
 
 @media (max-width: 767px) {
+  .app-main-frame {
+    flex-direction: column;
+  }
+
   .app-sidebar {
+    width: 100%;
+    padding: 10px 12px;
     border-right: 0;
-    border-bottom: 1px solid rgb(255 255 255 / 0.09);
+    border-bottom: 1px solid var(--app-white-09);
+  }
+
+  .app-nav-list {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 2px;
   }
 
   .app-nav-link {
@@ -106,8 +132,8 @@
 
 /* Native color picker — keep in sync with colors.card / colors.input */
 .color-input {
-  background: #252022;
-  border: 1px solid rgba(255 255 255 / 0.15);
+  background: var(--app-card);
+  border: 1px solid var(--app-border-strong);
   border-radius: 8px;
   height: 36px;
   padding: 4px;
@@ -126,10 +152,10 @@
   height: 200px;
   overflow: hidden;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  background: #3a3a3e;
-  color: #fafafa;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--app-border);
+  background: var(--app-panel-raised);
+  color: var(--app-foreground);
+  box-shadow: 0 8px 24px var(--app-shadow-strong);
 }
 
 .preview-card:hover .preview-overlay,
@@ -148,7 +174,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: rgba(46, 46, 50, 0.7);
+  background: var(--app-preview-overlay);
   opacity: 0;
   transition: opacity 150ms ease;
   backdrop-filter: blur(1px);
@@ -165,8 +191,8 @@
   justify-content: center;
   border: 0;
   border-radius: 999px;
-  background: rgba(46, 46, 50, 0.85);
-  color: #fafafa;
+  background: var(--app-preview-control);
+  color: var(--app-foreground);
   cursor: pointer;
   opacity: 0;
   transition: opacity 150ms ease;
@@ -178,8 +204,8 @@
   left: 6px;
   border-radius: 4px;
   padding: 2px 6px;
-  background: rgba(46, 46, 50, 0.85);
-  color: #b8b8b8;
+  background: var(--app-preview-control);
+  color: var(--app-foreground-muted);
   font-family: monospace;
   font-size: 10px;
   opacity: 0;
@@ -195,12 +221,12 @@
   justify-content: center;
   gap: 6px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  background: rgba(46, 46, 50, 0.85);
-  color: #fafafa;
+  border: 1px solid var(--app-border);
+  background: var(--app-preview-control);
+  color: var(--app-foreground);
   font-size: 12px;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px var(--app-shadow);
   cursor: pointer;
 }
 
@@ -214,9 +240,9 @@
   width: 100%;
   min-height: 32px;
   padding: 0 10px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--app-border-strong);
   border-radius: 8px;
-  background: #2e2e32;
+  background: var(--app-panel);
   font-family: monospace;
   font-size: 14px;
   text-align: left;
@@ -224,12 +250,12 @@
 }
 
 .shortcut-input--capturing {
-  background: #48484c;
-  border-color: #6b9e94;
+  background: var(--app-panel-hover);
+  border-color: var(--app-ring);
 }
 
 .shortcut-input:focus-visible {
-  outline: 2px solid #6b9e94;
+  outline: 2px solid var(--app-ring);
   outline-offset: 2px;
 }
 
@@ -249,13 +275,13 @@
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  background: #ebebeb;
-  color: #343434;
+  background: var(--app-primary);
+  color: var(--app-primary-foreground);
 }
 
 .app-titlebar-title {
   overflow: hidden;
-  color: rgba(255, 255, 255, 0.86);
+  color: var(--app-foreground-soft);
   font-size: 12px;
   font-weight: 500;
   text-overflow: ellipsis;
@@ -275,10 +301,10 @@
   gap: 4px;
   padding: 8px;
   box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.11);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
-  background: #3a3a3e;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  background: var(--app-panel-raised);
+  box-shadow: 0 8px 24px var(--app-shadow-strong);
 }
 
 .accent-popup-chip {
@@ -292,28 +318,28 @@
   border-radius: 6px;
   cursor: pointer;
   background: transparent;
-  color: #b8b8b8;
+  color: var(--app-foreground-muted);
 }
 
 .accent-popup-chip-active {
-  background: #ebebeb;
-  color: #343434;
+  background: var(--app-primary);
+  color: var(--app-primary-foreground);
 }
 
 .area-selector-dim {
   pointer-events: none;
   position: fixed;
   inset: 0;
-  background: rgba(24, 23, 19, 0.58);
+  background: var(--app-selection-dim);
 }
 
 .area-selector-rect {
   position: absolute;
-  border: 1px solid #6b9e94;
+  border: 1px solid var(--app-ring);
   pointer-events: none;
   box-shadow:
-    0 0 0 100vmax rgba(24, 23, 19, 0.58),
-    0 0 0 1px rgba(255, 254, 250, 0.55);
+    0 0 0 100vmax var(--app-selection-dim),
+    0 0 0 1px var(--app-selection-outline);
 }
 
 .area-selector-size-label {
@@ -324,19 +350,19 @@
 }
 
 .area-selector-pill {
-  background: rgba(58, 58, 62, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: var(--app-area-pill);
+  border: 1px solid var(--app-border);
   border-radius: 6px;
-  color: #fafafa;
+  color: var(--app-foreground);
   font-size: 12px;
   padding: 6px 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px var(--app-shadow);
   pointer-events: none;
 }
 
 .area-selector-error {
-  background: #f87171;
-  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--app-destructive);
+  border-color: var(--app-border-faint);
 }
 
 .preview-error {
@@ -348,7 +374,7 @@
   padding: 12px;
   text-align: center;
   font-size: 12px;
-  color: #f87171;
+  color: var(--app-destructive);
 }
 
 .preview-card-animated {

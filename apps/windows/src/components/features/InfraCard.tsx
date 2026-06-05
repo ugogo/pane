@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Moon } from '@tamagui/lucide-icons';
+import { Moon } from '@pane/ui';
 import {
   Button,
   Card,
@@ -55,8 +55,8 @@ export function InfraCard() {
 
   return (
     <YStack gap="$3">
-      <Card p="$3">
-        <XStack gap="$4" items="center" justify="space-between">
+      <Card padding="$3">
+        <XStack gap="$4" alignItems="center" justifyContent="space-between">
           <YStack flex={1} gap="$1">
             <Label fontSize="$3">Start with Windows</Label>
             <MutedText fontSize="$3">
@@ -79,8 +79,8 @@ export function InfraCard() {
         </StatusText>
       ) : null}
 
-      <Card p="$3">
-        <XStack gap="$4" items="center" justify="space-between">
+      <Card padding="$3">
+        <XStack gap="$4" alignItems="center" justifyContent="space-between">
           <YStack flex={1} gap="$1">
             <Label fontSize="$3">Sleep computer</Label>
             <MutedText fontSize="$3">

@@ -27,7 +27,7 @@ export function SliderPanel({
 }) {
   return (
     <Card offline={offline}>
-      <XStack items="center" justify="space-between">
+      <XStack alignItems="center" justifyContent="space-between">
         <Label>{label}</Label>
         <MutedText>{valueText}</MutedText>
       </XStack>
