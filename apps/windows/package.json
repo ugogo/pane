@@ -5,7 +5,7 @@
   "description": "Pane — Windows Tauri app (React frontend + Rust backend)",
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "expo start --web",
+    "dev": "node ../../scripts/run-expo-cli.mjs start --web",
     "build": "expo export --platform web",
     "tamagui:gen": "npx @tamagui/cli generate",
     "typecheck": "tsc --noEmit",
