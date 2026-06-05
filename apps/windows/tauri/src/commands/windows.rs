@@ -1,21 +1,12 @@
 use tauri::{
-    AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindow,
-    WebviewWindowBuilder,
+    AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, WebviewWindow, WebviewWindowBuilder,
 };
 
+use crate::child_webview_url::{self, routes};
 use crate::commands::capture_sound;
 
 const AREA_SELECTOR_LABEL: &str = "area-selector";
 const CAPTURE_PREVIEW_LABEL: &str = "capture-preview";
-
-fn child_url(app: &AppHandle, query: &str) -> Result<WebviewUrl, String> {
-    let main = app
-        .get_webview_window("main")
-        .ok_or_else(|| "Main window missing.".to_string())?;
-    let mut url = main.url().map_err(|e| e.to_string())?;
-    url.set_query(Some(query));
-    Ok(WebviewUrl::External(url))
-}
 
 fn area_selector_geometry(app: &AppHandle) -> Result<(f64, f64, f64, f64), String> {
     let main = app
@@ -101,7 +92,7 @@ fn preview_geometry(app: &AppHandle) -> Result<(f64, f64, f64, f64), String> {
 
 fn create_area_selector_window(app: &AppHandle) -> Result<WebviewWindow, String> {
     let (overlay_w, overlay_h, pos_x, pos_y) = area_selector_geometry(app)?;
-    let url = child_url(app, "view=area-selector")?;
+    let url = child_webview_url::webview_url(app, routes::AREA_SELECTOR)?;
     WebviewWindowBuilder::new(app, AREA_SELECTOR_LABEL, url)
         .title("Select region")
         .inner_size(overlay_w, overlay_h)
@@ -119,7 +110,7 @@ fn create_area_selector_window(app: &AppHandle) -> Result<WebviewWindow, String>
 
 fn create_capture_preview_window(app: &AppHandle) -> Result<WebviewWindow, String> {
     let (win_w, win_h, pos_x, pos_y) = preview_geometry(app)?;
-    let url = child_url(app, "view=preview")?;
+    let url = child_webview_url::webview_url(app, routes::CAPTURE_PREVIEW)?;
     WebviewWindowBuilder::new(app, CAPTURE_PREVIEW_LABEL, url)
         .title("Capture")
         .inner_size(win_w, win_h)
@@ -150,8 +141,12 @@ pub async fn prepare_capture_windows(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub async fn show_area_selector(app: AppHandle) -> Result<(), String> {
     let (overlay_w, overlay_h, pos_x, pos_y) = area_selector_geometry(&app)?;
+    let route = child_webview_url::route_url(&app, routes::AREA_SELECTOR)?;
     let window = match app.get_webview_window(AREA_SELECTOR_LABEL) {
-        Some(existing) => existing,
+        Some(existing) => {
+            let _ = existing.navigate(route);
+            existing
+        }
         None => create_area_selector_window(&app)?,
     };
 
@@ -171,8 +166,12 @@ pub async fn show_area_selector(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub async fn show_capture_preview(app: AppHandle) -> Result<(), String> {
     let (win_w, win_h, pos_x, pos_y) = preview_geometry(&app)?;
+    let route = child_webview_url::route_url(&app, routes::CAPTURE_PREVIEW)?;
     let window = match app.get_webview_window(CAPTURE_PREVIEW_LABEL) {
-        Some(existing) => existing,
+        Some(existing) => {
+            let _ = existing.navigate(route);
+            existing
+        }
         None => create_capture_preview_window(&app)?,
     };
 

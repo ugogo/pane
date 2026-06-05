@@ -1,5 +1,7 @@
-import { useEffect, useReducer } from 'react';
-import { Eye } from 'lucide-react';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Eye } from '@pane/ui';
+import { Button, Card, Label, MutedText, XStack, YStack } from '@pane/ui';
 import {
   captureFullscreen,
   clearCaptureHotkey,
@@ -9,217 +11,151 @@ import {
   showCapturePreview,
   toggleCapturePreview,
   type CaptureAction,
+  type CaptureHotkeys,
 } from '../../lib/commands';
 import { ShortcutInput } from '../ShortcutInput';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { queryKeys } from '@/lib/query-keys';
+import { useActionStatus } from '@/lib/use-action-status';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
-
-type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
-
-interface State {
-  hotkeys: { fullscreen: string; area: string };
-  status: ProbeStatus;
-  message: string;
-  busy: boolean;
-  loadingHotkeys: boolean;
-  previewVisible: boolean | null;
-}
-
-type Action =
-  | { type: 'hotkeysLoaded'; hotkeys: { fullscreen: string; area: string } }
-  | { type: 'bound'; action: CaptureAction; accel: string }
-  | { type: 'cleared'; action: CaptureAction }
-  | { type: 'busy'; busy: boolean }
-  | { type: 'previewToggled'; visible: boolean }
-  | { type: 'notify'; status: ProbeStatus; message: string };
-
-const initialState: State = {
-  hotkeys: { fullscreen: '', area: '' },
-  status: 'idle',
-  message: '',
-  busy: false,
-  loadingHotkeys: true,
-  previewVisible: null,
-};
 
 const actionLabels: Record<CaptureAction, string> = {
   fullscreen: 'full screen',
   area: 'area',
 };
 
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case 'hotkeysLoaded':
-      return { ...state, hotkeys: action.hotkeys, loadingHotkeys: false };
-    case 'bound':
-      return {
-        ...state,
-        hotkeys: { ...state.hotkeys, [action.action]: action.accel },
-        status: 'pass',
-        message: `${actionLabels[action.action]} shortcut saved.`,
-      };
-    case 'cleared':
-      return {
-        ...state,
-        hotkeys: { ...state.hotkeys, [action.action]: '' },
-        status: 'idle',
-        message: `${actionLabels[action.action]} shortcut cleared.`,
-      };
-    case 'busy':
-      return { ...state, busy: action.busy };
-    case 'previewToggled':
-      return {
-        ...state,
-        previewVisible: action.visible,
-        status: 'pass',
-        message: action.visible
+export function CaptureCard() {
+  const queryClient = useQueryClient();
+  const hotkeysQuery = useQuery({
+    queryKey: queryKeys.captureHotkeys,
+    queryFn: getCaptureHotkeys,
+  });
+  const hotkeys = hotkeysQuery.data ?? { fullscreen: '', area: '' };
+  const status = useActionStatus();
+  const [previewVisible, setPreviewVisible] = useState<boolean | null>(null);
+
+  function patchHotkey(action: CaptureAction, accelerator: string) {
+    queryClient.setQueryData(
+      queryKeys.captureHotkeys,
+      (prev: CaptureHotkeys | undefined) => ({
+        fullscreen: prev?.fullscreen ?? '',
+        area: prev?.area ?? '',
+        [action]: accelerator,
+      }),
+    );
+  }
+
+  const bind = useMutation({
+    mutationFn: ({ action, accel }: { action: CaptureAction; accel: string }) =>
+      setCaptureHotkey(action, accel),
+    onSuccess: (_result, { action, accel }) => {
+      patchHotkey(action, accel);
+      status.set('pass', `${actionLabels[action]} shortcut saved.`);
+    },
+    onError: (err) => status.set('fail', String(err)),
+  });
+
+  const clear = useMutation({
+    mutationFn: (action: CaptureAction) => clearCaptureHotkey(action),
+    onSuccess: (_result, action) => {
+      patchHotkey(action, '');
+      status.set('idle', `${actionLabels[action]} shortcut cleared.`);
+    },
+    onError: (err) => status.set('fail', String(err)),
+  });
+
+  const trigger = useMutation({
+    mutationFn: async (action: CaptureAction) => {
+      if (action === 'fullscreen') {
+        await captureFullscreen();
+        await showCapturePreview();
+      } else {
+        await showAreaSelector();
+      }
+      return action;
+    },
+    onSuccess: (action) =>
+      status.set(
+        'pass',
+        action === 'fullscreen'
+          ? 'Captured the full screen.'
+          : 'Area selection is ready.',
+      ),
+    onError: (err) => status.set('fail', String(err)),
+  });
+
+  const preview = useMutation({
+    mutationFn: toggleCapturePreview,
+    onSuccess: (visible) => {
+      setPreviewVisible(visible);
+      status.set(
+        'pass',
+        visible
           ? 'Floating preview is visible.'
           : 'Floating preview is hidden.',
-      };
-    case 'notify':
-      return {
-        ...state,
-        status: action.status,
-        message: action.message,
-        loadingHotkeys: false,
-      };
-  }
-}
-
-async function runFullscreen(): Promise<string | null> {
-  try {
-    await captureFullscreen();
-    await showCapturePreview();
-    return null;
-  } catch (err) {
-    return String(err);
-  }
-}
-
-async function runArea(): Promise<string | null> {
-  try {
-    await showAreaSelector();
-    return null;
-  } catch (err) {
-    return String(err);
-  }
-}
-
-export function CaptureCard({ className }: { className?: string }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
-  const { hotkeys, status, message, busy, loadingHotkeys, previewVisible } =
-    state;
-
-  useEffect(() => {
-    void getCaptureHotkeys()
-      .then((saved) =>
-        dispatch({
-          type: 'hotkeysLoaded',
-          hotkeys: { fullscreen: saved.fullscreen, area: saved.area },
-        }),
-      )
-      .catch((err: unknown) =>
-        dispatch({
-          type: 'notify',
-          status: 'warn',
-          message: `Could not load saved hotkeys: ${String(err)}`,
-        }),
       );
-  }, []);
+    },
+    onError: (err) => status.set('fail', String(err)),
+  });
 
-  async function bind(action: CaptureAction, accel: string) {
-    try {
-      await setCaptureHotkey(action, accel);
-      dispatch({ type: 'bound', action, accel });
-    } catch (err) {
-      dispatch({ type: 'notify', status: 'fail', message: String(err) });
-    }
+  if (hotkeysQuery.isPending && !hotkeysQuery.data) {
+    return <PageSpinner />;
   }
 
-  async function clear(action: CaptureAction) {
-    try {
-      await clearCaptureHotkey(action);
-      dispatch({ type: 'cleared', action });
-    } catch (err) {
-      dispatch({ type: 'notify', status: 'fail', message: String(err) });
-    }
-  }
-
-  async function trigger(action: CaptureAction) {
-    dispatch({ type: 'busy', busy: true });
-    const err =
-      action === 'fullscreen' ? await runFullscreen() : await runArea();
-    dispatch({ type: 'busy', busy: false });
-    if (err) {
-      dispatch({ type: 'notify', status: 'fail', message: err });
-    } else {
-      dispatch({
-        type: 'notify',
-        status: 'pass',
-        message:
-          action === 'fullscreen'
-            ? 'Captured the full screen.'
-            : 'Area selection is ready.',
-      });
-    }
-  }
-
-  const previewLabel = previewVisible
-    ? 'Hide floating preview'
-    : 'Show floating preview';
-
-  if (loadingHotkeys) {
-    return <PageSpinner className={className} />;
+  if (hotkeysQuery.isError) {
+    return (
+      <YStack gap="$4">
+        <StatusText status="warn">
+          Could not load saved hotkeys: {String(hotkeysQuery.error)}
+        </StatusText>
+      </YStack>
+    );
   }
 
   return (
-    <div className={cn('space-y-4', className)}>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Row
+    <YStack gap="$4">
+      <XStack flexWrap="wrap" gap="$3">
+        <CaptureRow
           label="Fullscreen capture"
           actionLabel="Capture full screen"
           shortcutLabel="Fullscreen capture shortcut"
           hotkey={hotkeys.fullscreen}
-          onCommit={(a) => void bind('fullscreen', a)}
-          onClear={() => void clear('fullscreen')}
-          onTrigger={() => void trigger('fullscreen')}
-          busy={busy}
+          onCommit={(accel) => bind.mutate({ action: 'fullscreen', accel })}
+          onClear={() => clear.mutate('fullscreen')}
+          onTrigger={() => trigger.mutate('fullscreen')}
+          busy={trigger.isPending}
         />
-        <Row
+        <CaptureRow
           label="Area capture"
           actionLabel="Select area"
           shortcutLabel="Area capture shortcut"
           hotkey={hotkeys.area}
-          onCommit={(a) => void bind('area', a)}
-          onClear={() => void clear('area')}
-          onTrigger={() => void trigger('area')}
-          busy={busy}
+          onCommit={(accel) => bind.mutate({ action: 'area', accel })}
+          onClear={() => clear.mutate('area')}
+          onTrigger={() => trigger.mutate('area')}
+          busy={trigger.isPending}
         />
-      </div>
+      </XStack>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <XStack flexDirection="column" gap="$2">
         <Button
-          size="sm"
-          variant="secondary"
           aria-pressed={previewVisible ?? undefined}
-          onClick={() => {
-            void toggleCapturePreview().then((visible) => {
-              dispatch({ type: 'previewToggled', visible });
-            });
-          }}
+          icon={<Eye aria-hidden size={14} />}
+          btnScale="sm"
+          appearance="secondary"
+          onPress={() => preview.mutate()}
         >
-          <Eye aria-hidden="true" className="size-3.5" />
-          {previewLabel}
+          {previewVisible ? 'Hide floating preview' : 'Show floating preview'}
         </Button>
-        {message && <StatusText status={status}>{message}</StatusText>}
-      </div>
-    </div>
+        {status.message ? (
+          <StatusText status={status.status}>{status.message}</StatusText>
+        ) : null}
+      </XStack>
+    </YStack>
   );
 }
 
-function Row({
+function CaptureRow({
   label,
   actionLabel,
   shortcutLabel,
@@ -239,20 +175,15 @@ function Row({
   busy: boolean;
 }) {
   return (
-    <div className="space-y-3 rounded-lg border p-3">
-      <div className="space-y-2">
-        <p className="text-sm font-medium">{label}</p>
-        <Button
-          disabled={busy}
-          className="w-full"
-          size="sm"
-          onClick={onTrigger}
-        >
+    <Card flex={1} gap="$3" padding="$3" style={{ minWidth: 280 }}>
+      <YStack gap="$2">
+        <Label fontSize="$3">{label}</Label>
+        <Button disabled={busy} btnScale="sm" width="100%" onPress={onTrigger}>
           {actionLabel}
         </Button>
-      </div>
-      <div className="space-y-1">
-        <p className="text-muted-foreground text-xs">Shortcut</p>
+      </YStack>
+      <YStack gap="$1">
+        <MutedText fontSize="$2">Shortcut</MutedText>
         <ShortcutInput
           value={hotkey}
           onCommit={onCommit}
@@ -260,7 +191,7 @@ function Row({
           ariaLabel={shortcutLabel}
           placeholder="Click and press a chord"
         />
-      </div>
-    </div>
+      </YStack>
+    </Card>
   );
 }

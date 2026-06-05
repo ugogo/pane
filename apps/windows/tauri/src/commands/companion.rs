@@ -137,28 +137,25 @@ fn now_epoch_seconds() -> Result<u64, String> {
         .map_err(|e| e.to_string())
 }
 
-fn random_hex(bytes: usize) -> String {
-    let mut out = String::with_capacity(bytes * 2);
-
-    while out.len() < bytes * 2 {
-        for byte in rand::random::<[u8; 16]>() {
-            out.push_str(&format!("{byte:02x}"));
-            if out.len() == bytes * 2 {
-                break;
-            }
-        }
-    }
-
-    out
-}
-
-fn sha256_hex(bytes: &[u8]) -> String {
-    let digest = Sha256::digest(bytes);
-    let mut out = String::with_capacity(digest.len() * 2);
-    for byte in digest {
+fn to_hex(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
         out.push_str(&format!("{byte:02x}"));
     }
     out
+}
+
+fn random_hex(bytes: usize) -> String {
+    let mut buf = Vec::with_capacity(bytes);
+    while buf.len() < bytes {
+        buf.extend_from_slice(&rand::random::<[u8; 16]>());
+    }
+    buf.truncate(bytes);
+    to_hex(&buf)
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    to_hex(&Sha256::digest(bytes))
 }
 
 fn base64_decode(value: &str) -> Result<Vec<u8>, String> {

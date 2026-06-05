@@ -1,8 +1,26 @@
 import type { ReactNode } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import {
+  Badge,
+  MutedText,
+  colors,
+  status as uiStatus,
+  type BadgeVariant,
+} from '@pane/ui';
+import type { Status } from '@/lib/status';
 
-type Status = 'idle' | 'pass' | 'warn' | 'fail' | 'disabled';
+function statusMessageColor(status: Status): string | undefined {
+  if (status === 'fail') return colors.destructive;
+  if (status === 'pass') return uiStatus.pass;
+  if (status === 'warn') return uiStatus.warn;
+  return undefined;
+}
+
+function badgeVariant(status: Status): BadgeVariant {
+  if (status === 'fail') return 'fail';
+  if (status === 'pass') return 'pass';
+  if (status === 'disabled') return 'disabled';
+  return 'default';
+}
 
 export function StatusBadge({
   status,
@@ -12,36 +30,25 @@ export function StatusBadge({
   children?: ReactNode;
 }) {
   if (status === 'idle') return null;
-
-  const variant =
-    status === 'fail'
-      ? 'destructive'
-      : status === 'pass'
-        ? 'default'
-        : 'secondary';
-
-  return <Badge variant={variant}>{children ?? labelFromStatus(status)}</Badge>;
+  return (
+    <Badge variant={badgeVariant(status)}>
+      {children ?? labelFromStatus(status)}
+    </Badge>
+  );
 }
 
 export function StatusText({
   status,
   children,
-  className,
 }: {
   status: Status;
   children: ReactNode;
-  className?: string;
 }) {
+  const color = statusMessageColor(status);
   return (
-    <p
-      className={cn(
-        'text-muted-foreground text-sm',
-        status === 'fail' && 'text-destructive',
-        className,
-      )}
-    >
+    <MutedText fontSize="$3" style={color ? { color } : undefined}>
       {children}
-    </p>
+    </MutedText>
   );
 }
 

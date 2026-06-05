@@ -1,13 +1,24 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
-import { listen } from '@tauri-apps/api/event';
-import { Volume2, VolumeX, Mic, MicOff, Star } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Volume2, VolumeX, Mic, MicOff, Star } from '@pane/ui';
 import {
-  listOutputDevices,
-  listInputDevices,
+  Button,
+  Card,
+  IconButton,
+  ListRow,
+  ListRowContent,
+  Label,
+  MutedText,
+  SectionList,
+  Slider,
+  SliderRow,
+  SliderValue,
+  XStack,
+  YStack,
+} from '@pane/ui';
+import {
   setDefaultOutputDevice,
   setDefaultInputDevice,
-  getOutputVolume,
-  getInputVolume,
   setOutputVolume,
   setInputVolume,
   setOutputMute,
@@ -15,20 +26,18 @@ import {
   type AudioDevice,
   type VolumeInfo,
 } from '../../lib/commands';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  orderDevices,
+  readFavorites,
+  writeFavorites,
+} from '@/lib/audio-favorites';
+import { fetchSound, type SoundQueryData } from '@/lib/sound-query';
+import { queryKeys } from '@/lib/query-keys';
+import { useActionStatus } from '@/lib/use-action-status';
+import { useDebouncedWrite } from '@/lib/use-debounced-write';
+import { useTauriEvent } from '@/lib/use-tauri-event';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
-
-type ProbeStatus = 'idle' | 'pass' | 'warn' | 'fail';
-
-// Avoid flooding the endpoint with a write on every pixel of slider drag.
-const WRITE_DEBOUNCE_MS = 100;
 
 type Kind = 'output' | 'input';
 
@@ -42,7 +51,7 @@ const setVolumeFor: Record<Kind, (v: number) => Promise<void>> = {
   output: setOutputVolume,
   input: setInputVolume,
 };
-const setMuteFor: Record<Kind, (m: boolean) => Promise<void>> = {
+const setMuteFor: Record<Kind, (muted: boolean) => Promise<void>> = {
   output: setOutputMute,
   input: setInputMute,
 };
@@ -55,222 +64,83 @@ function vpct(volume: number) {
   return Math.round(volume * 100);
 }
 
-// A missing default endpoint (e.g. no input device) shouldn't sink the whole
-// load, so a failed read just yields null.
-function readVolume(
-  read: () => Promise<VolumeInfo>,
-): Promise<VolumeInfo | null> {
-  return read().catch(() => null);
-}
-
-function favKey(kind: Kind) {
-  return `pane.audio.favorites.${kind}`;
-}
-
-function readFavorites(kind: Kind): Set<string> {
-  try {
-    const raw = localStorage.getItem(favKey(kind));
-    if (!raw) return new Set();
-    const arr: unknown = JSON.parse(raw);
-    return Array.isArray(arr)
-      ? new Set(arr.filter((x): x is string => typeof x === 'string'))
-      : new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-// Favorites float to the top; everything else stays alphabetical.
-function orderDevices(
-  devices: AudioDevice[],
-  favs: Set<string>,
-): AudioDevice[] {
-  return devices.toSorted((a, b) => {
-    const fa = favs.has(a.id) ? 0 : 1;
-    const fb = favs.has(b.id) ? 0 : 1;
-    if (fa !== fb) return fa - fb;
-    return a.name.localeCompare(b.name);
-  });
-}
-
-interface State {
-  devices: Record<Kind, AudioDevice[]>;
-  volumes: Record<Kind, VolumeInfo | null>;
-  status: ProbeStatus;
-  message: string;
-  busy: boolean;
-}
-
-type Action =
-  | { type: 'beginLoad' }
-  | {
-      type: 'loaded';
-      devices: Record<Kind, AudioDevice[]>;
-      volumes: Record<Kind, VolumeInfo | null>;
-      status: ProbeStatus;
-      message: string;
-    }
-  | { type: 'loadFailed'; message: string }
-  | { type: 'setVolume'; kind: Kind; info: VolumeInfo }
-  | { type: 'externalVolume'; kind: Kind; info: VolumeInfo }
-  | { type: 'notify'; status: ProbeStatus; message: string };
-
-const initialState: State = {
-  devices: { output: [], input: [] },
-  volumes: { output: null, input: null },
-  status: 'idle',
-  message: '',
-  // Starts true because we enumerate devices on mount.
-  busy: true,
+const emptyDevices = {
+  output: [] as AudioDevice[],
+  input: [] as AudioDevice[],
 };
+const emptyVolumes = { output: null, input: null };
 
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case 'beginLoad':
-      return { ...state, busy: true, status: 'idle' };
-    case 'loaded':
-      return {
-        ...state,
-        devices: action.devices,
-        volumes: action.volumes,
-        status: action.status,
-        message: action.message,
-        busy: false,
-      };
-    case 'loadFailed':
-      return { ...state, status: 'fail', message: action.message, busy: false };
-    case 'setVolume':
-      return {
-        ...state,
-        volumes: { ...state.volumes, [action.kind]: action.info },
-      };
-    case 'externalVolume': {
-      // Skip no-op echoes so we don't clobber an in-progress drag.
-      const prev = state.volumes[action.kind];
-      if (
-        prev &&
-        vpct(prev.volume) === vpct(action.info.volume) &&
-        prev.muted === action.info.muted
-      ) {
-        return state;
-      }
-      return {
-        ...state,
-        volumes: { ...state.volumes, [action.kind]: action.info },
-      };
-    }
-    case 'notify':
-      return { ...state, status: action.status, message: action.message };
-  }
-}
+export function SoundCard() {
+  const queryClient = useQueryClient();
+  const soundQuery = useQuery({
+    queryKey: queryKeys.sound,
+    queryFn: fetchSound,
+  });
+  const data = soundQuery.data;
+  const devices = data?.devices ?? emptyDevices;
+  const volumes = data?.volumes ?? emptyVolumes;
 
-export function SoundCard({ className }: { className?: string }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
-  const { devices, volumes, status, message, busy } = state;
+  const status = useActionStatus();
+  const schedule = useDebouncedWrite();
+  const pendingRef = useRef<Set<Kind> | undefined>(undefined);
+  const pending = (pendingRef.current ??= new Set());
   const [favorites, setFavorites] = useState<Record<Kind, Set<string>>>(() => ({
     output: readFavorites('output'),
     input: readFavorites('input'),
   }));
-  const timers = useRef<
-    Record<Kind, ReturnType<typeof setTimeout> | undefined>
-  >({
-    output: undefined,
-    input: undefined,
-  });
 
-  // All state updates live in deferred promise callbacks, so this is safe to
-  // call straight from an effect without tripping set-state-in-effect.
-  function load() {
-    return Promise.all([listOutputDevices(), listInputDevices()])
-      .then(async ([out, inp]) => {
-        const [outputVol, inputVol] = await Promise.all([
-          readVolume(getOutputVolume),
-          readVolume(getInputVolume),
-        ]);
-        const empty = out.length === 0 && inp.length === 0;
-        dispatch({
-          type: 'loaded',
-          devices: { output: out, input: inp },
-          volumes: { output: outputVol, input: inputVol },
-          status: empty ? 'warn' : 'pass',
-          message: empty
-            ? 'No audio devices found.'
-            : `${out.length} output, ${inp.length} input device${
-                out.length + inp.length === 1 ? '' : 's'
-              }.`,
-        });
-      })
-      .catch((e: unknown) =>
-        dispatch({ type: 'loadFailed', message: String(e) }),
-      );
+  function patchVolume(kind: Kind, info: VolumeInfo) {
+    queryClient.setQueryData(
+      queryKeys.sound,
+      (prev: SoundQueryData | undefined) =>
+        prev ? { ...prev, volumes: { ...prev.volumes, [kind]: info } } : prev,
+    );
   }
 
-  useEffect(() => {
-    void load();
-  }, []);
-
-  // The backend pushes volume/mute changes (media keys, mixer, other apps) and
-  // device changes as events, so we never poll. A pending debounce timer means
-  // the user is dragging that slider — skip those so we don't clobber the drag.
-  useEffect(() => {
-    function applyExternal(kind: Kind, info: VolumeInfo) {
-      if (timers.current[kind]) return;
-      dispatch({ type: 'externalVolume', kind, info });
+  useTauriEvent<VolumeChange>('audio-volume-changed', (event) => {
+    const { kind, volume, muted } = event.payload;
+    if (pending.has(kind)) return;
+    const prev = volumes[kind];
+    if (prev && vpct(prev.volume) === vpct(volume) && prev.muted === muted) {
+      return;
     }
-    const volSub = listen<VolumeChange>('audio-volume-changed', (e) => {
-      applyExternal(e.payload.kind, {
-        volume: e.payload.volume,
-        muted: e.payload.muted,
-      });
-    });
-    const devSub = listen('audio-devices-changed', () => void load());
-    return () => {
-      void volSub.then((un) => un());
-      void devSub.then((un) => un());
-    };
-  }, []);
+    patchVolume(kind, { volume, muted });
+  });
+
+  useTauriEvent('audio-devices-changed', () => void soundQuery.refetch());
+
+  const selectDevice = useMutation({
+    mutationFn: ({ kind, id }: { kind: Kind; id: string }) =>
+      setDefaultFor[kind](id),
+    onMutate: () => status.clear(),
+    onSuccess: () => void soundQuery.refetch(),
+    onError: (err) => status.set('fail', String(err)),
+  });
+
+  const busy = soundQuery.isFetching || selectDevice.isPending;
 
   function onVolume(kind: Kind, percent: number) {
     const cur = volumes[kind];
-    dispatch({
-      type: 'setVolume',
-      kind,
-      info: { volume: percent / 100, muted: cur?.muted ?? false },
+    patchVolume(kind, { volume: percent / 100, muted: cur?.muted ?? false });
+    pending.add(kind);
+    schedule(kind, () => {
+      void setVolumeFor[kind](percent / 100)
+        .catch((e) => status.set('fail', String(e)))
+        .finally(() => pending.delete(kind));
     });
-    if (timers.current[kind]) clearTimeout(timers.current[kind]);
-    timers.current[kind] = setTimeout(async () => {
-      try {
-        await setVolumeFor[kind](percent / 100);
-      } catch (e) {
-        dispatch({ type: 'notify', status: 'fail', message: String(e) });
-      } finally {
-        timers.current[kind] = undefined;
-      }
-    }, WRITE_DEBOUNCE_MS);
   }
 
-  async function onToggleMute(kind: Kind) {
+  function onToggleMute(kind: Kind) {
     const cur = volumes[kind];
     if (!cur) return;
     const muted = !cur.muted;
-    dispatch({ type: 'setVolume', kind, info: { ...cur, muted } });
-    try {
-      await setMuteFor[kind](muted);
-    } catch (e) {
-      dispatch({ type: 'notify', status: 'fail', message: String(e) });
-    }
+    patchVolume(kind, { ...cur, muted });
+    void setMuteFor[kind](muted).catch((e) => status.set('fail', String(e)));
   }
 
-  async function onSelectDevice(kind: Kind, id: string) {
+  function onSelectDevice(kind: Kind, id: string) {
     if (!id || devices[kind].find((d) => d.id === id)?.isDefault) return;
-    dispatch({ type: 'beginLoad' });
-    try {
-      await setDefaultFor[kind](id);
-      // Re-read so the slider reflects the newly-default device's own volume.
-      await load();
-    } catch (e) {
-      dispatch({ type: 'loadFailed', message: String(e) });
-    }
+    selectDevice.mutate({ kind, id });
   }
 
   function toggleFavorite(kind: Kind, id: string) {
@@ -278,43 +148,41 @@ export function SoundCard({ className }: { className?: string }) {
       const next = new Set(prev[kind]);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      try {
-        localStorage.setItem(favKey(kind), JSON.stringify([...next]));
-      } catch {
-        /* storage unavailable; favorites just won't persist */
-      }
+      writeFavorites(kind, next);
       return { ...prev, [kind]: next };
     });
   }
 
-  const isInitialLoad =
-    busy &&
-    !message &&
-    devices.output.length === 0 &&
-    devices.input.length === 0 &&
-    volumes.output === null &&
-    volumes.input === null;
-
-  if (isInitialLoad) {
-    return <PageSpinner className={className} />;
+  if (soundQuery.isPending && !data) {
+    return <PageSpinner />;
   }
 
+  const queryError = soundQuery.isError ? String(soundQuery.error) : '';
+  const scanStatus = status.message
+    ? status.status
+    : queryError
+      ? 'fail'
+      : (data?.status ?? 'idle');
+  const scanMessage = status.message || queryError || (data?.message ?? '');
+
   return (
-    <div className={cn('space-y-4', className)}>
-      <Button
-        disabled={busy}
-        size="sm"
-        onClick={() => {
-          dispatch({ type: 'beginLoad' });
-          void load();
-        }}
-      >
-        Refresh
-      </Button>
+    <YStack gap="$4">
+      <XStack style={{ alignSelf: 'flex-start' }}>
+        <Button
+          disabled={busy}
+          btnScale="sm"
+          appearance="outline"
+          onPress={() => void soundQuery.refetch()}
+        >
+          Refresh
+        </Button>
+      </XStack>
 
-      {message && <StatusText status={status}>{message}</StatusText>}
+      {scanMessage ? (
+        <StatusText status={scanStatus}>{scanMessage}</StatusText>
+      ) : null}
 
-      <div className="grid gap-3">
+      <YStack gap="$3">
         <Section
           kind="output"
           label="Output"
@@ -339,22 +207,9 @@ export function SoundCard({ className }: { className?: string }) {
           onVolume={onVolume}
           onToggleFavorite={toggleFavorite}
         />
-      </div>
-    </div>
+      </YStack>
+    </YStack>
   );
-}
-
-interface SectionProps {
-  kind: Kind;
-  label: string;
-  devices: AudioDevice[];
-  vol: VolumeInfo | null;
-  busy: boolean;
-  favs: Set<string>;
-  onSelect: (kind: Kind, id: string) => void;
-  onToggleMute: (kind: Kind) => void;
-  onVolume: (kind: Kind, percent: number) => void;
-  onToggleFavorite: (kind: Kind, id: string) => void;
 }
 
 function Section({
@@ -368,132 +223,90 @@ function Section({
   onToggleMute,
   onVolume,
   onToggleFavorite,
-}: SectionProps) {
+}: {
+  kind: Kind;
+  label: string;
+  devices: AudioDevice[];
+  vol: VolumeInfo | null;
+  busy: boolean;
+  favs: Set<string>;
+  onSelect: (kind: Kind, id: string) => void;
+  onToggleMute: (kind: Kind) => void;
+  onVolume: (kind: Kind, percent: number) => void;
+  onToggleFavorite: (kind: Kind, id: string) => void;
+}) {
   const muted = vol?.muted ?? false;
   const ordered = orderDevices(devices, favs);
   return (
-    <div className="rounded-lg border p-3">
-      <p className="text-sm font-medium">{label}</p>
+    <Card gap="$3" padding="$3">
+      <Label fontSize="$3">{label}</Label>
 
       {ordered.length === 0 ? (
-        <p className="text-muted-foreground mt-2 text-xs">No devices.</p>
+        <MutedText fontSize="$2">No devices.</MutedText>
       ) : (
-        <ul className="mt-2 max-h-40 divide-y overflow-y-auto rounded-lg border">
-          {ordered.map((d) => {
+        <SectionList>
+          {ordered.map((d, index) => {
             const isFav = favs.has(d.id);
             return (
-              <li
-                key={d.id}
-                className={`flex items-center gap-2 px-2 py-1.5 transition-colors ${
-                  d.isDefault ? 'bg-muted' : ''
-                }`}
-              >
-                <button
-                  type="button"
+              <ListRow key={d.id} active={d.isDefault} first={index === 0}>
+                <ListRowContent
+                  active={d.isDefault}
                   disabled={busy}
-                  onClick={() => onSelect(kind, d.id)}
-                  title={
-                    d.isDefault
-                      ? 'Current default'
-                      : `Set as default ${label.toLowerCase()}`
-                  }
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:opacity-50"
+                  label={d.name}
+                  onPress={() => onSelect(kind, d.id)}
+                />
+                <IconButton
+                  active={isFav}
+                  aria-label={isFav ? 'Remove favorite' : 'Add favorite'}
+                  disabled={busy}
+                  onPress={() => onToggleFavorite(kind, d.id)}
                 >
-                  <span
+                  <Star
                     aria-hidden
-                    className={`size-1.5 shrink-0 rounded-full ${
-                      d.isDefault ? 'bg-accent' : 'bg-transparent'
-                    }`}
+                    fill={isFav ? 'currentColor' : 'none'}
+                    size={13}
                   />
-                  <span
-                    className={`truncate text-sm ${
-                      d.isDefault
-                        ? 'text-foreground font-medium'
-                        : 'text-muted-foreground'
-                    }`}
-                  >
-                    {d.name}
-                  </span>
-                </button>
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <button
-                        type="button"
-                        onClick={() => onToggleFavorite(kind, d.id)}
-                        aria-label={
-                          isFav ? `Unfavorite ${d.name}` : `Favorite ${d.name}`
-                        }
-                        aria-pressed={isFav}
-                        className="hover:bg-muted shrink-0 rounded p-1 transition"
-                      >
-                        <Star
-                          size={13}
-                          aria-hidden
-                          fill={isFav ? 'currentColor' : 'none'}
-                          className={
-                            isFav ? 'text-foreground' : 'text-muted-foreground'
-                          }
-                        />
-                      </button>
-                    }
-                  />
-                  <TooltipContent>
-                    {isFav ? 'Unfavorite' : 'Favorite'}
-                  </TooltipContent>
-                </Tooltip>
-              </li>
+                </IconButton>
+              </ListRow>
             );
           })}
-        </ul>
+        </SectionList>
       )}
 
       {vol ? (
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => onToggleMute(kind)}
+        <SliderRow>
+          <IconButton
             aria-label={
-              muted
-                ? `Unmute ${label.toLowerCase()}`
-                : `Mute ${label.toLowerCase()}`
+              kind === 'output' ? 'Toggle output mute' : 'Toggle input mute'
             }
-            title={muted ? 'Unmute' : 'Mute'}
-            className={`hover:bg-muted shrink-0 rounded-md border p-1.5 transition ${
-              muted ? 'text-destructive' : 'text-muted-foreground'
-            }`}
+            onPress={() => onToggleMute(kind)}
           >
             {kind === 'output' ? (
               muted ? (
-                <VolumeX size={14} aria-hidden />
+                <VolumeX aria-hidden size={14} />
               ) : (
-                <Volume2 size={14} aria-hidden />
+                <Volume2 aria-hidden size={14} />
               )
             ) : muted ? (
-              <MicOff size={14} aria-hidden />
+              <MicOff aria-hidden size={14} />
             ) : (
-              <Mic size={14} aria-hidden />
+              <Mic aria-hidden size={14} />
             )}
-          </button>
-          <input
-            type="range"
-            min={0}
+          </IconButton>
+          <Slider
             max={100}
+            min={0}
             step={1}
             value={vpct(vol.volume)}
-            onChange={(e) => onVolume(kind, Number(e.target.value))}
-            aria-label={`${label} volume`}
-            className="w-full"
+            onChange={(v) => onVolume(kind, v)}
           />
-          <span className="text-muted-foreground w-10 shrink-0 text-right text-xs">
-            {muted ? 'Muted' : `${vpct(vol.volume)}%`}
-          </span>
-        </div>
+          <SliderValue>{muted ? 'Muted' : `${vpct(vol.volume)}%`}</SliderValue>
+        </SliderRow>
       ) : (
-        <p className="text-muted-foreground mt-2 text-xs">
+        <MutedText fontSize="$2" marginTop="$2">
           No volume control available.
-        </p>
+        </MutedText>
       )}
-    </div>
+    </Card>
   );
 }

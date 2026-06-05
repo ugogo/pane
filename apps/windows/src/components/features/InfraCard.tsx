@@ -1,94 +1,108 @@
-import { useEffect, useState } from 'react';
-import { Moon } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Moon } from '@pane/ui';
+import {
+  Button,
+  Card,
+  Label,
+  MutedText,
+  Switch,
+  XStack,
+  YStack,
+} from '@pane/ui';
 import {
   getRunAtStartup,
   setRunAtStartup,
   sleepComputer,
 } from '@/lib/commands';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
+import { queryKeys } from '@/lib/query-keys';
+import { useActionStatus } from '@/lib/use-action-status';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
 
-export function InfraCard({ className }: { className?: string }) {
-  const [runAtStartup, setRunAtStartupState] = useState<boolean | null>(null);
-  const [saved, setSaved] = useState(false);
-  const [startupError, setStartupError] = useState<string>();
-  const [sleepError, setSleepError] = useState<string>();
+export function InfraCard() {
+  const queryClient = useQueryClient();
+  const startupQuery = useQuery({
+    queryKey: queryKeys.runAtStartup,
+    queryFn: getRunAtStartup,
+  });
+  const runAtStartup = startupQuery.data ?? null;
+  const startupStatus = useActionStatus();
+  const sleepStatus = useActionStatus();
 
-  useEffect(() => {
-    void getRunAtStartup()
-      .then(setRunAtStartupState)
-      .catch((err: unknown) => setStartupError(String(err)));
-  }, []);
+  const startupToggle = useMutation({
+    mutationFn: setRunAtStartup,
+    onMutate: () => startupStatus.clear(),
+    onSuccess: (result) => {
+      queryClient.setQueryData(queryKeys.runAtStartup, result.enabled);
+      startupStatus.set('pass', 'Startup preference saved.');
+    },
+    onError: (err) => startupStatus.set('fail', String(err)),
+  });
 
-  async function handleStartupToggle(enabled: boolean) {
-    setStartupError(undefined);
-    setSaved(false);
-    try {
-      const result = await setRunAtStartup(enabled);
-      setRunAtStartupState(result.enabled);
-      setSaved(true);
-    } catch (err) {
-      setStartupError(String(err));
-    }
-  }
+  const sleep = useMutation({
+    mutationFn: sleepComputer,
+    onMutate: () => sleepStatus.clear(),
+    onError: (err) => sleepStatus.set('fail', String(err)),
+  });
 
-  async function handleSleep() {
-    setSleepError(undefined);
-    try {
-      await sleepComputer();
-    } catch (err) {
-      setSleepError(String(err));
-    }
-  }
-
-  if (runAtStartup === null && !startupError) {
-    return <PageSpinner className={className} />;
+  if (
+    startupQuery.isPending &&
+    runAtStartup === null &&
+    !startupStatus.message
+  ) {
+    return <PageSpinner />;
   }
 
   return (
-    <div className={cn('space-y-3', className)}>
-      <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
-        <div>
-          <p className="text-sm font-medium">Start with Windows</p>
-          <p className="text-muted-foreground text-sm">
-            {import.meta.env.DEV
-              ? 'Disabled in dev so the debug binary is not registered.'
-              : 'Keep capture and accents available after sign-in.'}
-          </p>
-        </div>
-        <Switch
-          aria-label="Run at startup"
-          disabled={runAtStartup === null || import.meta.env.DEV}
-          checked={runAtStartup ?? false}
-          onCheckedChange={(checked) => void handleStartupToggle(checked)}
-        />
-      </div>
-      {saved && (
-        <StatusText status="pass">Startup preference saved.</StatusText>
-      )}
-      {startupError && <StatusText status="fail">{startupError}</StatusText>}
+    <YStack gap="$3">
+      <Card padding="$3">
+        <XStack gap="$4" alignItems="center" justifyContent="space-between">
+          <YStack flex={1} gap="$1">
+            <Label fontSize="$3">Start with Windows</Label>
+            <MutedText fontSize="$3">
+              {__DEV__
+                ? 'Disabled in dev so the debug binary is not registered.'
+                : 'Keep capture and accents available after sign-in.'}
+            </MutedText>
+          </YStack>
+          <Switch
+            aria-label="Run at startup"
+            checked={runAtStartup ?? false}
+            disabled={runAtStartup === null || __DEV__}
+            onCheckedChange={(enabled) => startupToggle.mutate(enabled)}
+          />
+        </XStack>
+      </Card>
+      {startupStatus.message ? (
+        <StatusText status={startupStatus.status}>
+          {startupStatus.message}
+        </StatusText>
+      ) : null}
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
-        <div>
-          <p className="text-sm font-medium">Sleep computer</p>
-          <p className="text-muted-foreground text-sm">
-            Put Windows into sleep mode now.
-          </p>
-        </div>
-        <Button
-          aria-label="Sleep computer"
-          size="sm"
-          variant="secondary"
-          onClick={() => void handleSleep()}
-        >
-          <Moon aria-hidden="true" />
-          Sleep
-        </Button>
-      </div>
-      {sleepError && <StatusText status="fail">{sleepError}</StatusText>}
-    </div>
+      <Card padding="$3">
+        <XStack gap="$4" alignItems="center" justifyContent="space-between">
+          <YStack flex={1} gap="$1">
+            <Label fontSize="$3">Sleep computer</Label>
+            <MutedText fontSize="$3">
+              Put Windows into sleep mode now.
+            </MutedText>
+          </YStack>
+          <Button
+            aria-label="Sleep computer"
+            icon={<Moon aria-hidden size={16} />}
+            btnScale="sm"
+            appearance="secondary"
+            onPress={() => sleep.mutate()}
+          >
+            Sleep
+          </Button>
+        </XStack>
+      </Card>
+      {sleepStatus.message ? (
+        <StatusText status={sleepStatus.status}>
+          {sleepStatus.message}
+        </StatusText>
+      ) : null}
+    </YStack>
   );
 }

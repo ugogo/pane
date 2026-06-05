@@ -1,6 +1,17 @@
-import { useEffect, useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
-import { Copy, QrCode, Wifi, X } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Copy, QrCode, Wifi, X } from '@pane/ui';
+import {
+  Button,
+  Card,
+  Label,
+  MutedPanel,
+  MutedText,
+  QRCode,
+  Switch,
+  Text,
+  XStack,
+  YStack,
+} from '@pane/ui';
 import {
   cancelCompanionPairing,
   getCompanionStatus,
@@ -9,13 +20,10 @@ import {
   startCompanionPairing,
   type CompanionStatus,
 } from '@/lib/commands';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
+import { queryKeys } from '@/lib/query-keys';
+import { useActionStatus } from '@/lib/use-action-status';
 import { PageSpinner } from './page-spinner';
 import { StatusBadge, StatusText } from './status-ui';
-
-type LoadState = 'busy' | 'ready' | 'error';
 
 function formatExpiry(expiresAt: number) {
   return new Date(expiresAt * 1000).toLocaleTimeString([], {
@@ -24,190 +32,167 @@ function formatExpiry(expiresAt: number) {
   });
 }
 
-export function CompanionCard({ className }: { className?: string }) {
-  const [status, setStatus] = useState<CompanionStatus | null>(null);
-  const [loadState, setLoadState] = useState<LoadState>('busy');
-  const [message, setMessage] = useState('');
+export function CompanionCard() {
+  const queryClient = useQueryClient();
+  const statusQuery = useQuery({
+    queryKey: queryKeys.companionStatus,
+    queryFn: getCompanionStatus,
+    refetchInterval: (query) =>
+      query.state.data?.activePairing != null ? 2000 : false,
+  });
+  const status = statusQuery.data ?? null;
+  const actionStatus = useActionStatus();
 
-  useEffect(() => {
-    void getCompanionStatus()
-      .then((next) => {
-        setStatus(next);
-        setLoadState('ready');
-      })
-      .catch((err: unknown) => {
-        setMessage(String(err));
-        setLoadState('error');
-      });
-  }, []);
+  const mutation = useMutation({
+    mutationFn: (action: () => Promise<CompanionStatus>) => action(),
+    onMutate: () => actionStatus.clear(),
+    onSuccess: (next) =>
+      queryClient.setQueryData(queryKeys.companionStatus, next),
+    onError: (err) => actionStatus.set('fail', String(err)),
+  });
+  const update = (action: () => Promise<CompanionStatus>) =>
+    mutation.mutate(action);
 
-  // While a pairing window is open the phone pairs over HTTP on its own — the
-  // desktop has no push channel, so poll until the session is consumed (the new
-  // device appears and activePairing clears) or it expires.
-  const pairingActive = status?.activePairing != null;
-  useEffect(() => {
-    if (!pairingActive) return;
-    const id = setInterval(() => {
-      void getCompanionStatus()
-        .then(setStatus)
-        .catch(() => {});
-    }, 2000);
-    return () => clearInterval(id);
-  }, [pairingActive]);
-
-  async function update(action: () => Promise<CompanionStatus>) {
-    setLoadState('busy');
-    setMessage('');
-
-    try {
-      const next = await action();
-      setStatus(next);
-      setLoadState('ready');
-    } catch (err) {
-      setMessage(String(err));
-      setLoadState('error');
-    }
-  }
-
-  if (status === null && loadState === 'busy') {
-    return <PageSpinner className={className} />;
+  if (statusQuery.isPending && !status) {
+    return <PageSpinner />;
   }
 
   const pairing = status?.activePairing ?? null;
   const devices = status?.pairedDevices ?? [];
-  const busy = loadState === 'busy';
+  const busy = mutation.isPending || statusQuery.isFetching;
 
   return (
-    <div className={cn('space-y-3', className)}>
-      <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium">Local companion</p>
-            <StatusBadge status={status?.enabled ? 'pass' : 'disabled'} />
-          </div>
-          <p className="text-muted-foreground truncate text-sm">
-            {status
-              ? `${status.serviceName} · ${status.serviceType}`
-              : 'Loading companion state'}
-          </p>
-        </div>
-        <Switch
-          aria-label="Enable mobile companion"
-          disabled={!status || busy}
-          checked={status?.enabled ?? false}
-          onCheckedChange={(checked) =>
-            void update(() => setCompanionEnabled(checked))
-          }
-        />
-      </div>
+    <YStack gap="$3">
+      <Card padding="$3">
+        <XStack gap="$4" alignItems="center" justifyContent="space-between">
+          <YStack flex={1} gap="$1" style={{ minWidth: 0 }}>
+            <XStack gap="$2" alignItems="center">
+              <Label fontSize="$3">Local companion</Label>
+              <StatusBadge status={status?.enabled ? 'pass' : 'disabled'} />
+            </XStack>
+            <MutedText fontSize="$3" numberOfLines={1}>
+              {status
+                ? `${status.serviceName} · ${status.serviceType}`
+                : 'Loading companion state'}
+            </MutedText>
+          </YStack>
+          <Switch
+            aria-label="Enable mobile companion"
+            checked={status?.enabled ?? false}
+            disabled={!status || busy}
+            onCheckedChange={(checked) =>
+              void update(() => setCompanionEnabled(checked))
+            }
+          />
+        </XStack>
+      </Card>
 
-      <div className="space-y-3 rounded-lg border p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-medium">Pairing session</p>
-            <p className="text-muted-foreground text-sm">
+      <Card gap="$3" padding="$3">
+        <XStack gap="$3" alignItems="center" justifyContent="space-between">
+          <YStack flex={1} style={{ minWidth: 0 }}>
+            <Label fontSize="$3">Pairing session</Label>
+            <MutedText fontSize="$3">
               {pairing
                 ? `Expires at ${formatExpiry(pairing.expiresAt)}`
                 : 'No active pairing window'}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
+            </MutedText>
+          </YStack>
+          <XStack gap="$2" flexShrink={0}>
             {pairing ? (
               <Button
                 aria-label="Cancel pairing"
                 disabled={busy}
-                size="icon-sm"
-                variant="outline"
-                onClick={() => void update(cancelCompanionPairing)}
-              >
-                <X aria-hidden="true" />
-              </Button>
+                icon={<X aria-hidden size={16} />}
+                btnScale="sm"
+                appearance="outline"
+                onPress={() => void update(cancelCompanionPairing)}
+              />
             ) : null}
             <Button
               disabled={busy}
-              size="sm"
-              onClick={() => void update(startCompanionPairing)}
+              icon={<QrCode aria-hidden size={16} />}
+              btnScale="sm"
+              appearance="outline"
+              onPress={() => void update(startCompanionPairing)}
             >
-              <QrCode aria-hidden="true" />
               Pair
             </Button>
-          </div>
-        </div>
+          </XStack>
+        </XStack>
 
         {pairing ? (
-          <div className="bg-muted rounded-md p-3">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <p className="text-sm font-medium">Scan to pair</p>
+          <MutedPanel>
+            <XStack gap="$3" alignItems="center" justifyContent="space-between">
+              <Label fontSize="$3">Scan to pair</Label>
               <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
+                icon={<Copy aria-hidden size={16} />}
+                btnScale="sm"
+                appearance="outline"
+                onPress={() =>
                   void navigator.clipboard.writeText(pairing.pairingUri)
                 }
               >
-                <Copy aria-hidden="true" />
                 Copy URI
               </Button>
-            </div>
-            <div className="flex justify-center">
-              <div className="rounded-md bg-white p-3">
-                <QRCodeSVG
-                  value={pairing.pairingUri}
-                  size={176}
-                  level="M"
-                  marginSize={0}
-                />
-              </div>
-            </div>
-            <p className="text-muted-foreground mt-3 text-center text-xs">
+            </XStack>
+            <YStack alignItems="center" marginTop="$3">
+              <QRCode
+                level="M"
+                quietZone={0}
+                size={176}
+                value={pairing.pairingUri}
+              />
+            </YStack>
+            <MutedText
+              fontSize="$2"
+              marginTop="$2"
+              style={{ textAlign: 'center' }}
+            >
               Open Pane Companion on your iPhone and scan this code.
-            </p>
-          </div>
+            </MutedText>
+          </MutedPanel>
         ) : null}
-      </div>
+      </Card>
 
-      <div className="space-y-3 rounded-lg border p-3">
-        <div className="flex items-center gap-2">
-          <Wifi aria-hidden="true" className="text-muted-foreground size-3.5" />
-          <p className="text-sm font-medium">Trusted devices</p>
-        </div>
+      <Card gap="$3" padding="$3">
+        <XStack gap="$2" alignItems="center">
+          <Wifi aria-hidden color="$placeholderColor" size={14} />
+          <Label fontSize="$3">Trusted devices</Label>
+        </XStack>
 
         {devices.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No iPhones paired yet.
-          </p>
+          <MutedText fontSize="$3">No iPhones paired yet.</MutedText>
         ) : (
-          <div className="space-y-2">
+          <YStack gap="$2">
             {devices.map((device) => (
-              <div
-                key={device.id}
-                className="bg-muted/50 flex items-center justify-between gap-3 rounded-md px-3 py-2"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{device.name}</p>
-                  <p className="text-muted-foreground text-xs">{device.role}</p>
-                </div>
+              <XStack key={device.id} gap="$2" alignItems="center">
+                <YStack flex={1} minWidth={0}>
+                  <Text fontSize="$3" fontWeight="600" numberOfLines={1}>
+                    {device.name}
+                  </Text>
+                  <MutedText fontSize="$2">{device.role}</MutedText>
+                </YStack>
                 <Button
                   disabled={busy}
-                  size="sm"
-                  variant="ghost"
-                  onClick={() =>
+                  btnScale="xs"
+                  appearance="ghost"
+                  onPress={() =>
                     void update(() => revokeCompanionDevice(device.id))
                   }
                 >
                   Revoke
                 </Button>
-              </div>
+              </XStack>
             ))}
-          </div>
+          </YStack>
         )}
-      </div>
+      </Card>
 
-      {message ? (
-        <StatusText status={loadState === 'error' ? 'fail' : 'idle'}>
-          {message}
+      {actionStatus.message ? (
+        <StatusText status={actionStatus.status}>
+          {actionStatus.message}
         </StatusText>
       ) : null}
-    </div>
+    </YStack>
   );
 }

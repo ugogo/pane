@@ -29,7 +29,7 @@ function formatUpdateError(err: unknown) {
  * artifact to update to, so a check would only ever fail.
  */
 export async function checkForUpdatesOnLaunch(): Promise<UpdateCheckResult> {
-  if (import.meta.env.DEV) return { status: 'skipped' };
+  if (__DEV__) return { status: 'skipped' };
 
   try {
     const update = await check();

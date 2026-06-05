@@ -1,6 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
-import { listen } from '@tauri-apps/api/event';
-import { Sun, Contrast, Sunset, Trash2, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Sun, Contrast, Sunset, Trash2, RotateCcw } from '@pane/ui';
+import {
+  Button,
+  Card,
+  MutedText,
+  PresetGroup,
+  PresetIconButton,
+  PresetNameButton,
+  Slider,
+  SliderLabel,
+  SliderRow,
+  SliderValue,
+  Text,
+  XStack,
+  YStack,
+} from '@pane/ui';
 import {
   listMonitors,
   refreshMonitors,
@@ -16,26 +31,29 @@ import {
   type MonitorInfo,
   type MonitorPreset,
 } from '../../lib/commands';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { queryKeys } from '@/lib/query-keys';
+import type { Status, StatusMessage } from '@/lib/status';
+import { useDebouncedWrite } from '@/lib/use-debounced-write';
+import { useTauriEvent } from '@/lib/use-tauri-event';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
 
-type ScanStatus = 'idle' | 'pass' | 'warn' | 'fail';
-
-interface Scan {
-  status: ScanStatus;
-  message: string;
+function scanForMonitors(list: MonitorInfo[]): StatusMessage {
+  const controllable = list.filter((m) => m.brightness.supported).length;
+  if (list.length === 0) {
+    return { status: 'warn', message: 'No monitors detected.' };
+  }
+  if (controllable === 0) {
+    return {
+      status: 'warn',
+      message: `${list.length} monitor${list.length === 1 ? '' : 's'} found, but none expose DDC/CI brightness. Enable DDC/CI in the monitor's on-screen menu.`,
+    };
+  }
+  return {
+    status: 'pass',
+    message: `${controllable} of ${list.length} monitor${list.length === 1 ? '' : 's'} controllable.`,
+  };
 }
-
-// DDC/CI writes are slow (tens of ms over I2C), so we only push to the monitor
-// after the slider settles rather than on every pixel of drag.
-const WRITE_DEBOUNCE_MS = 150;
 
 type FeatureKey = 'brightness' | 'contrast';
 
@@ -56,18 +74,13 @@ function pct(value: number, max: number) {
   return max > 0 ? Math.round((value / max) * 100) : 0;
 }
 
-// Warm-only white balance via the R/G/B gains: 0 = default (native white, all
-// gains at max), 100 = strongest warmth (deep iPhone-Night-Shift amber). Red is
-// held high; green is eased down a little and blue is pulled way down so the
-// white point drifts to amber rather than just dim yellow.
-const WARM_GREEN_REDUCTION = 0.35; // green floors at 65% of range
-const WARM_BLUE_REDUCTION = 0.85; // blue floors at 15% of range
+const WARM_GREEN_REDUCTION = 0.35;
+const WARM_BLUE_REDUCTION = 0.85;
 
 function gainMax(f: { max: number }) {
   return f.max || 100;
 }
 
-/** Slider position (0–100) → absolute R/G/B gain values. */
 function warmthToGains(t: number, m: MonitorInfo) {
   const d = Math.min(Math.max(t, 0), 100) / 100;
   return {
@@ -77,66 +90,67 @@ function warmthToGains(t: number, m: MonitorInfo) {
   };
 }
 
-/** Current white point → slider position, so the slider opens where the monitor is. */
 function gainsToWarmth(m: MonitorInfo) {
   const b = m.blueGain.value / gainMax(m.blueGain);
   const d = Math.min(Math.max((1 - b) / WARM_BLUE_REDUCTION, 0), 1);
   return Math.round(d * 100);
 }
 
-export function BrightnessCard({ className }: { className?: string }) {
-  const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
-  const [presets, setPresets] = useState<MonitorPreset[]>([]);
-  const [scan, setScan] = useState<Scan>({ status: 'idle', message: '' });
-  // Starts true because we enumerate monitors on mount.
-  const [busy, setBusy] = useState(true);
-  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+const emptyMonitors: MonitorInfo[] = [];
 
-  // All state updates live in deferred promise callbacks, so this is safe to
-  // call straight from an effect without tripping set-state-in-effect.
-  function load(refresh: boolean) {
-    return (refresh ? refreshMonitors() : listMonitors())
-      .then((list) => {
-        setMonitors(list);
-        const controllable = list.filter((m) => m.brightness.supported).length;
-        if (list.length === 0) {
-          setScan({ status: 'warn', message: 'No monitors detected.' });
-        } else if (controllable === 0) {
-          setScan({
-            status: 'warn',
-            message: `${list.length} monitor${list.length === 1 ? '' : 's'} found, but none expose DDC/CI brightness. Enable DDC/CI in the monitor's on-screen menu.`,
-          });
-        } else {
-          setScan({
-            status: 'pass',
-            message: `${controllable} of ${list.length} monitor${list.length === 1 ? '' : 's'} controllable.`,
-          });
-        }
-      })
-      .catch((e: unknown) => setScan({ status: 'fail', message: String(e) }))
-      .finally(() => setBusy(false));
+export function BrightnessCard() {
+  const queryClient = useQueryClient();
+  const monitorsQuery = useQuery({
+    queryKey: queryKeys.displayMonitors,
+    queryFn: listMonitors,
+  });
+  const presetsQuery = useQuery({
+    queryKey: queryKeys.displayPresets,
+    queryFn: getMonitorPresets,
+  });
+  const monitors = monitorsQuery.data ?? emptyMonitors;
+  const presets = presetsQuery.data ?? [];
+  const [scanOverride, setScanOverride] = useState<StatusMessage | null>(null);
+  const scan =
+    scanOverride ??
+    (monitorsQuery.isError
+      ? { status: 'fail' as Status, message: String(monitorsQuery.error) }
+      : null) ??
+    (monitors.length > 0
+      ? scanForMonitors(monitors)
+      : { status: 'idle' as Status, message: '' });
+  const [actionBusy, setActionBusy] = useState(false);
+  const schedule = useDebouncedWrite();
+
+  function patchMonitors(updater: (list: MonitorInfo[]) => MonitorInfo[]) {
+    queryClient.setQueryData(
+      queryKeys.displayMonitors,
+      (prev: MonitorInfo[] | undefined) => updater(prev ?? []),
+    );
   }
 
-  // Entering the loading state from a user action (handler context).
-  function beginLoad() {
-    setBusy(true);
-    setScan({ status: 'idle', message: '' });
+  const busy = actionBusy || monitorsQuery.isFetching;
+
+  async function reloadMonitors(refresh: boolean) {
+    setActionBusy(true);
+    setScanOverride({ status: 'idle', message: '' });
+    try {
+      const list = await (refresh ? refreshMonitors() : listMonitors());
+      queryClient.setQueryData(queryKeys.displayMonitors, list);
+      setScanOverride(null);
+    } catch (e) {
+      setScanOverride({ status: 'fail', message: String(e) });
+    } finally {
+      setActionBusy(false);
+    }
   }
 
-  useEffect(() => {
-    void load(false);
-    void getMonitorPresets()
-      .then(setPresets)
-      .catch(() => {});
-  }, []);
-
-  // The physical brightness key adjusts every monitor in the Rust backend and
-  // emits the new values; reflect them so the sliders track the key live.
-  useEffect(() => {
-    const unlisten = listen<MonitorInfo[]>('brightness-changed', (event) => {
-      const next = event.payload;
-      setMonitors((prev) =>
-        prev.map((m) => {
+  useTauriEvent<MonitorInfo[]>('brightness-changed', (event) => {
+    const next = event.payload;
+    queryClient.setQueryData(
+      queryKeys.displayMonitors,
+      (prev: MonitorInfo[] | undefined) =>
+        (prev ?? []).map((m) => {
           const updated = next.find((n) => n.id === m.id);
           return updated
             ? {
@@ -148,33 +162,27 @@ export function BrightnessCard({ className }: { className?: string }) {
               }
             : m;
         }),
-      );
-    });
-    return () => {
-      void unlisten.then((off) => off());
-    };
-  }, []);
+    );
+  });
 
   function onSlide(id: string, feature: FeatureKey, value: number) {
-    setMonitors((prev) =>
+    patchMonitors((prev) =>
       prev.map((m) =>
         m.id === id ? { ...m, [feature]: { ...m[feature], value } } : m,
       ),
     );
-    const timerKey = `${id}:${feature}`;
-    if (timers.current[timerKey]) clearTimeout(timers.current[timerKey]);
-    timers.current[timerKey] = setTimeout(() => {
+    schedule(`${id}:${feature}`, () => {
       void writers[feature](id, value).catch((e) =>
-        setScan({ status: 'fail', message: String(e) }),
+        setScanOverride({ status: 'fail', message: String(e) }),
       );
-    }, WRITE_DEBOUNCE_MS);
+    });
   }
 
   function onWarmth(id: string, t: number) {
     const mon = monitors.find((x) => x.id === id);
     if (!mon) return;
     const { r, g, b } = warmthToGains(t, mon);
-    setMonitors((prev) =>
+    patchMonitors((prev) =>
       prev.map((m) =>
         m.id === id
           ? {
@@ -186,39 +194,33 @@ export function BrightnessCard({ className }: { className?: string }) {
           : m,
       ),
     );
-    const timerKey = `${id}:temp`;
-    if (timers.current[timerKey]) clearTimeout(timers.current[timerKey]);
-    timers.current[timerKey] = setTimeout(() => {
+    schedule(`${id}:temp`, () => {
       void (async () => {
         try {
-          // DDC writes must be sequential — concurrent I2C writes to one
-          // monitor race, so Promise.all() here would corrupt the white point.
           // eslint-disable-next-line react-doctor/async-parallel
           await setMonitorRedGain(id, r);
           await setMonitorGreenGain(id, g);
           await setMonitorBlueGain(id, b);
         } catch (e) {
-          setScan({ status: 'fail', message: String(e) });
+          setScanOverride({ status: 'fail', message: String(e) });
         }
       })();
-    }, WRITE_DEBOUNCE_MS);
+    });
   }
 
   async function onApplyPreset(name: string) {
-    setBusy(true);
+    setActionBusy(true);
     try {
       const list = await applyMonitorPreset(name);
-      setMonitors(list);
-      setScan({ status: 'pass', message: `Applied "${name}".` });
+      queryClient.setQueryData(queryKeys.displayMonitors, list);
+      setScanOverride({ status: 'pass', message: `Applied "${name}".` });
     } catch (e) {
-      setScan({ status: 'fail', message: String(e) });
+      setScanOverride({ status: 'fail', message: String(e) });
     } finally {
-      setBusy(false);
+      setActionBusy(false);
     }
   }
 
-  // Snapshot the current settings (first controllable monitor's percentages)
-  // into a named preset.
   async function snapshot(name: string) {
     const ref = monitors.find((m) => m.brightness.supported) ?? monitors[0];
     if (!ref) return;
@@ -230,74 +232,71 @@ export function BrightnessCard({ className }: { className?: string }) {
       greenGainPct: pct(ref.greenGain.value, ref.greenGain.max),
       blueGainPct: pct(ref.blueGain.value, ref.blueGain.max),
     });
-    setPresets(next);
+    queryClient.setQueryData(queryKeys.displayPresets, next);
   }
 
   async function onUpdatePreset(name: string) {
-    setBusy(true);
+    setActionBusy(true);
     try {
       await snapshot(name);
-      setScan({
+      setScanOverride({
         status: 'pass',
         message: `Updated "${name}" to current settings.`,
       });
     } catch (e) {
-      setScan({ status: 'fail', message: String(e) });
+      setScanOverride({ status: 'fail', message: String(e) });
     } finally {
-      setBusy(false);
+      setActionBusy(false);
     }
   }
 
   async function onSavePreset() {
     const name = window.prompt('Preset name')?.trim();
     if (!name) return;
-    setBusy(true);
+    setActionBusy(true);
     try {
       await snapshot(name);
     } catch (e) {
-      setScan({ status: 'fail', message: String(e) });
+      setScanOverride({ status: 'fail', message: String(e) });
     } finally {
-      setBusy(false);
+      setActionBusy(false);
     }
   }
 
   async function onDeletePreset(name: string) {
-    setBusy(true);
+    setActionBusy(true);
     try {
       const next = await deleteMonitorPreset(name);
-      setPresets(next);
+      queryClient.setQueryData(queryKeys.displayPresets, next);
     } catch (e) {
-      setScan({ status: 'fail', message: String(e) });
+      setScanOverride({ status: 'fail', message: String(e) });
     } finally {
-      setBusy(false);
+      setActionBusy(false);
     }
   }
 
-  if (busy && monitors.length === 0 && !scan.message) {
-    return <PageSpinner className={className} />;
+  if (monitorsQuery.isPending && !monitorsQuery.data) {
+    return <PageSpinner />;
   }
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <YStack gap="$4">
       <PresetBar
         presets={presets}
         busy={busy}
         hasMonitors={monitors.length > 0}
-        onRefresh={() => {
-          beginLoad();
-          void load(true);
-        }}
+        onRefresh={() => void reloadMonitors(true)}
         onApply={(name) => void onApplyPreset(name)}
         onUpdate={(name) => void onUpdatePreset(name)}
         onDelete={(name) => void onDeletePreset(name)}
         onSave={() => void onSavePreset()}
       />
 
-      {scan.message && (
+      {scan.message ? (
         <StatusText status={scan.status}>{scan.message}</StatusText>
-      )}
+      ) : null}
 
-      <div className="grid gap-3">
+      <YStack gap="$3">
         {monitors.map((m) => (
           <MonitorRow
             key={m.id}
@@ -306,8 +305,8 @@ export function BrightnessCard({ className }: { className?: string }) {
             onWarmth={onWarmth}
           />
         ))}
-      </div>
-    </div>
+      </YStack>
+    </YStack>
   );
 }
 
@@ -331,76 +330,50 @@ function PresetBar({
   onSave: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <XStack flexWrap="wrap" gap="$2" alignItems="center">
       <Button
         disabled={busy}
-        size="sm"
-        onClick={onRefresh}
-        title="Re-enumerate monitors (after plugging/unplugging)"
+        btnScale="sm"
+        appearance="outline"
+        onPress={onRefresh}
       >
         Refresh
       </Button>
 
       {presets.map((p) => (
-        <span
-          key={p.name}
-          className="inline-flex items-center overflow-hidden rounded-lg border"
-        >
-          <button
-            type="button"
-            disabled={busy}
-            className="hover:bg-muted px-2.5 py-1 text-xs font-medium transition disabled:opacity-50"
-            onClick={() => onApply(p.name)}
-            title={`Apply — brightness ${p.brightnessPct}%, contrast ${p.contrastPct}%, white balance R${p.redGainPct}/G${p.greenGainPct}/B${p.blueGainPct}`}
-          >
+        <PresetGroup key={p.name}>
+          <PresetNameButton disabled={busy} onPress={() => onApply(p.name)}>
             {p.name}
-          </button>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  disabled={busy || !hasMonitors}
-                  className="text-muted-foreground hover:bg-muted hover:text-foreground border-l px-1.5 py-1 transition disabled:opacity-50"
-                  onClick={() => onUpdate(p.name)}
-                  aria-label={`Update preset ${p.name} to current settings`}
-                >
-                  <RotateCcw size={12} aria-hidden />
-                </button>
-              }
-            />
-            <TooltipContent>Update "{p.name}"</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  disabled={busy}
-                  className="text-muted-foreground hover:bg-muted hover:text-destructive border-l px-1.5 py-1 transition disabled:opacity-50"
-                  onClick={() => onDelete(p.name)}
-                  aria-label={`Delete preset ${p.name}`}
-                >
-                  <Trash2 size={12} aria-hidden />
-                </button>
-              }
-            />
-            <TooltipContent>Delete "{p.name}"</TooltipContent>
-          </Tooltip>
-        </span>
+          </PresetNameButton>
+          <PresetIconButton
+            aria-label={`Update ${p.name} preset`}
+            disabled={busy || !hasMonitors}
+            onPress={() => onUpdate(p.name)}
+          >
+            <RotateCcw aria-hidden size={12} />
+          </PresetIconButton>
+          <PresetIconButton
+            aria-label={`Delete ${p.name} preset`}
+            disabled={busy}
+            onPress={() => onDelete(p.name)}
+          >
+            <Trash2 aria-hidden size={12} />
+          </PresetIconButton>
+        </PresetGroup>
       ))}
 
       <Button
+        borderColor="$borderColor"
+        borderStyle="dashed"
+        borderWidth={1}
         disabled={busy || !hasMonitors}
-        size="sm"
-        variant="ghost"
-        className="border border-dashed"
-        onClick={onSave}
-        title="Save the current settings as a new preset"
+        btnScale="sm"
+        appearance="ghost"
+        onPress={onSave}
       >
         + Save preset
       </Button>
-    </div>
+    </XStack>
   );
 }
 
@@ -415,76 +388,76 @@ function MonitorRow({
 }) {
   const name = m.name || `Monitor ${m.id}`;
   return (
-    <div className="rounded-lg border p-3">
-      <p className="truncate text-sm font-medium">{name}</p>
+    <Card gap="$2" padding="$3">
+      <Text fontSize="$3" fontWeight="600" numberOfLines={1}>
+        {name}
+      </Text>
 
       {sliderMeta.map(({ key, icon: Icon, label }) => {
         const f = m[key];
         return (
-          <div key={key} className="mt-2 flex items-center gap-3">
-            <Icon
-              size={14}
-              className="text-muted-foreground shrink-0"
-              aria-hidden
-            />
+          <SliderRow key={key}>
+            <SliderLabel>
+              <Icon aria-hidden size={12} />
+              <MutedText fontSize="$2">{label}</MutedText>
+            </SliderLabel>
             {f.supported ? (
               <>
-                <input
-                  type="range"
-                  min={0}
+                <Slider
                   max={f.max}
+                  min={0}
                   step={1}
                   value={f.value}
-                  onChange={(e) => onSlide(m.id, key, Number(e.target.value))}
-                  aria-label={`${label} for ${name}`}
-                  className="w-full"
+                  onChange={(v) => onSlide(m.id, key, v)}
                 />
-                <span className="text-muted-foreground w-10 shrink-0 text-right text-xs">
-                  {pct(f.value, f.max)}%
-                </span>
+                <SliderValue>{pct(f.value, f.max)}%</SliderValue>
               </>
             ) : (
-              <span className="text-muted-foreground flex-1 text-xs">
+              <MutedText flex={1} fontSize="$2">
                 {label} not supported by this monitor
-              </span>
+              </MutedText>
             )}
-          </div>
+          </SliderRow>
         );
       })}
 
-      {m.redGain.supported && m.greenGain.supported && m.blueGain.supported && (
-        <div className="mt-2 flex items-center gap-3">
-          <Sunset
-            size={14}
-            className="text-muted-foreground shrink-0"
-            aria-hidden
-          />
-          <input
-            type="range"
-            min={0}
+      {m.redGain.supported && m.greenGain.supported && m.blueGain.supported ? (
+        <SliderRow>
+          <SliderLabel>
+            <Sunset aria-hidden size={12} />
+            <MutedText fontSize="$2">Warmth</MutedText>
+          </SliderLabel>
+          <Slider
             max={100}
+            min={0}
             step={1}
             value={gainsToWarmth(m)}
-            onChange={(e) => onWarmth(m.id, Number(e.target.value))}
-            aria-label={`Warmth for ${name}`}
-            title="Default (left) → warmer (right)"
-            className="w-full"
+            onChange={(v) => onWarmth(m.id, v)}
           />
-          <span className="text-muted-foreground w-20 shrink-0 text-right text-xs">
-            {gainsToWarmth(m) === 0 ? 'Default' : `Warm ${gainsToWarmth(m)}%`}
-          </span>
-        </div>
-      )}
+          <SliderValue>
+            {gainsToWarmth(m) === 0 ? 'Default' : `${gainsToWarmth(m)}%`}
+          </SliderValue>
+        </SliderRow>
+      ) : null}
 
       {!m.brightness.supported &&
-        !m.contrast.supported &&
-        !m.redGain.supported &&
-        !m.greenGain.supported &&
-        !m.blueGain.supported && (
-          <p className="bg-muted text-muted-foreground mt-2 rounded-lg border px-3 py-2 text-xs">
-            DDC/CI unavailable. Enable DDC/CI in this monitor's on-screen menu.
-          </p>
-        )}
-    </div>
+      !m.contrast.supported &&
+      !m.redGain.supported &&
+      !m.greenGain.supported &&
+      !m.blueGain.supported ? (
+        <MutedText
+          backgroundColor="$gray3"
+          borderColor="$borderColor"
+          borderWidth={1}
+          fontSize="$2"
+          marginTop="$2"
+          padding="$3"
+          borderRadius="$4"
+        >
+          DDC/CI unavailable. Enable DDC/CI in this monitor&apos;s on-screen
+          menu.
+        </MutedText>
+      ) : null}
+    </Card>
   );
 }

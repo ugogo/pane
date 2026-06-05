@@ -1,19 +1,11 @@
 import { useRef, useState } from 'react';
-import { cn } from '../lib/utils';
+import { MutedText, Text } from '@pane/ui';
 
 const MOD_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta']);
 
-/**
- * Maps a KeyboardEvent.code to the Tauri accelerator token. Tauri's
- * global-shortcut plugin uses Electron-style strings: "CmdOrCtrl", "Shift",
- * "Alt", "F5", "A", "1", etc.
- *
- * Returns null for pure modifier presses (Shift alone, etc.) since those
- * cannot be a complete accelerator.
- */
 function codeToToken(code: string): string | null {
-  if (code.startsWith('Key')) return code.slice(3); // KeyA → A
-  if (code.startsWith('Digit')) return code.slice(5); // Digit1 → 1
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Digit')) return code.slice(5);
   if (code.startsWith('Numpad')) return `num${code.slice(6).toLowerCase()}`;
   if (/^F\d{1,2}$/.test(code)) return code;
   switch (code) {
@@ -91,11 +83,6 @@ export interface ShortcutInputProps {
   ariaLabel?: string;
 }
 
-/**
- * Click to focus, then press a chord. Live-displays modifiers as you hold
- * them; commits the accelerator when a non-modifier key is pressed. Esc
- * cancels capture; Delete/Backspace clears the binding.
- */
 export function ShortcutInput({
   value,
   onCommit,
@@ -129,7 +116,6 @@ export function ShortcutInput({
       return;
     }
 
-    // Live preview: show modifiers even before the final key.
     const live: string[] = [];
     if (e.ctrlKey || e.metaKey) live.push('CmdOrCtrl');
     if (e.altKey) live.push('Alt');
@@ -140,7 +126,6 @@ export function ShortcutInput({
     }
     setDraft(live.join('+'));
 
-    // Commit when the chord includes a non-modifier.
     const accel = buildAccelerator(e);
     if (accel) {
       onCommit(accel);
@@ -150,7 +135,6 @@ export function ShortcutInput({
   }
 
   function handleKeyUp(e: React.KeyboardEvent) {
-    // Reflect modifier release while still capturing.
     if (!capturing) return;
     const live: string[] = [];
     if (e.ctrlKey || e.metaKey) live.push('CmdOrCtrl');
@@ -178,16 +162,21 @@ export function ShortcutInput({
       }}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
-      className={cn(
-        'focus-visible:ring-ring/50 flex min-h-8 w-full cursor-text items-center rounded-md border px-2.5 text-left font-mono text-sm transition outline-none focus-visible:ring-3',
+      className={
         capturing
-          ? 'border-ring bg-muted text-foreground'
-          : 'border-input bg-background text-foreground hover:bg-muted',
-      )}
+          ? 'shortcut-input shortcut-input--capturing'
+          : 'shortcut-input'
+      }
     >
-      <span className={value || capturing ? '' : 'text-muted-foreground'}>
-        {display}
-      </span>
+      {value || capturing ? (
+        <Text fontSize="$3" style={{ fontFamily: 'monospace' }}>
+          {display}
+        </Text>
+      ) : (
+        <MutedText fontSize="$3" style={{ fontFamily: 'monospace' }}>
+          {display}
+        </MutedText>
+      )}
     </button>
   );
 }

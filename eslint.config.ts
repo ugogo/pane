@@ -7,8 +7,9 @@ import reactDoctor from 'eslint-plugin-react-doctor';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
-/** Desktop (Vite) and Expo companion React sources. */
+/** Desktop (Metro web) and Expo companion React sources. */
 const reactSourceFiles = [
+  'apps/windows/app/**/*.{ts,tsx}',
   'apps/windows/src/**/*.{ts,tsx}',
   'apps/mobile/**/*.{ts,tsx}',
 ];
@@ -25,6 +26,9 @@ export default tseslint.config(
       'assets/',
       '.claude/',
       '*.config.{js,ts}',
+      'packages/ui/**/*.cjs',
+      'apps/windows/.tamagui/',
+      'apps/windows/app/tamagui.generated.css',
     ],
   },
 
@@ -32,9 +36,9 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
 
-  // Desktop app: React + browser globals + Vite fast refresh.
+  // Desktop app: React + browser globals + fast refresh.
   {
-    files: ['apps/windows/src/**/*.{ts,tsx}'],
+    files: ['apps/windows/app/**/*.{ts,tsx}', 'apps/windows/src/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2021,
       globals: globals.browser,
@@ -86,7 +90,7 @@ export default tseslint.config(
   // React Doctor — desktop (includes React Compiler heuristics).
   {
     ...reactDoctor.configs.recommended,
-    files: ['apps/windows/src/**/*.{ts,tsx}'],
+    files: ['apps/windows/app/**/*.{ts,tsx}', 'apps/windows/src/**/*.{ts,tsx}'],
   },
 
   // React Doctor — Expo companion (recommended + react-native preset).

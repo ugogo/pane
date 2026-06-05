@@ -1,53 +1,59 @@
-import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Card, Label, MutedText, Switch, XStack, YStack } from '@pane/ui';
 import { getAccentPopupEnabled, setAccentPopupEnabled } from '@/lib/commands';
-import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
+import { queryKeys } from '@/lib/query-keys';
+import { useActionStatus } from '@/lib/use-action-status';
 import { PageSpinner } from './page-spinner';
 import { StatusText } from './status-ui';
 
-export function AccentCard({ className }: { className?: string }) {
-  const [enabled, setEnabled] = useState<boolean | null>(null);
-  const [error, setError] = useState<string>();
+export function AccentCard() {
+  const queryClient = useQueryClient();
+  const enabledQuery = useQuery({
+    queryKey: queryKeys.accentEnabled,
+    queryFn: getAccentPopupEnabled,
+  });
+  const enabled = enabledQuery.data ?? null;
+  const status = useActionStatus();
 
-  useEffect(() => {
-    void getAccentPopupEnabled()
-      .then(setEnabled)
-      .catch((err: unknown) => setError(String(err)));
-  }, []);
+  const toggle = useMutation({
+    mutationFn: setAccentPopupEnabled,
+    onMutate: (next: boolean) => {
+      status.clear();
+      const prev = enabledQuery.data;
+      queryClient.setQueryData(queryKeys.accentEnabled, next);
+      return { prev };
+    },
+    onError: (err, _next, ctx) => {
+      queryClient.setQueryData(queryKeys.accentEnabled, ctx?.prev);
+      status.set('fail', String(err));
+    },
+  });
 
-  async function handleToggle(next: boolean) {
-    setError(undefined);
-    const prev = enabled;
-    setEnabled(next);
-    try {
-      await setAccentPopupEnabled(next);
-    } catch (err) {
-      setEnabled(prev ?? null);
-      setError(String(err));
-    }
-  }
-
-  if (enabled === null && !error) {
-    return <PageSpinner className={className} />;
+  if (enabledQuery.isPending && enabled === null && !status.message) {
+    return <PageSpinner />;
   }
 
   return (
-    <div className={cn('space-y-3', className)}>
-      <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
-        <div>
-          <p className="text-sm font-medium">Enabled</p>
-          <p className="text-muted-foreground text-sm">
-            Choose variants with click, number keys, or Esc to dismiss.
-          </p>
-        </div>
-        <Switch
-          aria-label="Enable long-press accents"
-          disabled={enabled === null}
-          checked={enabled ?? false}
-          onCheckedChange={(checked) => void handleToggle(checked)}
-        />
-      </div>
-      {error && <StatusText status="fail">{error}</StatusText>}
-    </div>
+    <YStack gap="$3">
+      <Card padding="$3">
+        <XStack gap="$4" alignItems="center" justifyContent="space-between">
+          <YStack flex={1} gap="$1">
+            <Label fontSize="$3">Enabled</Label>
+            <MutedText fontSize="$3">
+              Choose variants with click, number keys, or Esc to dismiss.
+            </MutedText>
+          </YStack>
+          <Switch
+            aria-label="Enable long-press accents"
+            checked={enabled ?? false}
+            disabled={enabled === null}
+            onCheckedChange={(next) => toggle.mutate(next)}
+          />
+        </XStack>
+      </Card>
+      {status.message ? (
+        <StatusText status={status.status}>{status.message}</StatusText>
+      ) : null}
+    </YStack>
   );
 }

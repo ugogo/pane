@@ -9,6 +9,7 @@ dist/
 build.log
 node_modules/
 target/
+.tamagui/
 .DS_Store
 Thumbs.db
 

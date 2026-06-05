@@ -408,20 +408,19 @@ mod imp {
         popup_target_url(app, &[]).map(WebviewUrl::External)
     }
 
-    // Builds the popup's URL with the accent variants baked into the query
-    // string. The page reads them synchronously on load, so the data is present
-    // before React mounts — no event-delivery race against a window whose
-    // webview may not have finished warming up.
     fn popup_target_url(app: &AppHandle, accents: &[String]) -> Option<tauri::Url> {
-        let main = app.get_webview_window("main")?;
-        let mut url = main.url().ok()?;
-        {
-            let mut q = url.query_pairs_mut();
-            q.clear();
-            q.append_pair("view", "accent-popup");
-            q.append_pair("chars", &accents.join(","));
-        }
-        Some(url)
+        let chars_param = accents.join(",");
+        let query: Vec<(&str, &str)> = if chars_param.is_empty() {
+            vec![]
+        } else {
+            vec![("chars", chars_param.as_str())]
+        };
+        crate::child_webview_url::route_url_with_query(
+            app,
+            crate::child_webview_url::routes::ACCENT_POPUP,
+            &query,
+        )
+        .ok()
     }
 
     fn warmup_popup(app: &AppHandle) {
