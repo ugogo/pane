@@ -31,6 +31,9 @@ export function CaptureCard() {
     queryFn: getCaptureHotkeys,
   });
   const hotkeys = hotkeysQuery.data ?? { fullscreen: '', area: '' };
+  const hotkeysError = hotkeysQuery.isError
+    ? `Could not load saved hotkeys: ${String(hotkeysQuery.error)}`
+    : '';
   const status = useActionStatus();
   const [previewVisible, setPreviewVisible] = useState<boolean | null>(null);
 
@@ -102,16 +105,6 @@ export function CaptureCard() {
     return <PageSpinner />;
   }
 
-  if (hotkeysQuery.isError) {
-    return (
-      <YStack gap="$4">
-        <StatusText status="warn">
-          Could not load saved hotkeys: {String(hotkeysQuery.error)}
-        </StatusText>
-      </YStack>
-    );
-  }
-
   return (
     <YStack gap="$4">
       <XStack flexWrap="wrap" gap="$3">
@@ -149,6 +142,8 @@ export function CaptureCard() {
         </Button>
         {status.message ? (
           <StatusText status={status.status}>{status.message}</StatusText>
+        ) : hotkeysError ? (
+          <StatusText status="warn">{hotkeysError}</StatusText>
         ) : null}
       </XStack>
     </YStack>

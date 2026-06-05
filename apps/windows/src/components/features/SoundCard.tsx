@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Volume2, VolumeX, Mic, MicOff, Star } from '@pane/ui';
 import {
@@ -82,8 +82,6 @@ export function SoundCard() {
 
   const status = useActionStatus();
   const schedule = useDebouncedWrite();
-  const pendingRef = useRef<Set<Kind> | undefined>(undefined);
-  const pending = (pendingRef.current ??= new Set());
   const [favorites, setFavorites] = useState<Record<Kind, Set<string>>>(() => ({
     output: readFavorites('output'),
     input: readFavorites('input'),
@@ -99,7 +97,6 @@ export function SoundCard() {
 
   useTauriEvent<VolumeChange>('audio-volume-changed', (event) => {
     const { kind, volume, muted } = event.payload;
-    if (pending.has(kind)) return;
     const prev = volumes[kind];
     if (prev && vpct(prev.volume) === vpct(volume) && prev.muted === muted) {
       return;
@@ -122,11 +119,10 @@ export function SoundCard() {
   function onVolume(kind: Kind, percent: number) {
     const cur = volumes[kind];
     patchVolume(kind, { volume: percent / 100, muted: cur?.muted ?? false });
-    pending.add(kind);
     schedule(kind, () => {
-      void setVolumeFor[kind](percent / 100)
-        .catch((e) => status.set('fail', String(e)))
-        .finally(() => pending.delete(kind));
+      void setVolumeFor[kind](percent / 100).catch((e) =>
+        status.set('fail', String(e)),
+      );
     });
   }
 

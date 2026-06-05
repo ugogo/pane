@@ -4,9 +4,13 @@ import {
   getDynamicLightingStatus,
   getLightStates,
   listDynamicLightingDevices,
+  type DxLightPresence,
   type DynamicLightingDevice,
+  type DynamicLightingStatus,
   type LightState,
+  type MsiLightingPresence,
 } from '@/lib/commands';
+import { readQueryPart } from '@/lib/query-parts';
 import type { Status } from '@/lib/status';
 
 export type Light =
@@ -24,60 +28,71 @@ export interface LightsQueryData {
   };
 }
 
-export async function fetchLights(): Promise<LightsQueryData> {
-  let disabledReason = '';
-  let scanMessage = '';
-  let scanStatus: Status = 'idle';
+const dynamicStatusFallback: DynamicLightingStatus = {
+  canControl: true,
+  hasPackageIdentity: false,
+  reason: null,
+};
 
-  const [dynamic, msi, dxlight, states] = await Promise.all([
-    Promise.all([
-      getDynamicLightingStatus(),
-      listDynamicLightingDevices().catch(() => []),
-    ])
-      .then(([status, devices]) => {
-        disabledReason = status.canControl ? '' : (status.reason ?? '');
-        return devices;
-      })
-      .catch((e: unknown) => {
-        scanStatus = 'warn';
-        scanMessage = String(e);
-        return [];
-      }),
-    detectMsiLighting().catch(() => ({
-      present: false,
-      vendorId: 0,
-      productId: 0,
-    })),
-    detectDxLight().catch(() => ({
-      present: false,
-      vendorId: 0,
-      productId: 0,
-    })),
-    getLightStates().catch(() => ({}) as Record<string, LightState>),
+const missingMsi: MsiLightingPresence = {
+  present: false,
+  vendorId: 0,
+  productId: 0,
+};
+
+const missingDxLight: DxLightPresence = {
+  present: false,
+  vendorId: 0,
+  productId: 0,
+};
+
+export async function fetchLights(): Promise<LightsQueryData> {
+  const [dynamicStatus, dynamic, msi, dxlight, states] = await Promise.all([
+    readQueryPart(getDynamicLightingStatus, dynamicStatusFallback),
+    readQueryPart(listDynamicLightingDevices, [] as DynamicLightingDevice[]),
+    readQueryPart(detectMsiLighting, missingMsi),
+    readQueryPart(detectDxLight, missingDxLight),
+    readQueryPart(getLightStates, {} as Record<string, LightState>),
   ]);
+  const disabledReason = dynamicStatus.data.canControl
+    ? ''
+    : (dynamicStatus.data.reason ?? '');
+  const errors = [
+    dynamicStatus.error
+      ? `Dynamic Lighting status unavailable: ${dynamicStatus.error}`
+      : '',
+    dynamic.error
+      ? `Dynamic Lighting devices unavailable: ${dynamic.error}`
+      : '',
+    msi.error ? `MSI lighting unavailable: ${msi.error}` : '',
+    dxlight.error ? `DX Light unavailable: ${dxlight.error}` : '',
+    states.error ? `Saved light states unavailable: ${states.error}` : '',
+  ].filter(Boolean);
 
   const collected: Light[] = [
-    ...dynamic.map((d) => ({
+    ...dynamic.data.map((d) => ({
       kind: 'dynamic' as const,
       id: d.id,
       device: d,
     })),
-    ...(msi.present ? [{ kind: 'msi' as const }] : []),
-    ...(dxlight.present ? [{ kind: 'dxlight' as const }] : []),
+    ...(msi.data.present ? [{ kind: 'msi' as const }] : []),
+    ...(dxlight.data.present ? [{ kind: 'dxlight' as const }] : []),
   ];
 
   return {
     lights: collected,
-    savedStates: states,
+    savedStates: states.data,
     scan: {
       status:
-        scanStatus !== 'idle'
-          ? scanStatus
+        errors.length > 0
+          ? collected.length === 0
+            ? 'fail'
+            : 'warn'
           : collected.length > 0
             ? 'pass'
             : 'warn',
       message:
-        scanMessage ||
+        errors.join(' ') ||
         (collected.length === 0
           ? 'No controllable lights detected.'
           : `${collected.length} light${collected.length === 1 ? '' : 's'} detected.`),

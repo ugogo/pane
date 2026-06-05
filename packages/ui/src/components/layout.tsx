@@ -27,7 +27,7 @@ export function SectionList({
 }: ComponentProps<typeof SectionListFrame> & { maxHeight?: number }) {
   return (
     <SectionListFrame maxHeight={maxHeight} {...props}>
-      <ScrollView flex={1} maxHeight={maxHeight} showsVerticalScrollIndicator>
+      <ScrollView maxHeight={maxHeight} showsVerticalScrollIndicator>
         {children}
       </ScrollView>
     </SectionListFrame>

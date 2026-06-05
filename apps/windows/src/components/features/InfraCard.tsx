@@ -26,6 +26,9 @@ export function InfraCard() {
     queryFn: getRunAtStartup,
   });
   const runAtStartup = startupQuery.data ?? null;
+  const startupError = startupQuery.isError
+    ? `Could not load startup preference: ${String(startupQuery.error)}`
+    : '';
   const startupStatus = useActionStatus();
   const sleepStatus = useActionStatus();
 
@@ -48,7 +51,8 @@ export function InfraCard() {
   if (
     startupQuery.isPending &&
     runAtStartup === null &&
-    !startupStatus.message
+    !startupStatus.message &&
+    !startupError
   ) {
     return <PageSpinner />;
   }
@@ -77,6 +81,8 @@ export function InfraCard() {
         <StatusText status={startupStatus.status}>
           {startupStatus.message}
         </StatusText>
+      ) : startupError ? (
+        <StatusText status="fail">{startupError}</StatusText>
       ) : null}
 
       <Card padding="$3">

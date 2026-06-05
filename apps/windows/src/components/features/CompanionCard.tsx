@@ -41,6 +41,9 @@ export function CompanionCard() {
       query.state.data?.activePairing != null ? 2000 : false,
   });
   const status = statusQuery.data ?? null;
+  const statusError = statusQuery.isError
+    ? `Could not load companion status: ${String(statusQuery.error)}`
+    : '';
   const actionStatus = useActionStatus();
 
   const mutation = useMutation({
@@ -192,6 +195,8 @@ export function CompanionCard() {
         <StatusText status={actionStatus.status}>
           {actionStatus.message}
         </StatusText>
+      ) : statusError ? (
+        <StatusText status="fail">{statusError}</StatusText>
       ) : null}
     </YStack>
   );

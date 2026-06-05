@@ -110,11 +110,17 @@ export function BrightnessCard() {
   });
   const monitors = monitorsQuery.data ?? emptyMonitors;
   const presets = presetsQuery.data ?? [];
+  const presetsError = presetsQuery.isError
+    ? `Could not load presets: ${String(presetsQuery.error)}`
+    : '';
   const [scanOverride, setScanOverride] = useState<StatusMessage | null>(null);
   const scan =
     scanOverride ??
     (monitorsQuery.isError
       ? { status: 'fail' as Status, message: String(monitorsQuery.error) }
+      : null) ??
+    (presetsError
+      ? { status: 'warn' as Status, message: presetsError }
       : null) ??
     (monitors.length > 0
       ? scanForMonitors(monitors)

@@ -13,6 +13,9 @@ export function AccentCard() {
     queryFn: getAccentPopupEnabled,
   });
   const enabled = enabledQuery.data ?? null;
+  const enabledError = enabledQuery.isError
+    ? `Could not load accent preference: ${String(enabledQuery.error)}`
+    : '';
   const status = useActionStatus();
 
   const toggle = useMutation({
@@ -53,6 +56,8 @@ export function AccentCard() {
       </Card>
       {status.message ? (
         <StatusText status={status.status}>{status.message}</StatusText>
+      ) : enabledError ? (
+        <StatusText status="fail">{enabledError}</StatusText>
       ) : null}
     </YStack>
   );
