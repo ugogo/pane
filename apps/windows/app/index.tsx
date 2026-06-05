@@ -16,6 +16,7 @@ export default function Index() {
   }
   if (view === 'area-selector') return <Redirect href="/area-selector" />;
   if (view === 'preview') return <Redirect href="/preview" />;
+  if (view === 'capture-zoom') return <Redirect href="/capture-zoom" />;
 
   return <Redirect href="/capture" />;
 }

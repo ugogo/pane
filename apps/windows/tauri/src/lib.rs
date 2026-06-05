@@ -26,7 +26,12 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
             tauri_plugin_window_state::Builder::default()
-                .with_denylist(&["capture-preview", "area-selector", "accent-popup"])
+                .with_denylist(&[
+                    "capture-preview",
+                    "capture-zoom",
+                    "area-selector",
+                    "accent-popup",
+                ])
                 .build(),
         )
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -95,6 +100,7 @@ pub fn run() {
             commands::capture::capture_fullscreen,
             commands::capture::capture_region,
             commands::capture::take_latest_capture,
+            commands::capture::take_latest_capture_full,
             commands::capture::copy_latest_capture_to_clipboard,
             commands::capture::save_latest_capture_to_desktop,
             commands::lighting::detect_msi_lighting,
@@ -115,6 +121,9 @@ pub fn run() {
             commands::windows::show_capture_preview,
             commands::windows::preview_ready,
             commands::windows::hide_capture_preview,
+            commands::windows::show_capture_zoom,
+            commands::windows::hide_capture_zoom,
+            commands::windows::toggle_capture_zoom,
             commands::windows::hide_area_selector,
             commands::windows::area_selector_origin,
             commands::windows::commit_region_capture,

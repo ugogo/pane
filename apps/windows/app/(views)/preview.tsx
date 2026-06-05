@@ -8,6 +8,7 @@ import {
   previewReady,
   saveLatestCaptureToDesktop,
   takeLatestCapture,
+  toggleCaptureZoom,
   type CaptureResult,
 } from '@/lib/commands';
 
@@ -19,6 +20,25 @@ type Phase =
   | 'scale-in'
   | 'closing';
 type ActState = 'idle' | 'busy' | 'success';
+
+const CAPTURE_KEYFRAMES = `
+  @keyframes cap-slide-in {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes cap-scale-in {
+    from { opacity: 0; transform: scale(0.92); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes cap-scale-out {
+    from { opacity: 1; transform: scale(1); }
+    to   { opacity: 0; transform: scale(0.92); }
+  }
+  @keyframes cap-close-out {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(14px); }
+  }
+`;
 
 const PHASE_ANIMATION: Record<Phase, string | undefined> = {
   hidden: undefined,
@@ -134,6 +154,13 @@ export default function PreviewPage() {
   const onFirstFetch = useEffectEvent(() => void fetchLatest());
   const onRefetch = useEffectEvent(() => void fetchLatest(true));
 
+  // Space opens (or closes) the separate enlarged-preview window. The small card
+  // stays put; the zoom window layers a larger, controls-free copy on top.
+  const onToggleZoom = useEffectEvent(() => {
+    if (!captureRef.current) return;
+    void toggleCaptureZoom().catch((e: unknown) => setError(String(e)));
+  });
+
   useEffect(() => {
     // eslint-disable-next-line react-doctor/no-initialize-state -- capture preview fetches on window open
     onFirstFetch();
@@ -148,13 +175,22 @@ export default function PreviewPage() {
       onRefetch();
     }
 
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        onToggleZoom();
+      }
+    }
+
     window.addEventListener('focus', fetchWhenWoken);
     document.addEventListener('visibilitychange', fetchWhenWoken);
+    window.addEventListener('keydown', onKeyDown);
 
     return () => {
       void unlisten.then((u) => u());
       window.removeEventListener('focus', fetchWhenWoken);
       document.removeEventListener('visibilitychange', fetchWhenWoken);
+      window.removeEventListener('keydown', onKeyDown);
     };
   }, []);
 
@@ -231,24 +267,7 @@ export default function PreviewPage() {
       className="fixed inset-0 overflow-hidden bg-transparent"
       data-tauri-drag-region
     >
-      <style>{`
-        @keyframes cap-slide-in {
-          from { opacity: 0; transform: translateY(14px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes cap-scale-in {
-          from { opacity: 0; transform: scale(0.92); }
-          to   { opacity: 1; transform: scale(1); }
-        }
-        @keyframes cap-scale-out {
-          from { opacity: 1; transform: scale(1); }
-          to   { opacity: 0; transform: scale(0.92); }
-        }
-        @keyframes cap-close-out {
-          from { opacity: 1; transform: translateY(0); }
-          to   { opacity: 0; transform: translateY(14px); }
-        }
-      `}</style>
+      <style>{CAPTURE_KEYFRAMES}</style>
       <div
         className="preview-card preview-card-animated"
         data-tauri-drag-region
