@@ -113,6 +113,9 @@ export function BrightnessCard() {
   const [scanOverride, setScanOverride] = useState<StatusMessage | null>(null);
   const scan =
     scanOverride ??
+    (monitorsQuery.isError
+      ? { status: 'fail' as Status, message: String(monitorsQuery.error) }
+      : null) ??
     (monitors.length > 0
       ? scanForMonitors(monitors)
       : { status: 'idle' as Status, message: '' });

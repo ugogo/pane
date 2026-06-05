@@ -157,8 +157,13 @@ export function SoundCard() {
     return <PageSpinner />;
   }
 
-  const scanStatus = status.message ? status.status : (data?.status ?? 'idle');
-  const scanMessage = status.message || (data?.message ?? '');
+  const queryError = soundQuery.isError ? String(soundQuery.error) : '';
+  const scanStatus = status.message
+    ? status.status
+    : queryError
+      ? 'fail'
+      : (data?.status ?? 'idle');
+  const scanMessage = status.message || queryError || (data?.message ?? '');
 
   return (
     <YStack gap="$4">
