@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Clipboard, Save, X } from '@pane/ui';
+import { Check, Clipboard, Pen, Save, X } from '@pane/ui';
 import { useEffectEvent } from '@/lib/use-effect-event';
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -7,6 +7,7 @@ import {
   hideCapturePreview,
   previewReady,
   saveLatestCaptureToDesktop,
+  showImageEditor,
   takeLatestCapture,
   toggleCaptureZoom,
   type CaptureResult,
@@ -219,6 +220,11 @@ export default function PreviewPage() {
     }
   }
 
+  function editCapture() {
+    if (!captureRef.current) return;
+    void showImageEditor().catch((e: unknown) => setError(String(e)));
+  }
+
   async function close() {
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
     setPhase('closing');
@@ -309,6 +315,18 @@ export default function PreviewPage() {
               onClick={() => void saveCapture()}
             />
           </div>
+        )}
+
+        {capture && (
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={editCapture}
+            className="preview-edit"
+            aria-label="Edit capture"
+          >
+            <Pen aria-hidden size={14} />
+          </button>
         )}
 
         <button

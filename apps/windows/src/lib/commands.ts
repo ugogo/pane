@@ -144,6 +144,11 @@ export function saveLatestCaptureToDesktop() {
   return invoke<string>('save_latest_capture_to_desktop');
 }
 
+/** Persist an edited (e.g. resized) capture, given a PNG/JPEG data URL. */
+export function saveEditedCaptureToDesktop(dataUrl: string) {
+  return invoke<string>('save_edited_capture_to_desktop', { dataUrl });
+}
+
 // ── Window helpers ────────────────────────────────────────────────────────────
 
 export function showAreaSelector() {
@@ -199,6 +204,15 @@ export function hideCaptureZoom() {
 /** Toggle the enlarged-preview window; resolves to its new visibility. */
 export function toggleCaptureZoom() {
   return invoke<boolean>('toggle_capture_zoom');
+}
+
+/** Open the image editor window for the latest capture. */
+export function showImageEditor() {
+  return invoke<void>('show_image_editor');
+}
+
+export function hideImageEditor() {
+  return invoke<void>('hide_image_editor');
 }
 
 // ── Hotkeys ───────────────────────────────────────────────────────────────────

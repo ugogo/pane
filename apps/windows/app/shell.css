@@ -162,6 +162,8 @@
 .preview-card:focus-within .preview-overlay,
 .preview-card:hover .preview-close,
 .preview-card:focus-within .preview-close,
+.preview-card:hover .preview-edit,
+.preview-card:focus-within .preview-edit,
 .preview-card:hover .preview-size,
 .preview-card:hover .preview-size {
   opacity: 1;
@@ -184,6 +186,24 @@
   position: absolute;
   top: 6px;
   right: 6px;
+  display: flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--app-preview-control);
+  color: var(--app-foreground);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.preview-edit {
+  position: absolute;
+  top: 6px;
+  left: 6px;
   display: flex;
   width: 24px;
   height: 24px;
@@ -461,4 +481,234 @@
   color: var(--app-destructive);
   font-size: 12px;
   text-align: center;
+}
+
+/* ── Image editor ─────────────────────────────────────────────────────────── */
+
+.image-editor-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--app-card);
+  color: var(--app-foreground);
+  font-size: 13px;
+}
+
+.image-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--app-border);
+  flex: none;
+}
+
+.image-editor-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.image-editor-close {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--app-foreground);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.image-editor-close:hover {
+  background: var(--app-close-hover);
+}
+
+.image-editor-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.image-editor-stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 20px;
+  overflow: hidden;
+  background: var(--app-panel);
+}
+
+.image-editor-preview {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 8px 24px var(--app-shadow-strong);
+}
+
+.image-editor-error {
+  color: var(--app-destructive);
+  font-size: 12px;
+  text-align: center;
+}
+
+.image-editor-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 248px;
+  flex: none;
+  padding: 16px;
+  border-left: 1px solid var(--app-border);
+  background: var(--app-panel-raised);
+}
+
+.image-editor-section {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--app-foreground-muted);
+}
+
+.image-editor-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.image-editor-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 8px;
+  background: var(--app-panel);
+}
+
+.image-editor-input-wrap:focus-within {
+  border-color: var(--app-ring);
+}
+
+.image-editor-input {
+  width: 64px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--app-foreground);
+  font-size: 13px;
+  text-align: right;
+  outline: none;
+}
+
+.image-editor-unit {
+  font-size: 11px;
+  color: var(--app-foreground-muted);
+}
+
+.image-editor-lock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-panel);
+  color: var(--app-foreground-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.image-editor-lock[aria-pressed='true'] {
+  border-color: var(--app-ring);
+  color: var(--app-foreground);
+}
+
+.image-editor-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.image-editor-preset {
+  height: 30px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-panel);
+  color: var(--app-foreground);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.image-editor-preset:hover:not(:disabled) {
+  background: var(--app-panel-hover);
+}
+
+.image-editor-preset:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.image-editor-spacer {
+  flex: 1;
+}
+
+.image-editor-saved {
+  margin: 0;
+  font-size: 12px;
+  color: var(--app-foreground-muted);
+}
+
+.image-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.image-editor-btn {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--app-border);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.image-editor-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.image-editor-btn-ghost {
+  background: var(--app-panel);
+  color: var(--app-foreground);
+}
+
+.image-editor-btn-ghost:hover:not(:disabled) {
+  background: var(--app-panel-hover);
+}
+
+.image-editor-btn-primary {
+  border-color: transparent;
+  background: var(--app-primary);
+  color: var(--app-primary-foreground);
 }

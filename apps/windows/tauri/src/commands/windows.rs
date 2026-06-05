@@ -9,6 +9,7 @@ use crate::commands::capture_sound;
 const AREA_SELECTOR_LABEL: &str = "area-selector";
 const CAPTURE_PREVIEW_LABEL: &str = "capture-preview";
 const CAPTURE_ZOOM_LABEL: &str = "capture-zoom";
+const IMAGE_EDITOR_LABEL: &str = "image-editor";
 
 fn area_selector_geometry(app: &AppHandle) -> Result<(f64, f64, f64, f64), String> {
     let main = app
@@ -374,6 +375,82 @@ pub async fn toggle_capture_zoom(app: AppHandle) -> Result<bool, String> {
         show_capture_zoom(app).await?;
         Ok(true)
     }
+}
+
+/// Geometry for the image editor: a generous, centered window sized to ~80% of
+/// the primary monitor — large enough to work on the capture, unlike the small
+/// preview/zoom cards.
+fn image_editor_geometry(app: &AppHandle) -> Result<(f64, f64, f64, f64), String> {
+    let main = app
+        .get_webview_window("main")
+        .ok_or_else(|| "Main window missing.".to_string())?;
+    let monitor = main
+        .primary_monitor()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "No primary monitor available.".to_string())?;
+    let scale = monitor.scale_factor();
+    let phys = monitor.size();
+    let logical_w = phys.width as f64 / scale;
+    let logical_h = phys.height as f64 / scale;
+
+    let win_w = (logical_w * 0.8).clamp(640.0, 1280.0).min(logical_w);
+    let win_h = (logical_h * 0.8).clamp(480.0, 900.0).min(logical_h);
+    let pos_x = ((logical_w - win_w) / 2.0).max(0.0);
+    let pos_y = ((logical_h - win_h) / 2.0).max(0.0);
+    Ok((win_w, win_h, pos_x, pos_y))
+}
+
+fn create_image_editor_window(app: &AppHandle) -> Result<WebviewWindow, String> {
+    let (win_w, win_h, pos_x, pos_y) = image_editor_geometry(app)?;
+    let url = child_webview_url::webview_url(app, routes::IMAGE_EDITOR)?;
+    let window = WebviewWindowBuilder::new(app, IMAGE_EDITOR_LABEL, url)
+        .title("Edit capture")
+        .inner_size(win_w, win_h)
+        .min_inner_size(560.0, 420.0)
+        .position(pos_x, pos_y)
+        .decorations(false)
+        .shadow(true)
+        .resizable(true)
+        .skip_taskbar(false)
+        .focused(false)
+        .visible(false)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    disable_window_transitions(&window);
+    Ok(window)
+}
+
+/// Open the image editor for the latest capture. Reuses the warmed window when
+/// present, otherwise builds one, then centers, refreshes, and focuses it.
+#[tauri::command]
+pub async fn show_image_editor(app: AppHandle) -> Result<(), String> {
+    let (win_w, win_h, pos_x, pos_y) = image_editor_geometry(&app)?;
+    let window = match app.get_webview_window(IMAGE_EDITOR_LABEL) {
+        Some(existing) => existing,
+        None => create_image_editor_window(&app)?,
+    };
+    window
+        .set_size(LogicalSize::new(win_w, win_h))
+        .map_err(|e| e.to_string())?;
+    window
+        .set_position(LogicalPosition::new(pos_x, pos_y))
+        .map_err(|e| e.to_string())?;
+    disable_window_transitions(&window);
+    app.emit_to(IMAGE_EDITOR_LABEL, "refresh-capture", ())
+        .map_err(|e| e.to_string())?;
+    window.show().map_err(|e| e.to_string())?;
+    let _ = window.set_focus();
+    Ok(())
+}
+
+/// Hide the image editor. Sync so the close feels instant (no async-runtime hop).
+#[tauri::command]
+pub fn hide_image_editor(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window(IMAGE_EDITOR_LABEL) {
+        window.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 #[tauri::command]

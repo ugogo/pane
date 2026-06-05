@@ -15,6 +15,7 @@ pub mod routes {
     pub const AREA_SELECTOR: &str = "/area-selector";
     pub const CAPTURE_PREVIEW: &str = "/preview";
     pub const CAPTURE_ZOOM: &str = "/capture-zoom";
+    pub const IMAGE_EDITOR: &str = "/image-editor";
     pub const ACCENT_POPUP: &str = "/accent-popup";
 }
 

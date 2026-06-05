@@ -260,7 +260,10 @@ pub fn take_latest_capture_full(
     window: tauri::WebviewWindow,
     latest: State<'_, LatestCapture>,
 ) -> Result<CaptureResult, String> {
-    crate::commands::require_window(&window, &["capture-zoom", "capture-preview", "main"])?;
+    crate::commands::require_window(
+        &window,
+        &["capture-zoom", "capture-preview", "image-editor", "main"],
+    )?;
     let mut guard = latest.0.lock().unwrap();
     let capture = guard
         .as_mut()
@@ -307,6 +310,44 @@ pub fn save_latest_capture_to_desktop(
         .map_err(|e| e.to_string())?
         .as_secs();
     let path = desktop.join(format!("pane-capture-{}.png", now));
+    std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+/// Persist an edited capture (resized in the image editor) to the desktop. The
+/// editor renders the result client-side and hands back a `data:image/png`
+/// (or jpeg) URL; we decode the base64 payload and write the raw bytes as-is.
+#[tauri::command]
+pub fn save_edited_capture_to_desktop(
+    window: tauri::WebviewWindow,
+    app: AppHandle,
+    data_url: String,
+) -> Result<String, String> {
+    crate::commands::require_window(&window, &["image-editor", "main"])?;
+
+    let comma = data_url
+        .find(',')
+        .ok_or_else(|| "Edited image is not a valid data URL.".to_string())?;
+    let header = &data_url[..comma];
+    if !header.starts_with("data:image/") {
+        return Err("Edited image is not an image data URL.".into());
+    }
+    let bytes = B64
+        .decode(data_url[comma + 1..].as_bytes())
+        .map_err(|e| e.to_string())?;
+
+    let extension = if header.contains("image/jpeg") || header.contains("image/jpg") {
+        "jpg"
+    } else {
+        "png"
+    };
+
+    let desktop = app.path().desktop_dir().map_err(|e| e.to_string())?;
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_secs();
+    let path = desktop.join(format!("pane-capture-edited-{now}.{extension}"));
     std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
     Ok(path.to_string_lossy().into_owned())
 }
