@@ -61,6 +61,11 @@ pub struct MonitorInfo {
     /// Enumeration index as a string — stable within a session.
     pub id: String,
     pub name: String,
+    /// True once the monitor's DDC/CI bus answered (the brightness canary read
+    /// succeeded). False means the bus wasn't ready — the other feature values
+    /// are not trustworthy and the UI should keep waiting rather than display
+    /// them. Distinguishes "couldn't read yet" from "control genuinely absent".
+    pub ready: bool,
     pub brightness: Feature,
     pub contrast: Feature,
     pub red_gain: Feature,
@@ -94,6 +99,7 @@ fn default_pct() -> u8 {
 #[derive(Clone)]
 struct Cached {
     name: String,
+    ready: bool,
     brightness: Feature,
     contrast: Feature,
     red_gain: Feature,
@@ -155,19 +161,45 @@ fn enumerate() -> Vec<ddc_winapi::Monitor> {
     ddc_winapi::Monitor::enumerate().unwrap_or_default()
 }
 
+/// Retry budgets for a VCP read, with the backoff between attempts. The
+/// brightness canary gets the full budget to ride out cold-start flakiness;
+/// once the bus is proven alive, the remaining controls only need enough
+/// attempts to absorb a one-off blip (a persistent failure there is a genuinely
+/// absent control, not a sleeping bus).
 #[cfg(windows)]
-fn read_feature(mon: &mut ddc_winapi::Monitor, code: u8) -> Feature {
-    match mon.get_vcp_feature(code) {
-        Ok(v) => Feature {
-            value: v.value(),
-            max: v.maximum(),
-            supported: true,
-        },
-        Err(_) => Feature {
-            value: 0,
-            max: 100,
-            supported: false,
-        },
+const CANARY_RETRIES: u8 = 4;
+#[cfg(windows)]
+const SETTLED_RETRIES: u8 = 2;
+#[cfg(windows)]
+const READ_BACKOFF: std::time::Duration = std::time::Duration::from_millis(60);
+
+/// Read one VCP control, retrying transient DDC/CI failures up to `attempts`.
+///
+/// DDC/CI rides an I2C side-channel that is flaky right after the monitor (or
+/// the PC) powers on — the first reads often time out before the bus settles.
+/// A single failed read would otherwise mark a perfectly capable control as
+/// `supported: false` with a bogus `value: 0`, which is exactly the wrong/
+/// default reading users saw on a cold start (until a manual Refresh re-read it
+/// cleanly). Retrying gives the bus time to wake before we conclude anything.
+#[cfg(windows)]
+fn read_feature(mon: &mut ddc_winapi::Monitor, code: u8, attempts: u8) -> Feature {
+    let attempts = attempts.max(1);
+    for attempt in 0..attempts {
+        if let Ok(v) = mon.get_vcp_feature(code) {
+            return Feature {
+                value: v.value(),
+                max: v.maximum(),
+                supported: true,
+            };
+        }
+        if attempt + 1 < attempts {
+            std::thread::sleep(READ_BACKOFF);
+        }
+    }
+    Feature {
+        value: 0,
+        max: 100,
+        supported: false,
     }
 }
 
@@ -176,6 +208,7 @@ fn cached_to_info(index: usize, c: &Cached) -> MonitorInfo {
     MonitorInfo {
         id: index.to_string(),
         name: c.name.clone(),
+        ready: c.ready,
         brightness: c.brightness.clone(),
         contrast: c.contrast.clone(),
         red_gain: c.red_gain.clone(),
@@ -193,13 +226,22 @@ fn read_seed() -> Vec<MonitorInfo> {
     let mut out = Vec::with_capacity(monitors.len());
     for (index, mut mon) in monitors.into_iter().enumerate() {
         let name = mon.description();
-        let brightness = read_feature(&mut mon, VCP_BRIGHTNESS);
-        let contrast = read_feature(&mut mon, VCP_CONTRAST);
-        let red_gain = read_feature(&mut mon, VCP_RED_GAIN);
-        let green_gain = read_feature(&mut mon, VCP_GREEN_GAIN);
-        let blue_gain = read_feature(&mut mon, VCP_BLUE_GAIN);
+        // Brightness (0x10) is universally supported, so it's the bus-alive
+        // canary: retry it through cold-start flakiness. If it never answers,
+        // the monitor's DDC bus isn't ready — flag `ready: false` so the UI
+        // waits instead of trusting the (discarded) reads below. If it does
+        // answer, a later failure is a genuinely absent control, so the rest
+        // only need a short retry to shrug off a one-off blip.
+        let brightness = read_feature(&mut mon, VCP_BRIGHTNESS, CANARY_RETRIES);
+        let ready = brightness.supported;
+        let rest = if ready { SETTLED_RETRIES } else { 1 };
+        let contrast = read_feature(&mut mon, VCP_CONTRAST, rest);
+        let red_gain = read_feature(&mut mon, VCP_RED_GAIN, rest);
+        let green_gain = read_feature(&mut mon, VCP_GREEN_GAIN, rest);
+        let blue_gain = read_feature(&mut mon, VCP_BLUE_GAIN, rest);
         let entry = Cached {
             name,
+            ready,
             brightness,
             contrast,
             red_gain,

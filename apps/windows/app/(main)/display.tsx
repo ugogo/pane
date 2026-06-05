@@ -98,17 +98,34 @@ function gainsToWarmth(m: MonitorInfo) {
 
 const emptyMonitors: MonitorInfo[] = [];
 
+// A cold DDC/CI bus NAKs its first reads, so a monitor can return not-yet-ready.
+// We re-read on this cadence until it answers, capped so a genuinely unreachable
+// monitor doesn't poll forever — past the cap we leave it to a manual Refresh.
+const MONITOR_READ_INTERVAL_MS = 700;
+const MONITOR_READ_ATTEMPTS = 8;
+
 export default function DisplayPage() {
   const queryClient = useQueryClient();
   const monitorsQuery = useQuery({
     queryKey: queryKeys.displayMonitors,
     queryFn: listMonitors,
+    // A cold DDC/CI bus NAKs its first reads, so a monitor can come back
+    // not-yet-ready. Re-read on a short cadence until every monitor answers,
+    // capped by read count so a genuinely unreachable one doesn't poll forever.
+    refetchInterval: (query) => {
+      const data = query.state.data ?? [];
+      const unready = data.some((m) => !m.ready);
+      return unready && query.state.dataUpdateCount < MONITOR_READ_ATTEMPTS
+        ? MONITOR_READ_INTERVAL_MS
+        : false;
+    },
   });
   const presetsQuery = useQuery({
     queryKey: queryKeys.displayPresets,
     queryFn: getMonitorPresets,
   });
   const monitors = monitorsQuery.data ?? emptyMonitors;
+  const anyUnready = monitors.some((m) => !m.ready);
   const presets = presetsQuery.data ?? [];
   const presetsError = presetsQuery.isError
     ? `Could not load presets: ${String(presetsQuery.error)}`
@@ -118,6 +135,12 @@ export default function DisplayPage() {
     scanOverride ??
     (monitorsQuery.isError
       ? { status: 'fail' as Status, message: String(monitorsQuery.error) }
+      : null) ??
+    (anyUnready
+      ? {
+          status: 'idle' as Status,
+          message: 'Reading display settings over DDC/CI…',
+        }
       : null) ??
     (presetsError
       ? { status: 'warn' as Status, message: presetsError }
@@ -303,14 +326,18 @@ export default function DisplayPage() {
       ) : null}
 
       <YStack gap="$3">
-        {monitors.map((m) => (
-          <MonitorRow
-            key={m.id}
-            monitor={m}
-            onSlide={onSlide}
-            onWarmth={onWarmth}
-          />
-        ))}
+        {monitors.map((m) =>
+          m.ready ? (
+            <MonitorRow
+              key={m.id}
+              monitor={m}
+              onSlide={onSlide}
+              onWarmth={onWarmth}
+            />
+          ) : (
+            <MonitorPending key={m.id} monitor={m} />
+          ),
+        )}
       </YStack>
     </YStack>
   );
@@ -380,6 +407,25 @@ function PresetBar({
         + Save preset
       </Button>
     </XStack>
+  );
+}
+
+// Shown while a monitor's DDC/CI bus hasn't answered yet. We deliberately
+// render no sliders — the feature values aren't trustworthy until `ready`, so
+// showing them would be the wrong/default reading we're avoiding. The card
+// auto-refreshes until the bus answers (see `refetchInterval`); the Refresh
+// hint covers the case where it never does.
+function MonitorPending({ monitor }: { monitor: MonitorInfo }) {
+  const name = monitor.name || `Monitor ${monitor.id}`;
+  return (
+    <Card gap="$2" padding="$3">
+      <Text fontSize="$3" fontWeight="600" numberOfLines={1}>
+        {name}
+      </Text>
+      <MutedText fontSize="$2">
+        Reading settings over DDC/CI… Press Refresh if this persists.
+      </MutedText>
+    </Card>
   );
 }
 
