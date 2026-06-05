@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 /**
  * Default delay for hardware/IPC writes that shouldn't fire on every pixel of a
  * slider drag. DDC/CI and audio endpoints are slow; we push once the value
- * settles. (BrightnessCard historically used 150ms, SoundCard 100ms — unified.)
+ * settles. (Display historically used 150ms, sound 100ms — unified.)
  */
 export const WRITE_DEBOUNCE_MS = 120;
 

@@ -1,7 +1,7 @@
 import type { AudioDevice } from '@/lib/commands';
 
 // Per-kind ("output" / "input") favorite device ids, persisted to localStorage.
-// Extracted from SoundCard so the persistence + ordering live in one place.
+// Extracted from the sound route so persistence + ordering live in one place.
 
 function favKey(kind: string) {
   return `pane.audio.favorites.${kind}`;
