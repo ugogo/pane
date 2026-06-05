@@ -43,6 +43,13 @@ export interface MonitorInfo {
   /** Enumeration index as a string — stable within a session. */
   id: string;
   name: string;
+  /**
+   * True once the monitor's DDC/CI bus answered (the brightness canary read
+   * succeeded). False means the bus wasn't ready, so the feature values below
+   * are not trustworthy yet and the UI should keep waiting rather than show
+   * them. Lets the UI tell "couldn't read yet" apart from "control absent".
+   */
+  ready: boolean;
   brightness: Feature;
   contrast: Feature;
   redGain: Feature;
