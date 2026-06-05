@@ -1,8 +1,7 @@
-// Canonical probe/result status shared across feature cards and their query
+// Canonical probe/result status shared across feature routes and their query
 // helpers. Previously redeclared (as `ProbeStatus` / `Scan` / `Status`) in
-// status-ui, lights-query, sound-query, BrightnessCard, CaptureCard, and
-// LightingCard — one type now covers all of them. The 4-state call sites simply
-// never emit `disabled`.
+// status-ui, lights-query, sound-query, display, capture, and lights — one type
+// now covers all of them. The 4-state call sites simply never emit `disabled`.
 
 export type Status = 'idle' | 'pass' | 'warn' | 'fail' | 'disabled';
 
