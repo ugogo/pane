@@ -21,6 +21,30 @@ function Stop-ProcessById($id) {
     Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
 }
 
+function Get-ProcessCommandLine($id) {
+    $process = Get-CimInstance Win32_Process -Filter "ProcessId = $id" -ErrorAction SilentlyContinue
+    if ($null -eq $process) {
+        return ""
+    }
+    return [string]$process.CommandLine
+}
+
+function Stop-RepoPortListener {
+    param([int]$Port)
+
+    Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty OwningProcess -Unique |
+        ForEach-Object {
+            $commandLine = Get-ProcessCommandLine $_
+            if (
+                $commandLine -like "*$root*" -and
+                ($commandLine -like "*expo*" -or $commandLine -like "*metro*" -or $commandLine -like "*node_modules*")
+            ) {
+                Stop-ProcessById $_
+            }
+        }
+}
+
 Get-Process -Name "pane" -ErrorAction SilentlyContinue | ForEach-Object {
     try {
         $exePath = $_.MainModule.FileName
@@ -43,3 +67,5 @@ Get-CimInstance Win32_Process -Filter "Name = 'cargo.exe'" -ErrorAction Silently
 Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue |
     Where-Object { $_.CommandLine -like "*$root*" } |
     ForEach-Object { Stop-ProcessById $_.ProcessId }
+
+Stop-RepoPortListener -Port 8081

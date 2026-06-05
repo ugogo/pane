@@ -44,6 +44,32 @@ function Invoke-StopDev {
     if (-not $?) { Fail "stop failed" }
 }
 
+function Get-ProcessCommandLine($id) {
+    $process = Get-CimInstance Win32_Process -Filter "ProcessId = $id" -ErrorAction SilentlyContinue
+    if ($null -eq $process) {
+        return ""
+    }
+    return [string]$process.CommandLine
+}
+
+function Assert-DevPortAvailable {
+    $listeners = @(
+        Get-NetTCPConnection -LocalPort 8081 -State Listen -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty OwningProcess -Unique
+    )
+
+    if ($listeners.Count -eq 0) {
+        return
+    }
+
+    $details = $listeners | ForEach-Object {
+        $commandLine = Get-ProcessCommandLine $_
+        "PID ${_}: $commandLine"
+    }
+
+    Fail "Port 8081 is still in use after dev cleanup. Stop that process or run npm run stop in the owning checkout.`n$($details -join "`n")"
+}
+
 function Add-WebView2BrowserArgument {
     param([string]$Argument)
 
@@ -60,10 +86,22 @@ function Add-WebView2BrowserArgument {
     }
 }
 
+function Should-SuppressDevLogLine {
+    param([string]$Line)
+
+    return (
+        $Line -like "Web  INFO  *Download the React DevTools*" -or
+        $Line -like "Web  LOG  Running application `"main`" with appParams:*" -or
+        ($Line -like "*`"hydrate`": undefined*" -and $Line -like "*`"rootTag`": `"#root`"*") -or
+        $Line -eq "Development-level warnings: ON." -or
+        $Line -eq "Performance optimizations: OFF."
+    )
+}
+
 function Invoke-TauriDev {
     # The Tauri CLI is hoisted to the workspace-root node_modules, but it must
     # run from the Windows app dir so it finds apps/windows/tauri/tauri.conf.json
-    # and runs the before-commands (npx expo start --web) against apps/windows.
+    # and runs the before-commands against apps/windows.
     $tauriCli = Join-Path $root "node_modules/@tauri-apps/cli/tauri.js"
     if (-not (Test-Path $tauriCli)) {
         Fail "Tauri CLI not installed. Run npm install first."
@@ -83,7 +121,7 @@ function Invoke-TauriDev {
     $command = 'cd /d "' + $appDir + '" && "' + $node.Source + '" "' + $tauriCli + '" dev --config "' + $devConfig + '" 2>&1'
     & cmd.exe /d /s /c $command | ForEach-Object {
         $line = $_.ToString()
-        if ($line -notlike "*STATUS_CONTROL_C_EXIT*") {
+        if ($line -notlike "*STATUS_CONTROL_C_EXIT*" -and -not (Should-SuppressDevLogLine $line)) {
             [Console]::Out.WriteLine($line)
         }
     }
@@ -116,6 +154,7 @@ try {
     $acquired = $true
 
     Invoke-StopDev
+    Assert-DevPortAvailable
     Add-WebView2BrowserArgument "--disable-logging"
 
     # The Tauri webview is the real frontend; suppress Expo's `--web` auto-open
