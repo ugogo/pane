@@ -547,12 +547,94 @@
   background: var(--app-panel);
 }
 
-.image-editor-preview {
+/* Sized to the target dimensions (width*fit × height*fit). Holds the image and
+   the eight resize handles; the stage centres it. */
+.image-editor-frame {
+  position: relative;
+  flex: none;
   max-width: 100%;
   max-height: 100%;
-  object-fit: contain;
   border-radius: 4px;
   box-shadow: 0 8px 24px var(--app-shadow-strong);
+}
+
+.image-editor-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: fill;
+  border-radius: 4px;
+}
+
+/* Drag handles. Centred on each edge/corner via translate(-50%, -50%) over the
+   frame's 0%/50%/100% anchor points. touch-action:none so a drag doesn't scroll
+   or get swallowed by the pointer-capture target. */
+.image-editor-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--app-foreground);
+  border: 2px solid var(--app-card);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--app-border);
+  touch-action: none;
+  z-index: 2;
+}
+
+.image-editor-handle[data-pos='nw'] {
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
+  cursor: nwse-resize;
+}
+
+.image-editor-handle[data-pos='n'] {
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  cursor: ns-resize;
+}
+
+.image-editor-handle[data-pos='ne'] {
+  top: 0;
+  left: 100%;
+  transform: translate(-50%, -50%);
+  cursor: nesw-resize;
+}
+
+.image-editor-handle[data-pos='e'] {
+  top: 50%;
+  left: 100%;
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
+}
+
+.image-editor-handle[data-pos='se'] {
+  top: 100%;
+  left: 100%;
+  transform: translate(-50%, -50%);
+  cursor: nwse-resize;
+}
+
+.image-editor-handle[data-pos='s'] {
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  cursor: ns-resize;
+}
+
+.image-editor-handle[data-pos='sw'] {
+  top: 100%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  cursor: nesw-resize;
+}
+
+.image-editor-handle[data-pos='w'] {
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
 }
 
 .image-editor-error {
