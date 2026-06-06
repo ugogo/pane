@@ -51,7 +51,8 @@
   gap: 4px;
 }
 
-.app-window-control {
+.app-window-control,
+.window-action-control {
   display: grid;
   width: 46px;
   height: 36px;
@@ -66,12 +67,14 @@
   cursor: pointer;
 }
 
-.app-window-control:hover {
+.app-window-control:hover,
+.window-action-control:hover {
   color: var(--app-foreground-control-hover);
   background: var(--app-white-09);
 }
 
-.app-window-control-close:hover {
+.app-window-control-close:hover,
+.window-action-control-close:hover {
   color: var(--app-foreground);
   background: var(--app-close-hover);
 }
@@ -160,10 +163,8 @@
 
 .preview-card:hover .preview-overlay,
 .preview-card:focus-within .preview-overlay,
-.preview-card:hover .preview-close,
-.preview-card:focus-within .preview-close,
-.preview-card:hover .preview-edit,
-.preview-card:focus-within .preview-edit,
+.preview-card:hover .preview-chrome-btn,
+.preview-card:focus-within .preview-chrome-btn,
 .preview-card:hover .preview-size,
 .preview-card:hover .preview-size {
   opacity: 1;
@@ -182,13 +183,12 @@
   backdrop-filter: blur(1px);
 }
 
-.preview-close {
+.preview-chrome-btn {
   position: absolute;
   top: 6px;
-  right: 6px;
   display: flex;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   align-items: center;
   justify-content: center;
   border: 0;
@@ -197,30 +197,30 @@
   color: var(--app-foreground);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 150ms ease;
+  transition:
+    background-color 120ms ease,
+    opacity 150ms ease;
+  z-index: 2;
 }
 
-.preview-edit {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  display: flex;
-  width: 24px;
-  height: 24px;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 999px;
-  background: var(--app-preview-control);
-  color: var(--app-foreground);
-  cursor: pointer;
-  opacity: 1;
-  transition: opacity 150ms ease;
-  z-index: 1;
-}
-
-.preview-edit:hover {
+.preview-chrome-btn:hover {
   background: var(--app-panel-raised);
+}
+
+.preview-chrome-btn svg,
+.preview-action-btn svg,
+.image-editor-btn svg {
+  color: currentcolor;
+  stroke: currentcolor;
+  fill: none;
+}
+
+.preview-chrome-btn-left {
+  left: 6px;
+}
+
+.preview-chrome-btn-right {
+  right: 6px;
 }
 
 .preview-size {
@@ -253,6 +253,10 @@
   font-weight: 600;
   box-shadow: 0 4px 12px var(--app-shadow);
   cursor: pointer;
+}
+
+.preview-action-btn svg {
+  color: var(--app-foreground-muted);
 }
 
 .preview-action-btn:disabled {
@@ -313,10 +317,15 @@
   white-space: nowrap;
 }
 
-.app-titlebar-controls {
+.app-titlebar-controls,
+.window-action-bar {
   display: flex;
   height: 100%;
   margin-left: auto;
+}
+
+.window-action-bar {
+  flex: none;
 }
 
 .accent-popup-root {
@@ -504,9 +513,8 @@
 .image-editor-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 40px;
-  padding: 0 8px 0 14px;
+  height: 36px;
+  padding-left: 14px;
   border-bottom: 1px solid var(--app-border);
   flex: none;
 }
@@ -516,22 +524,9 @@
   font-weight: 600;
 }
 
-.image-editor-close {
-  display: flex;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--app-foreground);
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-
-.image-editor-close:hover {
-  background: var(--app-close-hover);
+.image-editor-action-control svg {
+  width: 16px;
+  height: 16px;
 }
 
 .image-editor-body {
@@ -582,21 +577,6 @@
   pointer-events: none;
 }
 
-.image-editor-selection-label {
-  position: absolute;
-  left: 6px;
-  top: 6px;
-  border-radius: 4px;
-  padding: 2px 6px;
-  background: var(--app-area-pill);
-  color: var(--app-foreground);
-  font-family: monospace;
-  font-size: 10px;
-  line-height: 1.4;
-  pointer-events: none;
-  white-space: nowrap;
-}
-
 .image-editor-handle {
   position: absolute;
   width: 12px;
@@ -613,56 +593,56 @@
 .image-editor-handle[data-pos='nw'] {
   top: 0;
   left: 0;
-  transform: translate(-50%, -50%);
+  transform: translate(0, 0);
   cursor: nwse-resize;
 }
 
 .image-editor-handle[data-pos='n'] {
   top: 0;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, 0);
   cursor: ns-resize;
 }
 
 .image-editor-handle[data-pos='ne'] {
   top: 0;
   left: 100%;
-  transform: translate(-50%, -50%);
+  transform: translate(-100%, 0);
   cursor: nesw-resize;
 }
 
 .image-editor-handle[data-pos='e'] {
   top: 50%;
   left: 100%;
-  transform: translate(-50%, -50%);
+  transform: translate(-100%, -50%);
   cursor: ew-resize;
 }
 
 .image-editor-handle[data-pos='se'] {
   top: 100%;
   left: 100%;
-  transform: translate(-50%, -50%);
+  transform: translate(-100%, -100%);
   cursor: nwse-resize;
 }
 
 .image-editor-handle[data-pos='s'] {
   top: 100%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -100%);
   cursor: ns-resize;
 }
 
 .image-editor-handle[data-pos='sw'] {
   top: 100%;
   left: 0;
-  transform: translate(-50%, -50%);
+  transform: translate(0, -100%);
   cursor: nesw-resize;
 }
 
 .image-editor-handle[data-pos='w'] {
   top: 50%;
   left: 0;
-  transform: translate(-50%, -50%);
+  transform: translate(0, -50%);
   cursor: ew-resize;
 }
 
@@ -692,17 +672,32 @@
   color: var(--app-foreground-muted);
 }
 
+.image-editor-crop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
 .image-editor-field {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.image-editor-field > span {
+  color: var(--app-foreground-muted);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .image-editor-input-wrap {
   display: flex;
   align-items: center;
   gap: 4px;
+  box-sizing: border-box;
+  width: 100%;
   padding: 0 8px;
   border: 1px solid var(--app-border-strong);
   border-radius: 8px;
@@ -714,7 +709,8 @@
 }
 
 .image-editor-input {
-  width: 64px;
+  width: 100%;
+  min-width: 0;
   height: 30px;
   border: 0;
   background: transparent;
@@ -822,4 +818,10 @@
   border-color: transparent;
   background: var(--app-primary);
   color: var(--app-primary-foreground);
+}
+
+.image-editor-btn-primary svg,
+.image-editor-btn-primary svg * {
+  color: currentcolor;
+  stroke: currentcolor;
 }

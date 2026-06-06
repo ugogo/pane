@@ -114,6 +114,15 @@ export interface CaptureResult {
   height: number;
 }
 
+export interface CaptureEditResult extends CaptureResult {
+  crop: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
 export function captureFullscreen() {
   return invoke<CaptureResult>('capture_fullscreen');
 }
@@ -134,6 +143,20 @@ export function takeLatestCapture() {
 /** Full-resolution capture for the enlarged preview (crisp when scaled up). */
 export function takeLatestCaptureFull() {
   return invoke<CaptureResult>('take_latest_capture_full');
+}
+
+/** Full editor source plus the current crop rectangle. */
+export function takeLatestCaptureEdit() {
+  return invoke<CaptureEditResult>('take_latest_capture_edit');
+}
+
+export function commitLatestCaptureEdit(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  return invoke<void>('commit_latest_capture_edit', { x, y, width, height });
 }
 
 export function copyLatestCaptureToClipboard() {

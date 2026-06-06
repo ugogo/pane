@@ -101,6 +101,8 @@ pub fn run() {
             commands::capture::capture_region,
             commands::capture::take_latest_capture,
             commands::capture::take_latest_capture_full,
+            commands::capture::take_latest_capture_edit,
+            commands::capture::commit_latest_capture_edit,
             commands::capture::copy_latest_capture_to_clipboard,
             commands::capture::save_latest_capture_to_desktop,
             commands::capture::save_edited_capture_to_desktop,

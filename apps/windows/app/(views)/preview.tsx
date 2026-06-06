@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Clipboard, Pen, Save, X } from '@pane/ui';
+import { Check, Clipboard, Download, Pen, X } from '@pane/ui';
 import { useEffectEvent } from '@/lib/use-effect-event';
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -309,7 +309,7 @@ export default function PreviewPage() {
               onClick={() => void copyCapture()}
             />
             <ActionButton
-              icon={actions.save === 'success' ? Check : Save}
+              icon={actions.save === 'success' ? Check : Download}
               label={actions.save === 'success' ? 'Saved' : 'Save'}
               busy={actions.save === 'busy'}
               onClick={() => void saveCapture()}
@@ -318,25 +318,20 @@ export default function PreviewPage() {
         )}
 
         {capture && (
-          <button
-            type="button"
-            onPointerDown={(e) => e.stopPropagation()}
+          <PreviewChromeButton
+            icon={Pen}
+            label="Edit capture"
+            side="left"
             onClick={editCapture}
-            className="preview-edit"
-            aria-label="Edit capture"
-          >
-            <Pen aria-hidden size={14} />
-          </button>
+          />
         )}
 
-        <button
-          type="button"
+        <PreviewChromeButton
+          icon={X}
+          label="Close preview"
+          side="right"
           onClick={() => void close()}
-          className="preview-close"
-          aria-label="Close preview"
-        >
-          <X aria-hidden size={14} />
-        </button>
+        />
 
         {capture && (
           <span className="preview-size">
@@ -345,6 +340,30 @@ export default function PreviewPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function PreviewChromeButton({
+  icon: Icon,
+  label,
+  side,
+  onClick,
+}: {
+  icon: typeof Pen;
+  label: string;
+  side: 'left' | 'right';
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={onClick}
+      className={`preview-chrome-btn preview-chrome-btn-${side}`}
+      aria-label={label}
+    >
+      <Icon aria-hidden size={14} />
+    </button>
   );
 }
 

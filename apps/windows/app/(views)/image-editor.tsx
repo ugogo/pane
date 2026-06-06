@@ -1,10 +1,11 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Check, RotateCcw, Save, X } from '@pane/ui';
 import {
+  commitLatestCaptureEdit,
   hideImageEditor,
-  replaceLatestCaptureWithEdit,
-  takeLatestCaptureFull,
+  takeLatestCaptureEdit,
 } from '@/lib/commands';
 import { useEffectEvent } from '@/lib/use-effect-event';
 
@@ -58,9 +59,8 @@ interface EditorState {
 }
 
 type EditorAction =
-  | { type: 'capture-loaded'; src: string }
+  | { type: 'capture-loaded'; src: string; size: Dimensions; crop: Rect }
   | { type: 'capture-error'; error: string }
-  | { type: 'image-loaded'; size: Dimensions }
   | { type: 'set-crop'; crop: Rect }
   | { type: 'reset' }
   | { type: 'save-start' }
@@ -148,31 +148,28 @@ function rectContains(rect: Rect, point: Point) {
   );
 }
 
+function fillsBase(rect: Rect, base: Dimensions) {
+  return (
+    rect.x === 0 &&
+    rect.y === 0 &&
+    rect.w === base.width &&
+    rect.h === base.height
+  );
+}
+
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case 'capture-loaded':
       return {
         ...state,
         src: action.src,
+        base: action.size,
+        crop: action.crop,
         error: undefined,
         save: 'idle',
       };
     case 'capture-error':
       return { ...state, error: action.error };
-    case 'image-loaded': {
-      const crop = {
-        x: 0,
-        y: 0,
-        w: action.size.width,
-        h: action.size.height,
-      };
-      return {
-        ...state,
-        base: action.size,
-        crop,
-        save: 'idle',
-      };
-    }
     case 'set-crop':
       return { ...state, crop: action.crop, save: 'idle' };
     case 'reset':
@@ -197,25 +194,24 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
   }
 }
 
-function blobToDataUrl(blob: Blob) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () =>
-      reject(reader.error ?? new Error('Failed to read blob.'));
-    reader.readAsDataURL(blob);
-  });
-}
-
 export default function ImageEditorPage() {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState);
   const { src, base, crop, save, error } = state;
-  const imgRef = useRef<HTMLImageElement>(null);
 
   function fetchCapture() {
-    return takeLatestCaptureFull()
+    return takeLatestCaptureEdit()
       .then((c) => {
-        dispatch({ type: 'capture-loaded', src: c.dataUrl });
+        dispatch({
+          type: 'capture-loaded',
+          src: c.dataUrl,
+          size: { width: c.width, height: c.height },
+          crop: {
+            x: c.crop.x,
+            y: c.crop.y,
+            w: c.crop.width,
+            h: c.crop.height,
+          },
+        });
       })
       .catch((e: unknown) =>
         dispatch({ type: 'capture-error', error: String(e) }),
@@ -250,42 +246,19 @@ export default function ImageEditorPage() {
     };
   }, []);
 
-  function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
-    const img = e.currentTarget;
-    dispatch({
-      type: 'image-loaded',
-      size: { width: img.naturalWidth, height: img.naturalHeight },
-    });
-  }
-
   function setCrop(next: Rect) {
     if (!base) return;
     dispatch({ type: 'set-crop', crop: clampCrop(next, base) });
   }
 
   async function onSave() {
-    const img = imgRef.current;
-    if (!img || !base || !crop || crop.w < 1 || crop.h < 1 || save === 'busy') {
+    if (!base || !crop || crop.w < 1 || crop.h < 1 || save === 'busy') {
       return;
     }
     dispatch({ type: 'save-start' });
     try {
-      const dest = document.createElement('canvas');
-      dest.width = crop.w;
-      dest.height = crop.h;
-      const ctx = dest.getContext('2d');
-      if (!ctx) throw new Error('Could not create image canvas.');
-      ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        dest.toBlob((b) => {
-          if (b) resolve(b);
-          else reject(new Error('Could not encode cropped capture.'));
-        }, 'image/png');
-      });
-      const dataUrl = await blobToDataUrl(blob);
-      await replaceLatestCaptureWithEdit(dataUrl);
+      await commitLatestCaptureEdit(crop.x, crop.y, crop.w, crop.h);
       dispatch({ type: 'save-success' });
-      await hideImageEditor();
     } catch (e) {
       dispatch({ type: 'save-error', error: String(e) });
     }
@@ -301,16 +274,28 @@ export default function ImageEditorPage() {
 
   return (
     <div className="image-editor-root">
-      <div className="image-editor-header" data-tauri-drag-region>
+      <div
+        className="image-editor-header"
+        data-tauri-drag-region
+        role="presentation"
+        onMouseDown={(event) => {
+          if (event.button !== 0) return;
+          const target = event.target as HTMLElement;
+          if (target.closest('button')) return;
+          void getCurrentWindow().startDragging().catch(console.error);
+        }}
+      >
         <span className="image-editor-title">Edit capture</span>
-        <button
-          type="button"
-          onClick={() => void hideImageEditor()}
-          className="image-editor-close"
-          aria-label="Close editor"
-        >
-          <X aria-hidden size={16} />
-        </button>
+        <div className="window-action-bar image-editor-action-bar">
+          <button
+            type="button"
+            onClick={() => void hideImageEditor()}
+            className="window-action-control window-action-control-close image-editor-action-control"
+            aria-label="Close editor"
+          >
+            <X aria-hidden size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="image-editor-body">
@@ -319,38 +304,38 @@ export default function ImageEditorPage() {
           base={base}
           crop={crop}
           error={error}
-          imgRef={imgRef}
-          onImageLoad={onImageLoad}
           onCrop={setCrop}
         />
 
         <div className="image-editor-panel">
           <h2 className="image-editor-section">Crop</h2>
 
-          <CropField
-            label="X"
-            value={crop?.x ?? 0}
-            disabled={!base || !crop}
-            onChange={(x) => crop && setCrop({ ...crop, x })}
-          />
-          <CropField
-            label="Y"
-            value={crop?.y ?? 0}
-            disabled={!base || !crop}
-            onChange={(y) => crop && setCrop({ ...crop, y })}
-          />
-          <CropField
-            label="Width"
-            value={crop?.w ?? 0}
-            disabled={!base || !crop}
-            onChange={(w) => crop && setCrop({ ...crop, w })}
-          />
-          <CropField
-            label="Height"
-            value={crop?.h ?? 0}
-            disabled={!base || !crop}
-            onChange={(h) => crop && setCrop({ ...crop, h })}
-          />
+          <div className="image-editor-crop-grid">
+            <CropField
+              label="X"
+              value={crop?.x ?? 0}
+              disabled={!base || !crop}
+              onChange={(x) => crop && setCrop({ ...crop, x })}
+            />
+            <CropField
+              label="Y"
+              value={crop?.y ?? 0}
+              disabled={!base || !crop}
+              onChange={(y) => crop && setCrop({ ...crop, y })}
+            />
+            <CropField
+              label="Width"
+              value={crop?.w ?? 0}
+              disabled={!base || !crop}
+              onChange={(w) => crop && setCrop({ ...crop, w })}
+            />
+            <CropField
+              label="Height"
+              value={crop?.h ?? 0}
+              disabled={!base || !crop}
+              onChange={(h) => crop && setCrop({ ...crop, h })}
+            />
+          </div>
 
           <div className="image-editor-spacer" />
 
@@ -373,9 +358,9 @@ export default function ImageEditorPage() {
               className="image-editor-btn image-editor-btn-primary"
             >
               {save === 'success' ? (
-                <Check aria-hidden size={14} />
+                <Check aria-hidden size={14} color="currentColor" />
               ) : (
-                <Save aria-hidden size={14} />
+                <Save aria-hidden size={14} color="currentColor" />
               )}
               {save === 'success'
                 ? 'Saved'
@@ -424,16 +409,12 @@ function CropStage({
   base,
   crop,
   error,
-  imgRef,
-  onImageLoad,
   onCrop,
 }: {
   src: string | null;
   base: Dimensions | null;
   crop: Rect | null;
   error?: string;
-  imgRef: React.RefObject<HTMLImageElement | null>;
-  onImageLoad: (e: React.SyntheticEvent<HTMLImageElement>) => void;
   onCrop: (crop: Rect) => void;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -472,7 +453,7 @@ function CropStage({
     const point = pointFromEvent(e);
     if (!point) return;
     e.preventDefault();
-    if (crop && rectContains(crop, point)) {
+    if (crop && !fillsBase(crop, base) && rectContains(crop, point)) {
       dragRef.current = { type: 'move', start: point, startCrop: crop };
     } else {
       dragRef.current = { type: 'draw', start: point };
@@ -535,11 +516,9 @@ function CropStage({
           onPointerCancel={endFrameDrag}
         >
           <img
-            ref={imgRef}
             src={src}
             alt="Capture to edit"
             draggable={false}
-            onLoad={onImageLoad}
             className="image-editor-preview"
           />
           {displayCrop ? (
@@ -552,9 +531,6 @@ function CropStage({
                 height: displayCrop.h * fit,
               }}
             >
-              <span className="image-editor-selection-label">
-                {displayCrop.w} x {displayCrop.h}
-              </span>
               {HANDLES.map((h) => (
                 <span
                   key={h}

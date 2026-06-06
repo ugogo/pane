@@ -19,9 +19,18 @@ pub struct StoredCapture {
     pub rgba: Vec<u8>,
     pub width: u32,
     pub height: u32,
+    pub edit_source: Option<EditSource>,
     /// Lazily-encoded data URL for the enlarged preview, cached so the (heavy)
     /// PNG encode happens once per capture rather than on every Space press.
     pub full_data_url: Option<String>,
+}
+
+#[derive(Clone)]
+pub struct EditSource {
+    pub rgba: Vec<u8>,
+    pub width: u32,
+    pub height: u32,
+    pub crop: EditRect,
 }
 
 #[derive(Clone, Serialize)]
@@ -31,6 +40,24 @@ pub struct CaptureResult {
     pub data_url: String,
     pub width: u32,
     pub height: u32,
+}
+
+#[derive(Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditRect {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CaptureEditResult {
+    pub data_url: String,
+    pub width: u32,
+    pub height: u32,
+    pub crop: EditRect,
 }
 
 fn primary_monitor() -> Result<Monitor, String> {
@@ -141,6 +168,7 @@ pub fn make_stored_capture(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<Store
         rgba: img.as_raw().clone(),
         width: img.width(),
         height: img.height(),
+        edit_source: None,
         full_data_url: None,
     })
 }
@@ -186,6 +214,15 @@ fn encode_png_bytes(capture: &StoredCapture) -> Result<Vec<u8>, String> {
     img.write_to(&mut Cursor::new(&mut buf), ImageFormat::Png)
         .map_err(|e| e.to_string())?;
     Ok(buf)
+}
+
+fn rgba_png_data_url(width: u32, height: u32, rgba: &[u8]) -> Result<String, String> {
+    let img = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(width, height, rgba.to_vec())
+        .ok_or_else(|| "Capture pixels are invalid.".to_string())?;
+    let mut buf = Vec::new();
+    img.write_to(&mut Cursor::new(&mut buf), ImageFormat::Png)
+        .map_err(|e| e.to_string())?;
+    Ok(format!("data:image/png;base64,{}", B64.encode(&buf)))
 }
 
 pub fn perform_fullscreen_capture(app: &AppHandle) -> Result<CaptureResult, String> {
@@ -276,6 +313,106 @@ pub fn take_latest_capture_full(
         width: capture.width,
         height: capture.height,
     })
+}
+
+#[tauri::command]
+pub fn take_latest_capture_edit(
+    window: tauri::WebviewWindow,
+    latest: State<'_, LatestCapture>,
+) -> Result<CaptureEditResult, String> {
+    crate::commands::require_window(&window, &["image-editor", "main"])?;
+    let capture = latest_capture(latest)?;
+    if let Some(source) = capture.edit_source {
+        return Ok(CaptureEditResult {
+            data_url: rgba_png_data_url(source.width, source.height, &source.rgba)?,
+            width: source.width,
+            height: source.height,
+            crop: source.crop,
+        });
+    }
+
+    Ok(CaptureEditResult {
+        data_url: rgba_png_data_url(capture.width, capture.height, &capture.rgba)?,
+        width: capture.width,
+        height: capture.height,
+        crop: EditRect {
+            x: 0,
+            y: 0,
+            width: capture.width,
+            height: capture.height,
+        },
+    })
+}
+
+#[tauri::command]
+pub async fn commit_latest_capture_edit(
+    window: tauri::WebviewWindow,
+    app: AppHandle,
+    latest: State<'_, LatestCapture>,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+) -> Result<(), String> {
+    crate::commands::require_window(&window, &["image-editor", "main"])?;
+    let _ = window.hide();
+
+    if width == 0 || height == 0 {
+        return Err("Crop width/height must be > 0.".into());
+    }
+
+    let current = latest
+        .0
+        .lock()
+        .unwrap()
+        .clone()
+        .ok_or_else(|| "No capture available.".to_string())?;
+    let source = current.edit_source.unwrap_or(EditSource {
+        rgba: current.rgba,
+        width: current.width,
+        height: current.height,
+        crop: EditRect {
+            x: 0,
+            y: 0,
+            width: current.width,
+            height: current.height,
+        },
+    });
+
+    let sx = x.min(source.width.saturating_sub(1));
+    let sy = y.min(source.height.saturating_sub(1));
+    let sw = x
+        .saturating_add(width)
+        .min(source.width)
+        .saturating_sub(sx)
+        .max(1);
+    let sh = y
+        .saturating_add(height)
+        .min(source.height)
+        .saturating_sub(sy)
+        .max(1);
+    let img = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(
+        source.width,
+        source.height,
+        source.rgba.clone(),
+    )
+    .ok_or_else(|| "Editor source pixels are invalid.".to_string())?;
+    let cropped = image::imageops::crop_imm(&img, sx, sy, sw, sh).to_image();
+    let mut stored = make_stored_capture(&cropped)?;
+    stored.edit_source = Some(EditSource {
+        rgba: source.rgba,
+        width: source.width,
+        height: source.height,
+        crop: EditRect {
+            x: sx,
+            y: sy,
+            width: sw,
+            height: sh,
+        },
+    });
+    *latest.0.lock().unwrap() = Some(stored);
+    let _ = app.emit_to("capture-preview", "refresh-capture", ());
+    Ok(())
 }
 
 #[tauri::command]

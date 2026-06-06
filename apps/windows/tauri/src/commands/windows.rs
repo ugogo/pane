@@ -252,6 +252,7 @@ pub async fn show_capture_preview(app: AppHandle) -> Result<(), String> {
         Some(existing) => existing,
         None => create_capture_preview_window(&app)?,
     };
+    let was_visible = window.is_visible().unwrap_or(false);
 
     // A new capture supersedes any open enlarged view of the previous one. Keep
     // the (hidden) window warm and tell it to prefetch the new full-res image so
@@ -272,9 +273,9 @@ pub async fn show_capture_preview(app: AppHandle) -> Result<(), String> {
 
     app.emit_to(CAPTURE_PREVIEW_LABEL, "refresh-capture", ())
         .map_err(|e| e.to_string())?;
-    // Showing a transparent warmed window wakes the frontend even if warmup is
-    // still racing the first capture and the event listener misses this emit.
-    let _ = window.show();
+    if was_visible {
+        let _ = window.show();
+    }
     Ok(())
 }
 
@@ -425,17 +426,11 @@ fn create_image_editor_window(app: &AppHandle) -> Result<WebviewWindow, String> 
 /// present, otherwise builds one, then centers, refreshes, and focuses it.
 #[tauri::command]
 pub async fn show_image_editor(app: AppHandle) -> Result<(), String> {
-    let (win_w, win_h, pos_x, pos_y) = image_editor_geometry(&app)?;
-    let window = match app.get_webview_window(IMAGE_EDITOR_LABEL) {
-        Some(existing) => existing,
-        None => create_image_editor_window(&app)?,
+    let window = if let Some(existing) = app.get_webview_window(IMAGE_EDITOR_LABEL) {
+        existing
+    } else {
+        create_image_editor_window(&app)?
     };
-    window
-        .set_size(LogicalSize::new(win_w, win_h))
-        .map_err(|e| e.to_string())?;
-    window
-        .set_position(LogicalPosition::new(pos_x, pos_y))
-        .map_err(|e| e.to_string())?;
     disable_window_transitions(&window);
     app.emit_to(IMAGE_EDITOR_LABEL, "refresh-capture", ())
         .map_err(|e| e.to_string())?;
