@@ -114,6 +114,16 @@ export interface CaptureResult {
   height: number;
 }
 
+export interface CaptureEditResult extends CaptureResult {
+  sessionId: number;
+  crop: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
 export function captureFullscreen() {
   return invoke<CaptureResult>('capture_fullscreen');
 }
@@ -136,12 +146,40 @@ export function takeLatestCaptureFull() {
   return invoke<CaptureResult>('take_latest_capture_full');
 }
 
+/** Full editor source plus the current crop rectangle. */
+export function takeLatestCaptureEdit() {
+  return invoke<CaptureEditResult>('take_latest_capture_edit');
+}
+
+export function commitLatestCaptureEdit(
+  sessionId: number,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  return invoke<void>('commit_latest_capture_edit', {
+    sessionId,
+    crop: { x, y, width, height },
+  });
+}
+
 export function copyLatestCaptureToClipboard() {
   return invoke<void>('copy_latest_capture_to_clipboard');
 }
 
 export function saveLatestCaptureToDesktop() {
   return invoke<string>('save_latest_capture_to_desktop');
+}
+
+/** Persist an edited (e.g. resized) capture, given a PNG/JPEG data URL. */
+export function saveEditedCaptureToDesktop(dataUrl: string) {
+  return invoke<string>('save_edited_capture_to_desktop', { dataUrl });
+}
+
+/** Replace the latest capture with an edited PNG/JPEG data URL. */
+export function replaceLatestCaptureWithEdit(dataUrl: string) {
+  return invoke<void>('replace_latest_capture_with_edit', { dataUrl });
 }
 
 // ── Window helpers ────────────────────────────────────────────────────────────
@@ -199,6 +237,15 @@ export function hideCaptureZoom() {
 /** Toggle the enlarged-preview window; resolves to its new visibility. */
 export function toggleCaptureZoom() {
   return invoke<boolean>('toggle_capture_zoom');
+}
+
+/** Open the image editor window for the latest capture. */
+export function showImageEditor() {
+  return invoke<void>('show_image_editor');
+}
+
+export function hideImageEditor() {
+  return invoke<void>('hide_image_editor');
 }
 
 // ── Hotkeys ───────────────────────────────────────────────────────────────────

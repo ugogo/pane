@@ -51,7 +51,8 @@
   gap: 4px;
 }
 
-.app-window-control {
+.app-window-control,
+.window-action-control {
   display: grid;
   width: 46px;
   height: 36px;
@@ -66,12 +67,14 @@
   cursor: pointer;
 }
 
-.app-window-control:hover {
+.app-window-control:hover,
+.window-action-control:hover {
   color: var(--app-foreground-control-hover);
   background: var(--app-white-09);
 }
 
-.app-window-control-close:hover {
+.app-window-control-close:hover,
+.window-action-control-close:hover {
   color: var(--app-foreground);
   background: var(--app-close-hover);
 }
@@ -160,8 +163,8 @@
 
 .preview-card:hover .preview-overlay,
 .preview-card:focus-within .preview-overlay,
-.preview-card:hover .preview-close,
-.preview-card:focus-within .preview-close,
+.preview-card:hover .preview-chrome-btn,
+.preview-card:focus-within .preview-chrome-btn,
 .preview-card:hover .preview-size,
 .preview-card:hover .preview-size {
   opacity: 1;
@@ -180,13 +183,12 @@
   backdrop-filter: blur(1px);
 }
 
-.preview-close {
+.preview-chrome-btn {
   position: absolute;
   top: 6px;
-  right: 6px;
   display: flex;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   align-items: center;
   justify-content: center;
   border: 0;
@@ -195,7 +197,30 @@
   color: var(--app-foreground);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 150ms ease;
+  transition:
+    background-color 120ms ease,
+    opacity 150ms ease;
+  z-index: 2;
+}
+
+.preview-chrome-btn:hover {
+  background: var(--app-panel-raised);
+}
+
+.preview-chrome-btn svg,
+.preview-action-btn svg,
+.image-editor-btn svg {
+  color: currentcolor;
+  stroke: currentcolor;
+  fill: none;
+}
+
+.preview-chrome-btn-left {
+  left: 6px;
+}
+
+.preview-chrome-btn-right {
+  right: 6px;
 }
 
 .preview-size {
@@ -228,6 +253,10 @@
   font-weight: 600;
   box-shadow: 0 4px 12px var(--app-shadow);
   cursor: pointer;
+}
+
+.preview-action-btn svg {
+  color: var(--app-foreground-muted);
 }
 
 .preview-action-btn:disabled {
@@ -288,10 +317,15 @@
   white-space: nowrap;
 }
 
-.app-titlebar-controls {
+.app-titlebar-controls,
+.window-action-bar {
   display: flex;
   height: 100%;
   margin-left: auto;
+}
+
+.window-action-bar {
+  flex: none;
 }
 
 .accent-popup-root {
@@ -461,4 +495,333 @@
   color: var(--app-destructive);
   font-size: 12px;
   text-align: center;
+}
+
+/* ── Image editor ─────────────────────────────────────────────────────────── */
+
+.image-editor-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--app-card);
+  color: var(--app-foreground);
+  font-size: 13px;
+}
+
+.image-editor-header {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding-left: 14px;
+  border-bottom: 1px solid var(--app-border);
+  flex: none;
+}
+
+.image-editor-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.image-editor-action-control svg {
+  width: 16px;
+  height: 16px;
+}
+
+.image-editor-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.image-editor-stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 20px;
+  overflow: hidden;
+  background: var(--app-panel);
+}
+
+.image-editor-frame {
+  position: relative;
+  flex: none;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px var(--app-shadow-strong);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.image-editor-preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.image-editor-selection {
+  position: absolute;
+  border: 1px solid var(--app-selection-outline);
+  box-shadow:
+    0 0 0 100vmax var(--app-selection-dim),
+    0 0 0 1px var(--app-selection-outline);
+  pointer-events: none;
+}
+
+.image-editor-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--app-foreground);
+  border: 2px solid var(--app-card);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--app-border);
+  touch-action: none;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.image-editor-handle[data-pos='nw'] {
+  top: 0;
+  left: 0;
+  transform: translate(0, 0);
+  cursor: nwse-resize;
+}
+
+.image-editor-handle[data-pos='n'] {
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, 0);
+  cursor: ns-resize;
+}
+
+.image-editor-handle[data-pos='ne'] {
+  top: 0;
+  left: 100%;
+  transform: translate(-100%, 0);
+  cursor: nesw-resize;
+}
+
+.image-editor-handle[data-pos='e'] {
+  top: 50%;
+  left: 100%;
+  transform: translate(-100%, -50%);
+  cursor: ew-resize;
+}
+
+.image-editor-handle[data-pos='se'] {
+  top: 100%;
+  left: 100%;
+  transform: translate(-100%, -100%);
+  cursor: nwse-resize;
+}
+
+.image-editor-handle[data-pos='s'] {
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  cursor: ns-resize;
+}
+
+.image-editor-handle[data-pos='sw'] {
+  top: 100%;
+  left: 0;
+  transform: translate(0, -100%);
+  cursor: nesw-resize;
+}
+
+.image-editor-handle[data-pos='w'] {
+  top: 50%;
+  left: 0;
+  transform: translate(0, -50%);
+  cursor: ew-resize;
+}
+
+.image-editor-error {
+  color: var(--app-destructive);
+  font-size: 12px;
+  text-align: center;
+}
+
+.image-editor-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 248px;
+  flex: none;
+  padding: 16px;
+  border-left: 1px solid var(--app-border);
+  background: var(--app-panel-raised);
+}
+
+.image-editor-section {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--app-foreground-muted);
+}
+
+.image-editor-crop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.image-editor-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.image-editor-field > span {
+  color: var(--app-foreground-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.image-editor-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 8px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 8px;
+  background: var(--app-panel);
+}
+
+.image-editor-input-wrap:focus-within {
+  border-color: var(--app-ring);
+}
+
+.image-editor-input {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--app-foreground);
+  font-size: 13px;
+  text-align: right;
+  outline: none;
+}
+
+.image-editor-unit {
+  font-size: 11px;
+  color: var(--app-foreground-muted);
+}
+
+.image-editor-lock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-panel);
+  color: var(--app-foreground-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.image-editor-lock[aria-pressed='true'] {
+  border-color: var(--app-ring);
+  color: var(--app-foreground);
+}
+
+.image-editor-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.image-editor-preset {
+  height: 30px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-panel);
+  color: var(--app-foreground);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.image-editor-preset:hover:not(:disabled) {
+  background: var(--app-panel-hover);
+}
+
+.image-editor-preset:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.image-editor-spacer {
+  flex: 1;
+}
+
+.image-editor-saved {
+  margin: 0;
+  font-size: 12px;
+  color: var(--app-foreground-muted);
+}
+
+.image-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.image-editor-btn {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--app-border);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.image-editor-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.image-editor-btn-ghost {
+  background: var(--app-panel);
+  color: var(--app-foreground);
+}
+
+.image-editor-btn-ghost:hover:not(:disabled) {
+  background: var(--app-panel-hover);
+}
+
+.image-editor-btn-primary {
+  border-color: transparent;
+  background: var(--app-primary);
+  color: var(--app-primary-foreground);
+}
+
+.image-editor-btn-primary svg,
+.image-editor-btn-primary svg * {
+  color: currentcolor;
+  stroke: currentcolor;
 }

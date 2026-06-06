@@ -1,17 +1,54 @@
 use crate::commands::capture_sound;
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use image::{imageops::FilterType, ImageBuffer, ImageFormat, Rgba};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::io::Cursor;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use xcap::Monitor;
 
 /// Holds the most recent capture so the preview window can fetch it after open.
 #[derive(Default)]
 pub struct LatestCapture(pub Mutex<Option<StoredCapture>>);
+
+#[derive(Default)]
+pub struct CaptureEditSessions(Mutex<CaptureEditSessionState>);
+
+#[derive(Default)]
+struct CaptureEditSessionState {
+    next_id: u64,
+    active: Option<CaptureEditSession>,
+}
+
+struct CaptureEditSession {
+    id: u64,
+    source: EditSource,
+}
+
+impl CaptureEditSessions {
+    fn store(&self, source: EditSource) -> u64 {
+        let mut sessions = self.0.lock().unwrap();
+        sessions.next_id = sessions.next_id.wrapping_add(1);
+        if sessions.next_id == 0 {
+            sessions.next_id = 1;
+        }
+        let id = sessions.next_id;
+        sessions.active = Some(CaptureEditSession { id, source });
+        id
+    }
+
+    fn source_for(&self, id: u64) -> Option<EditSource> {
+        let sessions = self.0.lock().unwrap();
+        let active = sessions.active.as_ref()?;
+        if active.id == id {
+            Some(active.source.clone())
+        } else {
+            None
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct StoredCapture {
@@ -19,9 +56,18 @@ pub struct StoredCapture {
     pub rgba: Vec<u8>,
     pub width: u32,
     pub height: u32,
+    pub edit_source: Option<EditSource>,
     /// Lazily-encoded data URL for the enlarged preview, cached so the (heavy)
     /// PNG encode happens once per capture rather than on every Space press.
     pub full_data_url: Option<String>,
+}
+
+#[derive(Clone)]
+pub struct EditSource {
+    pub rgba: Vec<u8>,
+    pub width: u32,
+    pub height: u32,
+    pub crop: EditRect,
 }
 
 #[derive(Clone, Serialize)]
@@ -31,6 +77,25 @@ pub struct CaptureResult {
     pub data_url: String,
     pub width: u32,
     pub height: u32,
+}
+
+#[derive(Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditRect {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CaptureEditResult {
+    pub session_id: u64,
+    pub data_url: String,
+    pub width: u32,
+    pub height: u32,
+    pub crop: EditRect,
 }
 
 fn primary_monitor() -> Result<Monitor, String> {
@@ -141,6 +206,7 @@ pub fn make_stored_capture(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<Store
         rgba: img.as_raw().clone(),
         width: img.width(),
         height: img.height(),
+        edit_source: None,
         full_data_url: None,
     })
 }
@@ -186,6 +252,15 @@ fn encode_png_bytes(capture: &StoredCapture) -> Result<Vec<u8>, String> {
     img.write_to(&mut Cursor::new(&mut buf), ImageFormat::Png)
         .map_err(|e| e.to_string())?;
     Ok(buf)
+}
+
+fn rgba_png_data_url(width: u32, height: u32, rgba: &[u8]) -> Result<String, String> {
+    let img = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(width, height, rgba.to_vec())
+        .ok_or_else(|| "Capture pixels are invalid.".to_string())?;
+    let mut buf = Vec::new();
+    img.write_to(&mut Cursor::new(&mut buf), ImageFormat::Png)
+        .map_err(|e| e.to_string())?;
+    Ok(format!("data:image/png;base64,{}", B64.encode(&buf)))
 }
 
 pub fn perform_fullscreen_capture(app: &AppHandle) -> Result<CaptureResult, String> {
@@ -260,7 +335,10 @@ pub fn take_latest_capture_full(
     window: tauri::WebviewWindow,
     latest: State<'_, LatestCapture>,
 ) -> Result<CaptureResult, String> {
-    crate::commands::require_window(&window, &["capture-zoom", "capture-preview", "main"])?;
+    crate::commands::require_window(
+        &window,
+        &["capture-zoom", "capture-preview", "image-editor", "main"],
+    )?;
     let mut guard = latest.0.lock().unwrap();
     let capture = guard
         .as_mut()
@@ -273,6 +351,94 @@ pub fn take_latest_capture_full(
         width: capture.width,
         height: capture.height,
     })
+}
+
+#[tauri::command]
+pub fn take_latest_capture_edit(
+    window: tauri::WebviewWindow,
+    latest: State<'_, LatestCapture>,
+    edit_sessions: State<'_, CaptureEditSessions>,
+) -> Result<CaptureEditResult, String> {
+    crate::commands::require_window(&window, &["image-editor", "main"])?;
+    let capture = latest_capture(latest)?;
+    let source = capture.edit_source.unwrap_or(EditSource {
+        rgba: capture.rgba,
+        width: capture.width,
+        height: capture.height,
+        crop: EditRect {
+            x: 0,
+            y: 0,
+            width: capture.width,
+            height: capture.height,
+        },
+    });
+    let session_id = edit_sessions.store(source.clone());
+
+    Ok(CaptureEditResult {
+        session_id,
+        data_url: rgba_png_data_url(source.width, source.height, &source.rgba)?,
+        width: source.width,
+        height: source.height,
+        crop: source.crop,
+    })
+}
+
+#[tauri::command]
+pub async fn commit_latest_capture_edit(
+    window: tauri::WebviewWindow,
+    app: AppHandle,
+    edit_sessions: State<'_, CaptureEditSessions>,
+    latest: State<'_, LatestCapture>,
+    session_id: u64,
+    crop: EditRect,
+) -> Result<(), String> {
+    crate::commands::require_window(&window, &["image-editor", "main"])?;
+
+    if crop.width == 0 || crop.height == 0 {
+        return Err("Crop width/height must be > 0.".into());
+    }
+
+    let source = edit_sessions
+        .source_for(session_id)
+        .ok_or_else(|| "Capture edit session expired.".to_string())?;
+    let _ = window.hide();
+
+    let sx = crop.x.min(source.width.saturating_sub(1));
+    let sy = crop.y.min(source.height.saturating_sub(1));
+    let sw = crop
+        .x
+        .saturating_add(crop.width)
+        .min(source.width)
+        .saturating_sub(sx)
+        .max(1);
+    let sh = crop
+        .y
+        .saturating_add(crop.height)
+        .min(source.height)
+        .saturating_sub(sy)
+        .max(1);
+    let img = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(
+        source.width,
+        source.height,
+        source.rgba.clone(),
+    )
+    .ok_or_else(|| "Editor source pixels are invalid.".to_string())?;
+    let cropped = image::imageops::crop_imm(&img, sx, sy, sw, sh).to_image();
+    let mut stored = make_stored_capture(&cropped)?;
+    stored.edit_source = Some(EditSource {
+        rgba: source.rgba,
+        width: source.width,
+        height: source.height,
+        crop: EditRect {
+            x: sx,
+            y: sy,
+            width: sw,
+            height: sh,
+        },
+    });
+    *latest.0.lock().unwrap() = Some(stored);
+    let _ = app.emit_to("capture-preview", "refresh-capture", ());
+    Ok(())
 }
 
 #[tauri::command]
@@ -309,4 +475,73 @@ pub fn save_latest_capture_to_desktop(
     let path = desktop.join(format!("pane-capture-{}.png", now));
     std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
     Ok(path.to_string_lossy().into_owned())
+}
+
+/// Persist an edited capture (resized in the image editor) to the desktop. The
+/// editor renders the result client-side and hands back a `data:image/png`
+/// (or jpeg) URL; we decode the base64 payload and write the raw bytes as-is.
+#[tauri::command]
+pub fn save_edited_capture_to_desktop(
+    window: tauri::WebviewWindow,
+    app: AppHandle,
+    data_url: String,
+) -> Result<String, String> {
+    crate::commands::require_window(&window, &["image-editor", "main"])?;
+
+    let comma = data_url
+        .find(',')
+        .ok_or_else(|| "Edited image is not a valid data URL.".to_string())?;
+    let header = &data_url[..comma];
+    if !header.starts_with("data:image/") {
+        return Err("Edited image is not an image data URL.".into());
+    }
+    let bytes = B64
+        .decode(&data_url.as_bytes()[comma + 1..])
+        .map_err(|e| e.to_string())?;
+
+    let extension = if header.contains("image/jpeg") || header.contains("image/jpg") {
+        "jpg"
+    } else {
+        "png"
+    };
+
+    let desktop = app.path().desktop_dir().map_err(|e| e.to_string())?;
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_secs();
+    let path = desktop.join(format!("pane-capture-edited-{now}.{extension}"));
+    std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+/// Replace the latest capture with an edited image from the image editor and
+/// ask the floating preview to refresh against the new capture state.
+#[tauri::command]
+pub fn replace_latest_capture_with_edit(
+    window: tauri::WebviewWindow,
+    app: AppHandle,
+    latest: State<'_, LatestCapture>,
+    data_url: String,
+) -> Result<(), String> {
+    crate::commands::require_window(&window, &["image-editor", "main"])?;
+
+    let comma = data_url
+        .find(',')
+        .ok_or_else(|| "Edited image is not a valid data URL.".to_string())?;
+    let header = &data_url[..comma];
+    if !header.starts_with("data:image/") {
+        return Err("Edited image is not an image data URL.".into());
+    }
+    let bytes = B64
+        .decode(&data_url.as_bytes()[comma + 1..])
+        .map_err(|e| e.to_string())?;
+    let mut img = image::load_from_memory(&bytes)
+        .map_err(|e| e.to_string())?
+        .to_rgba8();
+    force_opaque(&mut img);
+    let stored = make_stored_capture(&img)?;
+    *latest.0.lock().unwrap() = Some(stored);
+    let _ = app.emit_to("capture-preview", "refresh-capture", ());
+    Ok(())
 }

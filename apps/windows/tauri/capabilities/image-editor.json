@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability",
+  "identifier": "image-editor",
+  "description": "Capture image editor window. Baseline core/window/event access only — no updater, process restart, global shortcuts, or window-state persistence.",
+  "windows": ["image-editor"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-close",
+    "core:window:allow-hide",
+    "core:window:allow-start-dragging",
+    "core:webview:default",
+    "core:event:default"
+  ]
+}

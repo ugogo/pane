@@ -5,7 +5,7 @@ mod commands;
 mod power_notify;
 mod tray;
 
-use commands::capture::LatestCapture;
+use commands::capture::{CaptureEditSessions, LatestCapture};
 use commands::metrics::StartTime;
 use std::time::Instant;
 use tauri::Manager;
@@ -22,6 +22,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(StartTime(boot))
         .manage(LatestCapture::default())
+        .manage(CaptureEditSessions::default())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
@@ -101,8 +102,12 @@ pub fn run() {
             commands::capture::capture_region,
             commands::capture::take_latest_capture,
             commands::capture::take_latest_capture_full,
+            commands::capture::take_latest_capture_edit,
+            commands::capture::commit_latest_capture_edit,
             commands::capture::copy_latest_capture_to_clipboard,
             commands::capture::save_latest_capture_to_desktop,
+            commands::capture::save_edited_capture_to_desktop,
+            commands::capture::replace_latest_capture_with_edit,
             commands::lighting::detect_msi_lighting,
             commands::lighting::apply_msi_lighting,
             commands::dx_light::detect_dx_light,
@@ -124,6 +129,8 @@ pub fn run() {
             commands::windows::show_capture_zoom,
             commands::windows::hide_capture_zoom,
             commands::windows::toggle_capture_zoom,
+            commands::windows::show_image_editor,
+            commands::windows::hide_image_editor,
             commands::windows::hide_area_selector,
             commands::windows::area_selector_origin,
             commands::windows::commit_region_capture,
