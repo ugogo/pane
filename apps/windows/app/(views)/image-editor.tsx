@@ -358,9 +358,9 @@ export default function ImageEditorPage() {
               className="image-editor-btn image-editor-btn-primary"
             >
               {save === 'success' ? (
-                <Check aria-hidden size={14} color="currentColor" />
+                <Check aria-hidden size={14} />
               ) : (
-                <Save aria-hidden size={14} color="currentColor" />
+                <Save aria-hidden size={14} />
               )}
               {save === 'success'
                 ? 'Saved'
