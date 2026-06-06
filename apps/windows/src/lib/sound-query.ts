@@ -45,12 +45,6 @@ export async function fetchSound(): Promise<SoundQueryData> {
     volumes: { output: outputVol, input: inputVol },
     status:
       errors.length > 0 ? (empty ? 'fail' : 'warn') : empty ? 'warn' : 'pass',
-    message:
-      errors.join(' ') ||
-      (empty
-        ? 'No audio devices found.'
-        : `${out.length} output, ${inp.length} input device${
-            out.length + inp.length === 1 ? '' : 's'
-          }.`),
+    message: errors.join(' ') || (empty ? 'No audio devices found.' : ''),
   };
 }

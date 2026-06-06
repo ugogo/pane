@@ -46,13 +46,11 @@ function scanForMonitors(list: MonitorInfo[]): StatusMessage {
   if (controllable === 0) {
     return {
       status: 'warn',
-      message: `${list.length} monitor${list.length === 1 ? '' : 's'} found, but none expose DDC/CI brightness. Enable DDC/CI in the monitor's on-screen menu.`,
+      message:
+        "DDC/CI brightness is unavailable. Enable DDC/CI in the monitor's on-screen menu.",
     };
   }
-  return {
-    status: 'pass',
-    message: `${controllable} of ${list.length} monitor${list.length === 1 ? '' : 's'} controllable.`,
-  };
+  return { status: 'pass', message: '' };
 }
 
 type FeatureKey = 'brightness' | 'contrast';
