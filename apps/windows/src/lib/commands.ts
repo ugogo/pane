@@ -380,6 +380,38 @@ export function dxLightOff() {
   return invoke<void>('dx_light_off');
 }
 
+// ── Light presets ────────────────────────────────────────────────────────────
+
+export interface LightPresetTarget {
+  key: string;
+  r: number;
+  g: number;
+  b: number;
+  brightness: number;
+  on: boolean;
+}
+
+export interface LightPreset {
+  name: string;
+  targets: LightPresetTarget[];
+}
+
+export function getLightPresets() {
+  return invoke<LightPreset[]>('get_light_presets');
+}
+
+export function saveLightPreset(preset: LightPreset) {
+  return invoke<LightPreset[]>('save_light_preset', { preset });
+}
+
+export function deleteLightPreset(name: string) {
+  return invoke<LightPreset[]>('delete_light_preset', { name });
+}
+
+export function applyLightPreset(name: string) {
+  return invoke<Array<[string, string | null]>>('apply_light_preset', { name });
+}
+
 // ── Windows Dynamic Lighting (OS-managed) ──────────────────────────────────────
 
 export interface DynamicLightingDevice {

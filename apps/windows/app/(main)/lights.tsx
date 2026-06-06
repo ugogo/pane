@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Cpu, Monitor, Mouse } from '@pane/ui';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Cpu, Monitor, Mouse, RotateCcw, Trash2 } from '@pane/ui';
 import {
   Button,
   Card,
   DeviceIcon,
   MutedPanel,
   MutedText,
+  PresetGroup,
+  PresetIconButton,
+  PresetNameButton,
   Slider,
   Text,
   XStack,
@@ -18,9 +21,15 @@ import { StatusBadge, StatusText } from '@/components/features/status-ui';
 import {
   applyDxLight,
   applyDynamicLighting,
+  applyLightPreset,
   applyMsiLighting,
+  deleteLightPreset,
   dxLightOff,
+  getLightPresets,
   restoreAllLights,
+  saveLightPreset,
+  type LightPreset,
+  type LightPresetTarget,
   type LightState,
 } from '@/lib/commands';
 import { fetchLights, lightKey, type Light } from '@/lib/lights-query';
@@ -79,14 +88,41 @@ function rgbToHex(r: number, g: number, b: number) {
   return `#${h(r)}${h(g)}${h(b)}`;
 }
 
+function defaultLightState(): LightState {
+  return {
+    r: 255,
+    g: 255,
+    b: 255,
+    brightness: 0.75,
+    on: true,
+  };
+}
+
+function presetTargetFromState(
+  key: string,
+  state?: LightState,
+): LightPresetTarget {
+  const next = state ?? defaultLightState();
+  return {
+    key,
+    r: next.r,
+    g: next.g,
+    b: next.b,
+    brightness: Math.max(0, Math.min(1, next.brightness)),
+    on: next.on,
+  };
+}
+
 function LightRow({
   light,
   initialState,
   disabledReason,
+  onApplied,
 }: {
   light: Light;
   initialState?: LightState;
   disabledReason?: string;
+  onApplied: (state: LightState) => void;
 }) {
   const [color, setColor] = useState<string>(() =>
     initialState
@@ -138,6 +174,13 @@ function LightRow({
           break;
         }
       }
+      onApplied({
+        r: rgb.r,
+        g: rgb.g,
+        b: rgb.b,
+        brightness: b,
+        on: b > 0,
+      });
       result.set('pass', message);
     } catch (e) {
       result.set('fail', String(e));
@@ -161,6 +204,14 @@ function LightRow({
           await dxLightOff();
           break;
       }
+      const rgb = hexToRgb(color) ?? { r: 0, g: 0, b: 0 };
+      onApplied({
+        r: rgb.r,
+        g: rgb.g,
+        b: rgb.b,
+        brightness: 0,
+        on: false,
+      });
       result.set('pass', 'Off.');
     } catch (e) {
       result.set('fail', String(e));
@@ -238,9 +289,14 @@ function LightRow({
 }
 
 export default function LightsPage() {
+  const queryClient = useQueryClient();
   const lightsQuery = useQuery({
     queryKey: queryKeys.lights,
     queryFn: fetchLights,
+  });
+  const presetsQuery = useQuery({
+    queryKey: queryKeys.lightPresets,
+    queryFn: getLightPresets,
   });
   const [actionMessage, setActionMessage] = useState<{
     status: Status;
@@ -250,13 +306,19 @@ export default function LightsPage() {
 
   const lights = lightsQuery.data?.lights ?? [];
   const savedStates = lightsQuery.data?.savedStates ?? {};
+  const presets = presetsQuery.data ?? [];
+  const presetsError = presetsQuery.isError
+    ? `Could not load presets: ${String(presetsQuery.error)}`
+    : '';
   const scan = lightsQuery.data?.scan ?? {
     status: 'idle' as Status,
     message: '',
     disabledReason: '',
   };
   const busy = lightsQuery.isFetching;
-  const displayScan = actionMessage ?? scan;
+  const displayScan =
+    actionMessage ??
+    (presetsError ? { status: 'warn' as Status, message: presetsError } : scan);
   const dynamicDisabledReason =
     actionMessage?.disabledReason ?? scan.disabledReason;
 
@@ -286,33 +348,121 @@ export default function LightsPage() {
 
   const keyedLights = lights.map((l) => ({ key: lightKey(l), light: l }));
 
+  function patchSavedState(key: string, state: LightState) {
+    queryClient.setQueryData(
+      queryKeys.lights,
+      (prev: Awaited<ReturnType<typeof fetchLights>> | undefined) =>
+        prev
+          ? {
+              ...prev,
+              savedStates: {
+                ...prev.savedStates,
+                [key]: state,
+              },
+            }
+          : prev,
+    );
+  }
+
+  function currentPresetTargets(): LightPresetTarget[] {
+    return keyedLights.map(({ key }) =>
+      presetTargetFromState(key, savedStates[key]),
+    );
+  }
+
+  async function snapshot(name: string) {
+    const next = await saveLightPreset({
+      name,
+      targets: currentPresetTargets(),
+    });
+    queryClient.setQueryData(queryKeys.lightPresets, next);
+  }
+
+  async function onApplyPreset(name: string) {
+    setActionMessage({ status: 'idle', message: '' });
+    try {
+      const results = await applyLightPreset(name);
+      const errors = results.filter(([, err]) => err !== null);
+      if (results.length === 0) {
+        setActionMessage({
+          status: 'warn',
+          message: `Preset "${name}" has no saved lights.`,
+        });
+      } else if (errors.length === 0) {
+        setActionMessage({
+          status: 'pass',
+          message: `Applied "${name}" to ${results.length} light${results.length === 1 ? '' : 's'}.`,
+        });
+      } else {
+        setActionMessage({
+          status: 'warn',
+          message: `Applied ${results.length - errors.length}/${results.length}; failed: ${errors
+            .map(([key, error]) => `${key} (${error})`)
+            .join(', ')}`,
+        });
+      }
+      void lightsQuery.refetch();
+    } catch (e) {
+      setActionMessage({ status: 'fail', message: String(e) });
+    }
+  }
+
+  async function onUpdatePreset(name: string) {
+    setActionMessage({ status: 'idle', message: '' });
+    try {
+      await snapshot(name);
+      setActionMessage({
+        status: 'pass',
+        message: `Updated "${name}" to current lights.`,
+      });
+    } catch (e) {
+      setActionMessage({ status: 'fail', message: String(e) });
+    }
+  }
+
+  async function onSavePreset() {
+    const name = window.prompt('Preset name')?.trim();
+    if (!name) return;
+    setActionMessage({ status: 'idle', message: '' });
+    try {
+      await snapshot(name);
+      setActionMessage({ status: 'pass', message: `Saved "${name}".` });
+    } catch (e) {
+      setActionMessage({ status: 'fail', message: String(e) });
+    }
+  }
+
+  async function onDeletePreset(name: string) {
+    setActionMessage({ status: 'idle', message: '' });
+    try {
+      const next = await deleteLightPreset(name);
+      queryClient.setQueryData(queryKeys.lightPresets, next);
+    } catch (e) {
+      setActionMessage({ status: 'fail', message: String(e) });
+    }
+  }
+
   if (lightsQuery.isPending && !lightsQuery.data) {
     return <PageSpinner />;
   }
 
   return (
     <YStack gap="$4">
-      <XStack gap="$2">
-        <Button
-          disabled={busy}
-          btnScale="sm"
-          appearance="outline"
-          onPress={() => {
-            setActionMessage(null);
-            void lightsQuery.refetch();
-          }}
-        >
-          Refresh
-        </Button>
-        <Button
-          disabled={busy || keyedLights.length === 0}
-          btnScale="xs"
-          appearance="ghost"
-          onPress={() => void restore()}
-        >
-          Restore
-        </Button>
-      </XStack>
+      <PresetBar
+        presets={presets}
+        busy={busy || presetsQuery.isFetching}
+        hasLights={keyedLights.length > 0}
+        onRefresh={() => {
+          setActionMessage(null);
+          void lightsQuery.refetch();
+        }}
+        onRestore={() => void restore()}
+        onApply={(name) => void onApplyPreset(name)}
+        onUpdate={(name) => void onUpdatePreset(name)}
+        onDelete={(name) => void onDeletePreset(name)}
+        onSave={() => void onSavePreset()}
+      />
+
       {displayScan.message ? (
         <StatusText status={displayScan.status}>
           {displayScan.message}
@@ -327,9 +477,90 @@ export default function LightsPage() {
             disabledReason={
               light.kind === 'dynamic' ? dynamicDisabledReason : undefined
             }
+            onApplied={(state) => patchSavedState(key, state)}
           />
         ))}
       </YStack>
     </YStack>
+  );
+}
+
+function PresetBar({
+  presets,
+  busy,
+  hasLights,
+  onRefresh,
+  onRestore,
+  onApply,
+  onUpdate,
+  onDelete,
+  onSave,
+}: {
+  presets: LightPreset[];
+  busy: boolean;
+  hasLights: boolean;
+  onRefresh: () => void;
+  onRestore: () => void;
+  onApply: (name: string) => void;
+  onUpdate: (name: string) => void;
+  onDelete: (name: string) => void;
+  onSave: () => void;
+}) {
+  return (
+    <XStack flexWrap="wrap" gap="$2" alignItems="center">
+      <Button
+        disabled={busy}
+        btnScale="sm"
+        appearance="outline"
+        onPress={onRefresh}
+      >
+        Refresh
+      </Button>
+      <Button
+        disabled={busy || !hasLights}
+        btnScale="xs"
+        appearance="ghost"
+        onPress={onRestore}
+      >
+        Restore
+      </Button>
+
+      {presets.map((preset) => (
+        <PresetGroup key={preset.name}>
+          <PresetNameButton
+            disabled={busy || !hasLights}
+            onPress={() => onApply(preset.name)}
+          >
+            {preset.name}
+          </PresetNameButton>
+          <PresetIconButton
+            aria-label={`Update ${preset.name} preset`}
+            disabled={busy || !hasLights}
+            onPress={() => onUpdate(preset.name)}
+          >
+            <RotateCcw aria-hidden size={12} />
+          </PresetIconButton>
+          <PresetIconButton
+            aria-label={`Delete ${preset.name} preset`}
+            disabled={busy}
+            onPress={() => onDelete(preset.name)}
+          >
+            <Trash2 aria-hidden size={12} />
+          </PresetIconButton>
+        </PresetGroup>
+      ))}
+
+      <Button
+        borderColor="$borderColor"
+        borderStyle="dashed"
+        borderWidth={1}
+        disabled={busy || !hasLights}
+        btnScale="sm"
+        appearance="ghost"
+        onPress={onSave}
+      >
+        + Save preset
+      </Button>
+    </XStack>
   );
 }
