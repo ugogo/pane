@@ -214,8 +214,13 @@
   background: var(--app-preview-control);
   color: var(--app-foreground);
   cursor: pointer;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 150ms ease;
+  z-index: 1;
+}
+
+.preview-edit:hover {
+  background: var(--app-panel-raised);
 }
 
 .preview-size {
