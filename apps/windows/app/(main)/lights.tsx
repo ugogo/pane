@@ -26,7 +26,6 @@ import {
   deleteLightPreset,
   dxLightOff,
   getLightPresets,
-  restoreAllLights,
   saveLightPreset,
   type LightPreset,
   type LightPresetTarget,
@@ -322,30 +321,6 @@ export default function LightsPage() {
   const dynamicDisabledReason =
     actionMessage?.disabledReason ?? scan.disabledReason;
 
-  async function restore() {
-    setActionMessage({ status: 'idle', message: '' });
-    try {
-      const results = await restoreAllLights();
-      const errors = results.filter(([, err]) => err !== null);
-      if (errors.length === 0) {
-        setActionMessage({
-          status: 'pass',
-          message: `Restored ${results.length} light${results.length === 1 ? '' : 's'}.`,
-        });
-      } else {
-        setActionMessage({
-          status: 'warn',
-          message: `Restored ${results.length - errors.length}/${results.length}; failed: ${errors
-            .map(([k, e]) => `${k} (${e})`)
-            .join(', ')}`,
-        });
-      }
-      void lightsQuery.refetch();
-    } catch (e) {
-      setActionMessage({ status: 'fail', message: String(e) });
-    }
-  }
-
   const keyedLights = lights.map((l) => ({ key: lightKey(l), light: l }));
 
   function patchSavedState(key: string, state: LightState) {
@@ -456,18 +431,12 @@ export default function LightsPage() {
           setActionMessage(null);
           void lightsQuery.refetch();
         }}
-        onRestore={() => void restore()}
         onApply={(name) => void onApplyPreset(name)}
         onUpdate={(name) => void onUpdatePreset(name)}
         onDelete={(name) => void onDeletePreset(name)}
         onSave={() => void onSavePreset()}
       />
 
-      {displayScan.message ? (
-        <StatusText status={displayScan.status}>
-          {displayScan.message}
-        </StatusText>
-      ) : null}
       <YStack gap="$3">
         {keyedLights.map(({ key, light }) => (
           <LightRow
@@ -481,6 +450,11 @@ export default function LightsPage() {
           />
         ))}
       </YStack>
+      {displayScan.message ? (
+        <StatusText status={displayScan.status}>
+          {displayScan.message}
+        </StatusText>
+      ) : null}
     </YStack>
   );
 }
@@ -490,7 +464,6 @@ function PresetBar({
   busy,
   hasLights,
   onRefresh,
-  onRestore,
   onApply,
   onUpdate,
   onDelete,
@@ -500,7 +473,6 @@ function PresetBar({
   busy: boolean;
   hasLights: boolean;
   onRefresh: () => void;
-  onRestore: () => void;
   onApply: (name: string) => void;
   onUpdate: (name: string) => void;
   onDelete: (name: string) => void;
@@ -515,14 +487,6 @@ function PresetBar({
         onPress={onRefresh}
       >
         Refresh
-      </Button>
-      <Button
-        disabled={busy || !hasLights}
-        btnScale="xs"
-        appearance="ghost"
-        onPress={onRestore}
-      >
-        Restore
       </Button>
 
       {presets.map((preset) => (
