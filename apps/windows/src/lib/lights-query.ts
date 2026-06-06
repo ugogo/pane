@@ -93,9 +93,7 @@ export async function fetchLights(): Promise<LightsQueryData> {
             : 'warn',
       message:
         errors.join(' ') ||
-        (collected.length === 0
-          ? 'No controllable lights detected.'
-          : `${collected.length} light${collected.length === 1 ? '' : 's'} detected.`),
+        (collected.length === 0 ? 'No controllable lights detected.' : ''),
       disabledReason,
     },
   };

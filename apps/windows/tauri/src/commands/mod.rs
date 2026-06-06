@@ -8,6 +8,7 @@ mod companion_snapshot;
 pub mod dx_light;
 pub mod dynamic_lighting;
 pub mod hotkeys;
+pub mod light_presets;
 pub mod light_state;
 pub mod lighting;
 pub mod metrics;
