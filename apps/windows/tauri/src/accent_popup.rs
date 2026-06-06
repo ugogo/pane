@@ -53,7 +53,7 @@ mod imp {
     };
     use windows::Win32::UI::WindowsAndMessaging::{
         CallNextHookEx, DispatchMessageW, GetClassNameW, GetCursorPos, GetForegroundWindow,
-        GetGUIThreadInfo, GetMessageW, GetWindowLongPtrW, GetWindowThreadProcessId,
+        GetGUIThreadInfo, GetMessageW, GetParent, GetWindowLongPtrW, GetWindowThreadProcessId,
         SetWindowLongPtrW, SetWindowsHookExW, GUITHREADINFO, GWL_EXSTYLE, KBDLLHOOKSTRUCT, MSG,
         WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WS_EX_NOACTIVATE,
     };
@@ -610,10 +610,11 @@ mod imp {
 
     // Window classes whose focus reliably means "the user can type text", even
     // though they expose no classic Win32 caret. Chromium/Electron (Claude, VS
-    // Code, Discord, browsers) and console/terminal hosts (PowerShell, cmd,
-    // Windows Terminal) all fall here.
+    // Code, Discord, browsers), WebView2 hosts (WhatsApp, Teams), and
+    // console/terminal hosts (PowerShell, cmd, Windows Terminal) all fall here.
     const TEXT_WINDOW_CLASSES: &[&str] = &[
         "Chrome_RenderWidgetHostHWND",   // Chromium/Electron content surface
+        "Chrome_WidgetWin_0",            // WebView2 content host (WhatsApp, etc.)
         "Chrome_WidgetWin_1",            // Chromium/Electron top-level window
         "ConsoleWindowClass",            // classic conhost (PowerShell, cmd)
         "CASCADIA_HOSTING_WINDOW_CLASS", // Windows Terminal
@@ -637,10 +638,23 @@ mod imp {
         TEXT_WINDOW_CLASSES.iter().any(|c| *c == class)
     }
 
+    /// True when `hwnd` or any parent up the z-order parent chain is text-capable.
+    /// WebView2 and Electron often put keyboard focus on a nested child whose class
+    /// is not itself on the allowlist.
+    fn hwnd_or_ancestor_is_text_capable(mut hwnd: windows::Win32::Foundation::HWND) -> bool {
+        while !hwnd.is_invalid() {
+            if class_is_text_capable(hwnd) {
+                return true;
+            }
+            hwnd = unsafe { GetParent(hwnd).unwrap_or_default() };
+        }
+        false
+    }
+
     // Gates the long-press feature to typing contexts. A live Win32 caret is the
     // strongest signal (native edit controls); failing that we fall back to the
     // focused/foreground window class so apps that render their own caret
-    // (Electron, terminals) still qualify. Games generally satisfy neither.
+    // (Electron, WebView2, terminals) still qualify. Games generally satisfy neither.
     fn is_text_context() -> bool {
         unsafe {
             let hwnd = GetForegroundWindow();
@@ -656,11 +670,11 @@ mod imp {
                 if !gti.hwndCaret.is_invalid() {
                     return true;
                 }
-                if class_is_text_capable(gti.hwndFocus) {
+                if hwnd_or_ancestor_is_text_capable(gti.hwndFocus) {
                     return true;
                 }
             }
-            class_is_text_capable(hwnd)
+            hwnd_or_ancestor_is_text_capable(hwnd)
         }
     }
 
