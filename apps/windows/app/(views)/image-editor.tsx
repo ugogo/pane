@@ -52,6 +52,7 @@ type Drag = DrawDrag | ResizeDrag | MoveDrag;
 
 interface EditorState {
   src: string | null;
+  sessionId: number | null;
   base: Dimensions | null;
   crop: Rect | null;
   save: SaveState;
@@ -59,7 +60,13 @@ interface EditorState {
 }
 
 type EditorAction =
-  | { type: 'capture-loaded'; src: string; size: Dimensions; crop: Rect }
+  | {
+      type: 'capture-loaded';
+      src: string;
+      sessionId: number;
+      size: Dimensions;
+      crop: Rect;
+    }
   | { type: 'capture-error'; error: string }
   | { type: 'set-crop'; crop: Rect }
   | { type: 'reset' }
@@ -69,6 +76,7 @@ type EditorAction =
 
 const initialEditorState: EditorState = {
   src: null,
+  sessionId: null,
   base: null,
   crop: null,
   save: 'idle',
@@ -163,6 +171,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       return {
         ...state,
         src: action.src,
+        sessionId: action.sessionId,
         base: action.size,
         crop: action.crop,
         error: undefined,
@@ -196,7 +205,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 
 export default function ImageEditorPage() {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState);
-  const { src, base, crop, save, error } = state;
+  const { src, sessionId, base, crop, save, error } = state;
 
   function fetchCapture() {
     return takeLatestCaptureEdit()
@@ -204,6 +213,7 @@ export default function ImageEditorPage() {
         dispatch({
           type: 'capture-loaded',
           src: c.dataUrl,
+          sessionId: c.sessionId,
           size: { width: c.width, height: c.height },
           crop: {
             x: c.crop.x,
@@ -252,12 +262,19 @@ export default function ImageEditorPage() {
   }
 
   async function onSave() {
-    if (!base || !crop || crop.w < 1 || crop.h < 1 || save === 'busy') {
+    if (
+      sessionId === null ||
+      !base ||
+      !crop ||
+      crop.w < 1 ||
+      crop.h < 1 ||
+      save === 'busy'
+    ) {
       return;
     }
     dispatch({ type: 'save-start' });
     try {
-      await commitLatestCaptureEdit(crop.x, crop.y, crop.w, crop.h);
+      await commitLatestCaptureEdit(sessionId, crop.x, crop.y, crop.w, crop.h);
       dispatch({ type: 'save-success' });
     } catch (e) {
       dispatch({ type: 'save-error', error: String(e) });

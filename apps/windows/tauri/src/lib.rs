@@ -5,7 +5,7 @@ mod commands;
 mod power_notify;
 mod tray;
 
-use commands::capture::LatestCapture;
+use commands::capture::{CaptureEditSessions, LatestCapture};
 use commands::metrics::StartTime;
 use std::time::Instant;
 use tauri::Manager;
@@ -22,6 +22,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(StartTime(boot))
         .manage(LatestCapture::default())
+        .manage(CaptureEditSessions::default())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(

@@ -115,6 +115,7 @@ export interface CaptureResult {
 }
 
 export interface CaptureEditResult extends CaptureResult {
+  sessionId: number;
   crop: {
     x: number;
     y: number;
@@ -151,12 +152,16 @@ export function takeLatestCaptureEdit() {
 }
 
 export function commitLatestCaptureEdit(
+  sessionId: number,
   x: number,
   y: number,
   width: number,
   height: number,
 ) {
-  return invoke<void>('commit_latest_capture_edit', { x, y, width, height });
+  return invoke<void>('commit_latest_capture_edit', {
+    sessionId,
+    crop: { x, y, width, height },
+  });
 }
 
 export function copyLatestCaptureToClipboard() {

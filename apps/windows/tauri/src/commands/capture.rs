@@ -1,7 +1,7 @@
 use crate::commands::capture_sound;
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use image::{imageops::FilterType, ImageBuffer, ImageFormat, Rgba};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::io::Cursor;
 use std::sync::Mutex;
@@ -12,6 +12,43 @@ use xcap::Monitor;
 /// Holds the most recent capture so the preview window can fetch it after open.
 #[derive(Default)]
 pub struct LatestCapture(pub Mutex<Option<StoredCapture>>);
+
+#[derive(Default)]
+pub struct CaptureEditSessions(Mutex<CaptureEditSessionState>);
+
+#[derive(Default)]
+struct CaptureEditSessionState {
+    next_id: u64,
+    active: Option<CaptureEditSession>,
+}
+
+struct CaptureEditSession {
+    id: u64,
+    source: EditSource,
+}
+
+impl CaptureEditSessions {
+    fn store(&self, source: EditSource) -> u64 {
+        let mut sessions = self.0.lock().unwrap();
+        sessions.next_id = sessions.next_id.wrapping_add(1);
+        if sessions.next_id == 0 {
+            sessions.next_id = 1;
+        }
+        let id = sessions.next_id;
+        sessions.active = Some(CaptureEditSession { id, source });
+        id
+    }
+
+    fn source_for(&self, id: u64) -> Option<EditSource> {
+        let sessions = self.0.lock().unwrap();
+        let active = sessions.active.as_ref()?;
+        if active.id == id {
+            Some(active.source.clone())
+        } else {
+            None
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct StoredCapture {
@@ -42,7 +79,7 @@ pub struct CaptureResult {
     pub height: u32,
 }
 
-#[derive(Clone, Copy, Serialize)]
+#[derive(Clone, Copy, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditRect {
     pub x: u32,
@@ -54,6 +91,7 @@ pub struct EditRect {
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CaptureEditResult {
+    pub session_id: u64,
     pub data_url: String,
     pub width: u32,
     pub height: u32,
@@ -319,20 +357,12 @@ pub fn take_latest_capture_full(
 pub fn take_latest_capture_edit(
     window: tauri::WebviewWindow,
     latest: State<'_, LatestCapture>,
+    edit_sessions: State<'_, CaptureEditSessions>,
 ) -> Result<CaptureEditResult, String> {
     crate::commands::require_window(&window, &["image-editor", "main"])?;
     let capture = latest_capture(latest)?;
-    if let Some(source) = capture.edit_source {
-        return Ok(CaptureEditResult {
-            data_url: rgba_png_data_url(source.width, source.height, &source.rgba)?,
-            width: source.width,
-            height: source.height,
-            crop: source.crop,
-        });
-    }
-
-    Ok(CaptureEditResult {
-        data_url: rgba_png_data_url(capture.width, capture.height, &capture.rgba)?,
+    let source = capture.edit_source.unwrap_or(EditSource {
+        rgba: capture.rgba,
         width: capture.width,
         height: capture.height,
         crop: EditRect {
@@ -341,6 +371,15 @@ pub fn take_latest_capture_edit(
             width: capture.width,
             height: capture.height,
         },
+    });
+    let session_id = edit_sessions.store(source.clone());
+
+    Ok(CaptureEditResult {
+        session_id,
+        data_url: rgba_png_data_url(source.width, source.height, &source.rgba)?,
+        width: source.width,
+        height: source.height,
+        crop: source.crop,
     })
 }
 
@@ -348,46 +387,33 @@ pub fn take_latest_capture_edit(
 pub async fn commit_latest_capture_edit(
     window: tauri::WebviewWindow,
     app: AppHandle,
+    edit_sessions: State<'_, CaptureEditSessions>,
     latest: State<'_, LatestCapture>,
-    x: u32,
-    y: u32,
-    width: u32,
-    height: u32,
+    session_id: u64,
+    crop: EditRect,
 ) -> Result<(), String> {
     crate::commands::require_window(&window, &["image-editor", "main"])?;
-    let _ = window.hide();
 
-    if width == 0 || height == 0 {
+    if crop.width == 0 || crop.height == 0 {
         return Err("Crop width/height must be > 0.".into());
     }
 
-    let current = latest
-        .0
-        .lock()
-        .unwrap()
-        .clone()
-        .ok_or_else(|| "No capture available.".to_string())?;
-    let source = current.edit_source.unwrap_or(EditSource {
-        rgba: current.rgba,
-        width: current.width,
-        height: current.height,
-        crop: EditRect {
-            x: 0,
-            y: 0,
-            width: current.width,
-            height: current.height,
-        },
-    });
+    let source = edit_sessions
+        .source_for(session_id)
+        .ok_or_else(|| "Capture edit session expired.".to_string())?;
+    let _ = window.hide();
 
-    let sx = x.min(source.width.saturating_sub(1));
-    let sy = y.min(source.height.saturating_sub(1));
-    let sw = x
-        .saturating_add(width)
+    let sx = crop.x.min(source.width.saturating_sub(1));
+    let sy = crop.y.min(source.height.saturating_sub(1));
+    let sw = crop
+        .x
+        .saturating_add(crop.width)
         .min(source.width)
         .saturating_sub(sx)
         .max(1);
-    let sh = y
-        .saturating_add(height)
+    let sh = crop
+        .y
+        .saturating_add(crop.height)
         .min(source.height)
         .saturating_sub(sy)
         .max(1);
