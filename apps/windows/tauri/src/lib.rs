@@ -104,6 +104,7 @@ pub fn run() {
             commands::capture::copy_latest_capture_to_clipboard,
             commands::capture::save_latest_capture_to_desktop,
             commands::capture::save_edited_capture_to_desktop,
+            commands::capture::replace_latest_capture_with_edit,
             commands::lighting::detect_msi_lighting,
             commands::lighting::apply_msi_lighting,
             commands::dx_light::detect_dx_light,

@@ -1,34 +1,15 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
-import Pica from 'pica';
 import { listen } from '@tauri-apps/api/event';
-import { Check, Lock, RotateCcw, Save, Unlock, X } from '@pane/ui';
+import { Check, RotateCcw, Save, X } from '@pane/ui';
 import {
   hideImageEditor,
-  saveEditedCaptureToDesktop,
+  replaceLatestCaptureWithEdit,
   takeLatestCaptureFull,
 } from '@/lib/commands';
 import { useEffectEvent } from '@/lib/use-effect-event';
 
-// Pure-JS pica: the app's CSP forbids wasm/eval and blob web workers, so the
-// default ['js','wasm','ww'] feature set would fail. Lanczos in plain JS is
-// plenty fast for one screenshot.
-const pica = new Pica({ features: ['js'] });
-
-const SCALE_PRESETS = [0.25, 0.5, 0.75, 1] as const;
-
-// Eight drag handles around the image. The letters are compass points, so a
-// handle's name encodes which axes it drives: any 'e'/'w' resizes width, any
-// 'n'/'s' resizes height, and corners ('nw'…'se') drive both.
 type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
-
-interface Drag {
-  handle: Handle;
-  // Frame centre in client px, captured at drag start. Resize is symmetric
-  // about the centre, so this stays fixed for the whole gesture.
-  cx: number;
-  cy: number;
-}
 
 type SaveState = 'idle' | 'busy' | 'success';
 
@@ -37,14 +18,42 @@ interface Dimensions {
   height: number;
 }
 
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+interface DrawDrag {
+  type: 'draw';
+  start: Point;
+}
+
+interface ResizeDrag {
+  type: 'resize';
+  handle: Handle;
+  startCrop: Rect;
+}
+
+interface MoveDrag {
+  type: 'move';
+  start: Point;
+  startCrop: Rect;
+}
+
+type Drag = DrawDrag | ResizeDrag | MoveDrag;
+
 interface EditorState {
   src: string | null;
   base: Dimensions | null;
-  width: number;
-  height: number;
-  lockAspect: boolean;
+  crop: Rect | null;
   save: SaveState;
-  savedPath?: string;
   error?: string;
 }
 
@@ -52,28 +61,91 @@ type EditorAction =
   | { type: 'capture-loaded'; src: string }
   | { type: 'capture-error'; error: string }
   | { type: 'image-loaded'; size: Dimensions }
-  | { type: 'resize'; width: number; height: number }
-  | { type: 'change-width'; width: number }
-  | { type: 'change-height'; height: number }
-  | { type: 'scale'; scale: number }
+  | { type: 'set-crop'; crop: Rect }
   | { type: 'reset' }
-  | { type: 'toggle-aspect' }
   | { type: 'save-start' }
-  | { type: 'save-success'; path: string }
+  | { type: 'save-success' }
   | { type: 'save-error'; error: string };
 
 const initialEditorState: EditorState = {
   src: null,
   base: null,
-  width: 0,
-  height: 0,
-  lockAspect: true,
+  crop: null,
   save: 'idle',
 };
 
-function clampDimension(value: number) {
-  if (!Number.isFinite(value)) return 1;
-  return Math.min(20000, Math.max(1, Math.round(value)));
+function clamp(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+function roundRect(rect: Rect): Rect {
+  return {
+    x: Math.round(rect.x),
+    y: Math.round(rect.y),
+    w: Math.round(rect.w),
+    h: Math.round(rect.h),
+  };
+}
+
+function rectFrom(a: Point, b: Point, base: Dimensions): Rect {
+  const x1 = clamp(a.x, 0, base.width);
+  const y1 = clamp(a.y, 0, base.height);
+  const x2 = clamp(b.x, 0, base.width);
+  const y2 = clamp(b.y, 0, base.height);
+  return roundRect({
+    x: Math.min(x1, x2),
+    y: Math.min(y1, y2),
+    w: Math.abs(x1 - x2),
+    h: Math.abs(y1 - y2),
+  });
+}
+
+function clampCrop(rect: Rect, base: Dimensions): Rect {
+  const x = clamp(rect.x, 0, base.width);
+  const y = clamp(rect.y, 0, base.height);
+  return roundRect({
+    x,
+    y,
+    w: clamp(rect.w, 1, base.width - x),
+    h: clamp(rect.h, 1, base.height - y),
+  });
+}
+
+function resizeCrop(
+  crop: Rect,
+  handle: Handle,
+  point: Point,
+  base: Dimensions,
+) {
+  let left = crop.x;
+  let top = crop.y;
+  let right = crop.x + crop.w;
+  let bottom = crop.y + crop.h;
+
+  if (handle.includes('w')) left = point.x;
+  if (handle.includes('e')) right = point.x;
+  if (handle.includes('n')) top = point.y;
+  if (handle.includes('s')) bottom = point.y;
+
+  return rectFrom({ x: left, y: top }, { x: right, y: bottom }, base);
+}
+
+function moveCrop(crop: Rect, start: Point, point: Point, base: Dimensions) {
+  return roundRect({
+    ...crop,
+    x: clamp(crop.x + point.x - start.x, 0, base.width - crop.w),
+    y: clamp(crop.y + point.y - start.y, 0, base.height - crop.h),
+  });
+}
+
+function rectContains(rect: Rect, point: Point) {
+  return (
+    point.x >= rect.x &&
+    point.x <= rect.x + rect.w &&
+    point.y >= rect.y &&
+    point.y <= rect.y + rect.h
+  );
 }
 
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
@@ -84,72 +156,42 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         src: action.src,
         error: undefined,
         save: 'idle',
-        savedPath: undefined,
       };
     case 'capture-error':
       return { ...state, error: action.error };
-    case 'image-loaded':
+    case 'image-loaded': {
+      const crop = {
+        x: 0,
+        y: 0,
+        w: action.size.width,
+        h: action.size.height,
+      };
       return {
         ...state,
         base: action.size,
-        width: action.size.width,
-        height: action.size.height,
-      };
-    case 'resize':
-      return {
-        ...state,
-        width: action.width,
-        height: action.height,
-        save: 'idle',
-      };
-    case 'change-width': {
-      const width = clampDimension(action.width);
-      return {
-        ...state,
-        width,
-        height:
-          state.lockAspect && state.base
-            ? clampDimension((width * state.base.height) / state.base.width)
-            : state.height,
+        crop,
         save: 'idle',
       };
     }
-    case 'change-height': {
-      const height = clampDimension(action.height);
-      return {
-        ...state,
-        width:
-          state.lockAspect && state.base
-            ? clampDimension((height * state.base.width) / state.base.height)
-            : state.width,
-        height,
-        save: 'idle',
-      };
-    }
-    case 'scale':
-      return state.base
-        ? {
-            ...state,
-            width: clampDimension(state.base.width * action.scale),
-            height: clampDimension(state.base.height * action.scale),
-            save: 'idle',
-          }
-        : state;
+    case 'set-crop':
+      return { ...state, crop: action.crop, save: 'idle' };
     case 'reset':
       return state.base
         ? {
             ...state,
-            width: state.base.width,
-            height: state.base.height,
+            crop: {
+              x: 0,
+              y: 0,
+              w: state.base.width,
+              h: state.base.height,
+            },
             save: 'idle',
           }
         : state;
-    case 'toggle-aspect':
-      return { ...state, lockAspect: !state.lockAspect };
     case 'save-start':
       return { ...state, save: 'busy', error: undefined };
     case 'save-success':
-      return { ...state, savedPath: action.path, save: 'success' };
+      return { ...state, save: 'success' };
     case 'save-error':
       return { ...state, save: 'idle', error: action.error };
   }
@@ -167,9 +209,7 @@ function blobToDataUrl(blob: Blob) {
 
 export default function ImageEditorPage() {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState);
-  const { src, base, width, height, lockAspect, save, savedPath, error } =
-    state;
-
+  const { src, base, crop, save, error } = state;
   const imgRef = useRef<HTMLImageElement>(null);
 
   function fetchCapture() {
@@ -210,8 +250,6 @@ export default function ImageEditorPage() {
     };
   }, []);
 
-  // The decoded data URL is the working source, so size controls track the
-  // image's real pixels rather than the (possibly larger) original capture.
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const img = e.currentTarget;
     dispatch({
@@ -220,46 +258,46 @@ export default function ImageEditorPage() {
     });
   }
 
-  // Drag handles (and the field/preset writers) all funnel through here.
-  function applyResize(w: number, h: number) {
-    dispatch({ type: 'resize', width: w, height: h });
-  }
-
-  function changeWidth(next: number) {
-    dispatch({ type: 'change-width', width: next });
-  }
-
-  function changeHeight(next: number) {
-    dispatch({ type: 'change-height', height: next });
-  }
-
-  function applyScale(scale: number) {
-    dispatch({ type: 'scale', scale });
-  }
-
-  function reset() {
-    dispatch({ type: 'reset' });
+  function setCrop(next: Rect) {
+    if (!base) return;
+    dispatch({ type: 'set-crop', crop: clampCrop(next, base) });
   }
 
   async function onSave() {
     const img = imgRef.current;
-    if (!img || !base || save === 'busy') return;
+    if (!img || !base || !crop || crop.w < 1 || crop.h < 1 || save === 'busy') {
+      return;
+    }
     dispatch({ type: 'save-start' });
     try {
       const dest = document.createElement('canvas');
-      dest.width = width;
-      dest.height = height;
-      await pica.resize(img, dest, { filter: 'lanczos3' });
-      const blob = await pica.toBlob(dest, 'image/png');
+      dest.width = crop.w;
+      dest.height = crop.h;
+      const ctx = dest.getContext('2d');
+      if (!ctx) throw new Error('Could not create image canvas.');
+      ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        dest.toBlob((b) => {
+          if (b) resolve(b);
+          else reject(new Error('Could not encode cropped capture.'));
+        }, 'image/png');
+      });
       const dataUrl = await blobToDataUrl(blob);
-      const path = await saveEditedCaptureToDesktop(dataUrl);
-      dispatch({ type: 'save-success', path });
+      await replaceLatestCaptureWithEdit(dataUrl);
+      dispatch({ type: 'save-success' });
+      await hideImageEditor();
     } catch (e) {
       dispatch({ type: 'save-error', error: String(e) });
     }
   }
 
-  const unchanged = !!base && width === base.width && height === base.height;
+  const unchanged =
+    !!base &&
+    !!crop &&
+    crop.x === 0 &&
+    crop.y === 0 &&
+    crop.w === base.width &&
+    crop.h === base.height;
 
   return (
     <div className="image-editor-root">
@@ -276,87 +314,50 @@ export default function ImageEditorPage() {
       </div>
 
       <div className="image-editor-body">
-        <ResizeStage
+        <CropStage
           src={src}
           base={base}
-          width={width}
-          height={height}
-          lockAspect={lockAspect}
+          crop={crop}
           error={error}
           imgRef={imgRef}
           onImageLoad={onImageLoad}
-          onResize={applyResize}
+          onCrop={setCrop}
         />
 
         <div className="image-editor-panel">
-          <h2 className="image-editor-section">Resize</h2>
+          <h2 className="image-editor-section">Crop</h2>
 
-          <label className="image-editor-field">
-            <span>Width</span>
-            <div className="image-editor-input-wrap">
-              <input
-                type="number"
-                min={1}
-                value={width || ''}
-                onChange={(e) => changeWidth(e.currentTarget.valueAsNumber)}
-                className="image-editor-input"
-              />
-              <span className="image-editor-unit">px</span>
-            </div>
-          </label>
-
-          <label className="image-editor-field">
-            <span>Height</span>
-            <div className="image-editor-input-wrap">
-              <input
-                type="number"
-                min={1}
-                value={height || ''}
-                onChange={(e) => changeHeight(e.currentTarget.valueAsNumber)}
-                className="image-editor-input"
-              />
-              <span className="image-editor-unit">px</span>
-            </div>
-          </label>
-
-          <button
-            type="button"
-            onClick={() => dispatch({ type: 'toggle-aspect' })}
-            className="image-editor-lock"
-            aria-pressed={lockAspect}
-          >
-            {lockAspect ? (
-              <Lock aria-hidden size={14} />
-            ) : (
-              <Unlock aria-hidden size={14} />
-            )}
-            {lockAspect ? 'Aspect ratio locked' : 'Aspect ratio unlocked'}
-          </button>
-
-          <div className="image-editor-presets">
-            {SCALE_PRESETS.map((scale) => (
-              <button
-                key={scale}
-                type="button"
-                disabled={!base}
-                onClick={() => applyScale(scale)}
-                className="image-editor-preset"
-              >
-                {scale * 100}%
-              </button>
-            ))}
-          </div>
+          <CropField
+            label="X"
+            value={crop?.x ?? 0}
+            disabled={!base || !crop}
+            onChange={(x) => crop && setCrop({ ...crop, x })}
+          />
+          <CropField
+            label="Y"
+            value={crop?.y ?? 0}
+            disabled={!base || !crop}
+            onChange={(y) => crop && setCrop({ ...crop, y })}
+          />
+          <CropField
+            label="Width"
+            value={crop?.w ?? 0}
+            disabled={!base || !crop}
+            onChange={(w) => crop && setCrop({ ...crop, w })}
+          />
+          <CropField
+            label="Height"
+            value={crop?.h ?? 0}
+            disabled={!base || !crop}
+            onChange={(h) => crop && setCrop({ ...crop, h })}
+          />
 
           <div className="image-editor-spacer" />
-
-          {savedPath ? (
-            <p className="image-editor-saved">Saved to Desktop</p>
-          ) : null}
 
           <div className="image-editor-actions">
             <button
               type="button"
-              onClick={reset}
+              onClick={() => dispatch({ type: 'reset' })}
               disabled={!base || unchanged}
               className="image-editor-btn image-editor-btn-ghost"
             >
@@ -366,7 +367,9 @@ export default function ImageEditorPage() {
             <button
               type="button"
               onClick={() => void onSave()}
-              disabled={!base || save === 'busy'}
+              disabled={
+                !base || !crop || crop.w < 1 || crop.h < 1 || save === 'busy'
+              }
               className="image-editor-btn image-editor-btn-primary"
             >
               {save === 'success' ? (
@@ -377,7 +380,7 @@ export default function ImageEditorPage() {
               {save === 'success'
                 ? 'Saved'
                 : save === 'busy'
-                  ? 'Saving…'
+                  ? 'Saving...'
                   : 'Save'}
             </button>
           </div>
@@ -387,43 +390,62 @@ export default function ImageEditorPage() {
   );
 }
 
-// The image stage with drag-to-resize handles. Owns the display-fit scale and
-// the in-flight gesture; reports new pixel dimensions up via `onResize`.
-function ResizeStage({
+function CropField({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  disabled: boolean;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="image-editor-field">
+      <span>{label}</span>
+      <div className="image-editor-input-wrap">
+        <input
+          type="number"
+          min={label === 'X' || label === 'Y' ? 0 : 1}
+          value={Number.isFinite(value) ? value : ''}
+          disabled={disabled}
+          onChange={(e) => onChange(e.currentTarget.valueAsNumber)}
+          className="image-editor-input"
+        />
+        <span className="image-editor-unit">px</span>
+      </div>
+    </label>
+  );
+}
+
+function CropStage({
   src,
   base,
-  width,
-  height,
-  lockAspect,
+  crop,
   error,
   imgRef,
   onImageLoad,
-  onResize,
+  onCrop,
 }: {
   src: string | null;
   base: Dimensions | null;
-  width: number;
-  height: number;
-  lockAspect: boolean;
+  crop: Rect | null;
   error?: string;
   imgRef: React.RefObject<HTMLImageElement | null>;
   onImageLoad: (e: React.SyntheticEvent<HTMLImageElement>) => void;
-  onResize: (width: number, height: number) => void;
+  onCrop: (crop: Rect) => void;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
-  // Ratio of on-screen px to image px, so a large capture fits the stage while
-  // the handles still map drag distance back to real pixels. 1 = shown 1:1.
+  const frameRef = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(1);
   const dragRef = useRef<Drag | null>(null);
 
-  // Fit the *original* image into the stage (never upscale past 1:1). Keyed on
-  // base so the reference stays stable mid-drag — basing it on the live size
-  // would make the frame refit and fight the pointer. Recomputes on resize.
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage || !base) return;
     const compute = () => {
-      const pad = 40; // matches .image-editor-stage padding (20px each side)
+      const pad = 40;
       const availW = stage.clientWidth - pad;
       const availH = stage.clientHeight - pad;
       const f = Math.min(availW / base.width, availH / base.height, 1);
@@ -435,50 +457,45 @@ function ResizeStage({
     return () => ro.disconnect();
   }, [base]);
 
-  function onHandleDown(
-    e: React.PointerEvent<HTMLSpanElement>,
-    handle: Handle,
-  ) {
-    if (!base || !imgRef.current) return;
-    e.preventDefault();
-    const rect = imgRef.current.getBoundingClientRect();
-    dragRef.current = {
-      handle,
-      cx: rect.left + rect.width / 2,
-      cy: rect.top + rect.height / 2,
+  function pointFromEvent(e: React.PointerEvent) {
+    const frame = frameRef.current;
+    if (!frame || !base || fit <= 0) return null;
+    const rect = frame.getBoundingClientRect();
+    return {
+      x: clamp((e.clientX - rect.left) / fit, 0, base.width),
+      y: clamp((e.clientY - rect.top) / fit, 0, base.height),
     };
+  }
+
+  function onFrameDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (!base) return;
+    const point = pointFromEvent(e);
+    if (!point) return;
+    e.preventDefault();
+    if (crop && rectContains(crop, point)) {
+      dragRef.current = { type: 'move', start: point, startCrop: crop };
+    } else {
+      dragRef.current = { type: 'draw', start: point };
+      onCrop(rectFrom(point, point, base));
+    }
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
-  function onHandleMove(e: React.PointerEvent<HTMLSpanElement>) {
+  function onFrameMove(e: React.PointerEvent<HTMLDivElement>) {
     const drag = dragRef.current;
-    if (!drag || !base || fit <= 0) return;
-    const horiz = drag.handle.includes('e') || drag.handle.includes('w');
-    const vert = drag.handle.includes('n') || drag.handle.includes('s');
-    // Pointer distance from the fixed centre → full dimension (both edges move).
-    const w = (Math.abs(e.clientX - drag.cx) * 2) / fit;
-    const h = (Math.abs(e.clientY - drag.cy) * 2) / fit;
-    if (lockAspect) {
-      // Drive a uniform scale off whichever axis the handle (and pointer) leads.
-      const scale =
-        horiz && vert
-          ? Math.max(w / base.width, h / base.height)
-          : horiz
-            ? w / base.width
-            : h / base.height;
-      onResize(
-        clampDimension(base.width * scale),
-        clampDimension(base.height * scale),
-      );
+    if (!drag || !base) return;
+    const point = pointFromEvent(e);
+    if (!point) return;
+    if (drag.type === 'draw') {
+      onCrop(rectFrom(drag.start, point, base));
+    } else if (drag.type === 'resize') {
+      onCrop(resizeCrop(drag.startCrop, drag.handle, point, base));
     } else {
-      onResize(
-        horiz ? clampDimension(w) : width,
-        vert ? clampDimension(h) : height,
-      );
+      onCrop(moveCrop(drag.startCrop, drag.start, point, base));
     }
   }
 
-  function onHandleUp(e: React.PointerEvent<HTMLSpanElement>) {
+  function endFrameDrag(e: React.PointerEvent<HTMLDivElement>) {
     if (!dragRef.current) return;
     dragRef.current = null;
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
@@ -486,15 +503,36 @@ function ResizeStage({
     }
   }
 
+  function onHandleDown(
+    e: React.PointerEvent<HTMLSpanElement>,
+    handle: Handle,
+  ) {
+    if (!crop) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dragRef.current = { type: 'resize', handle, startCrop: crop };
+    const frame = frameRef.current;
+    frame?.setPointerCapture(e.pointerId);
+  }
+
+  const displayCrop = crop && crop.w > 0 && crop.h > 0 ? crop : null;
+
   return (
     <div className="image-editor-stage" ref={stageRef}>
       {error ? <p className="image-editor-error">{error}</p> : null}
       {src ? (
         <div
+          ref={frameRef}
           className="image-editor-frame"
           style={
-            base ? { width: width * fit, height: height * fit } : undefined
+            base
+              ? { width: base.width * fit, height: base.height * fit }
+              : undefined
           }
+          onPointerDown={onFrameDown}
+          onPointerMove={onFrameMove}
+          onPointerUp={endFrameDrag}
+          onPointerCancel={endFrameDrag}
         >
           <img
             ref={imgRef}
@@ -503,21 +541,30 @@ function ResizeStage({
             draggable={false}
             onLoad={onImageLoad}
             className="image-editor-preview"
-            style={base ? { width: '100%', height: '100%' } : undefined}
           />
-          {base
-            ? HANDLES.map((h) => (
+          {displayCrop ? (
+            <div
+              className="image-editor-selection"
+              style={{
+                left: displayCrop.x * fit,
+                top: displayCrop.y * fit,
+                width: displayCrop.w * fit,
+                height: displayCrop.h * fit,
+              }}
+            >
+              <span className="image-editor-selection-label">
+                {displayCrop.w} x {displayCrop.h}
+              </span>
+              {HANDLES.map((h) => (
                 <span
                   key={h}
                   className="image-editor-handle"
                   data-pos={h}
                   onPointerDown={(e) => onHandleDown(e, h)}
-                  onPointerMove={onHandleMove}
-                  onPointerUp={onHandleUp}
-                  onPointerCancel={onHandleUp}
                 />
-              ))
-            : null}
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

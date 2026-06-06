@@ -149,6 +149,11 @@ export function saveEditedCaptureToDesktop(dataUrl: string) {
   return invoke<string>('save_edited_capture_to_desktop', { dataUrl });
 }
 
+/** Replace the latest capture with an edited PNG/JPEG data URL. */
+export function replaceLatestCaptureWithEdit(dataUrl: string) {
+  return invoke<void>('replace_latest_capture_with_edit', { dataUrl });
+}
+
 // ── Window helpers ────────────────────────────────────────────────────────────
 
 export function showAreaSelector() {

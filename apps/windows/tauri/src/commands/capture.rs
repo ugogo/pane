@@ -6,7 +6,7 @@ use std::borrow::Cow;
 use std::io::Cursor;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use xcap::Monitor;
 
 /// Holds the most recent capture so the preview window can fetch it after open.
@@ -333,7 +333,7 @@ pub fn save_edited_capture_to_desktop(
         return Err("Edited image is not an image data URL.".into());
     }
     let bytes = B64
-        .decode(data_url[comma + 1..].as_bytes())
+        .decode(&data_url.as_bytes()[comma + 1..])
         .map_err(|e| e.to_string())?;
 
     let extension = if header.contains("image/jpeg") || header.contains("image/jpg") {
@@ -350,4 +350,35 @@ pub fn save_edited_capture_to_desktop(
     let path = desktop.join(format!("pane-capture-edited-{now}.{extension}"));
     std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
     Ok(path.to_string_lossy().into_owned())
+}
+
+/// Replace the latest capture with an edited image from the image editor and
+/// ask the floating preview to refresh against the new capture state.
+#[tauri::command]
+pub fn replace_latest_capture_with_edit(
+    window: tauri::WebviewWindow,
+    app: AppHandle,
+    latest: State<'_, LatestCapture>,
+    data_url: String,
+) -> Result<(), String> {
+    crate::commands::require_window(&window, &["image-editor", "main"])?;
+
+    let comma = data_url
+        .find(',')
+        .ok_or_else(|| "Edited image is not a valid data URL.".to_string())?;
+    let header = &data_url[..comma];
+    if !header.starts_with("data:image/") {
+        return Err("Edited image is not an image data URL.".into());
+    }
+    let bytes = B64
+        .decode(&data_url.as_bytes()[comma + 1..])
+        .map_err(|e| e.to_string())?;
+    let mut img = image::load_from_memory(&bytes)
+        .map_err(|e| e.to_string())?
+        .to_rgba8();
+    force_opaque(&mut img);
+    let stored = make_stored_capture(&img)?;
+    *latest.0.lock().unwrap() = Some(stored);
+    let _ = app.emit_to("capture-preview", "refresh-capture", ());
+    Ok(())
 }
