@@ -207,6 +207,10 @@ const TOOLS: Array<{
 
 const SWATCHES = ['#f43f5e', '#38bdf8', '#facc15', '#22c55e', '#f8fafc'];
 const CROP_DRAG_THRESHOLD = 10;
+const STAGE_FIT_PADDING = 40;
+const FRAME_AUTOPAN_EDGE = 36;
+const FRAME_AUTOPAN_STEP = 9;
+const FRAME_AUTOPAN_MIN_STEP = 1.5;
 
 function clamp(value: number, min: number, max: number) {
   if (!Number.isFinite(value)) return min;
@@ -259,6 +263,118 @@ function editorViewport(
   if (!base) return null;
   if (cropPreview && crop && !fillsBase(crop, base)) return crop;
   return baseViewport(base);
+}
+
+function fitViewportToStage(stage: HTMLDivElement, viewport: Rect) {
+  const availW = stage.clientWidth - STAGE_FIT_PADDING;
+  const availH = stage.clientHeight - STAGE_FIT_PADDING;
+  const fit = Math.min(availW / viewport.w, availH / viewport.h, 1);
+  return fit > 0 && Number.isFinite(fit) ? fit : 1;
+}
+
+// Offset that keeps the crop region in the exact same screen spot when the frame
+// switches from the zoomed crop preview (frame == crop) to the full image at the
+// same scale. Both frames are stage-centered, so the absolute centering terms
+// cancel and only the half-width difference minus the crop origin remains — which
+// makes this independent of the cursor, avoiding any click-vs-edge jump.
+function frameOffsetForCrop(crop: Rect, base: Dimensions, fit: number): Point {
+  return {
+    x: ((base.width - crop.w) / 2 - crop.x) * fit,
+    y: ((base.height - crop.h) / 2 - crop.y) * fit,
+  };
+}
+
+function frameAutoPanDelta({
+  stage,
+  frame,
+  clientX,
+  clientY,
+}: {
+  stage: HTMLDivElement;
+  frame: HTMLDivElement;
+  clientX: number;
+  clientY: number;
+}): Point | null {
+  const stageRect = stage.getBoundingClientRect();
+  const frameRect = frame.getBoundingClientRect();
+  const inset = STAGE_FIT_PADDING / 2;
+  const left = stageRect.left + inset;
+  const top = stageRect.top + inset;
+  const right = stageRect.right - inset;
+  const bottom = stageRect.bottom - inset;
+  let dx = 0;
+  let dy = 0;
+
+  if (clientX > right - FRAME_AUTOPAN_EDGE && frameRect.right > right) {
+    dx = -Math.min(
+      autoPanStep(clientX - (right - FRAME_AUTOPAN_EDGE)),
+      frameRect.right - right,
+    );
+  } else if (clientX < left + FRAME_AUTOPAN_EDGE && frameRect.left < left) {
+    dx = Math.min(
+      autoPanStep(left + FRAME_AUTOPAN_EDGE - clientX),
+      left - frameRect.left,
+    );
+  }
+
+  if (clientY > bottom - FRAME_AUTOPAN_EDGE && frameRect.bottom > bottom) {
+    dy = -Math.min(
+      autoPanStep(clientY - (bottom - FRAME_AUTOPAN_EDGE)),
+      frameRect.bottom - bottom,
+    );
+  } else if (clientY < top + FRAME_AUTOPAN_EDGE && frameRect.top < top) {
+    dy = Math.min(
+      autoPanStep(top + FRAME_AUTOPAN_EDGE - clientY),
+      top - frameRect.top,
+    );
+  }
+
+  return dx || dy ? { x: dx, y: dy } : null;
+}
+
+// Ramp the pan speed by how deep the cursor has pushed into the edge zone, so
+// the frame eases along for fine crop tweaks near the edge and only accelerates
+// when the cursor is shoved all the way out.
+function autoPanStep(penetration: number) {
+  const ramp = clamp(penetration / FRAME_AUTOPAN_EDGE, 0, 1);
+  return (
+    FRAME_AUTOPAN_MIN_STEP +
+    (FRAME_AUTOPAN_STEP - FRAME_AUTOPAN_MIN_STEP) * ramp
+  );
+}
+
+function applyFrameAutoPan({
+  frameOffset,
+  stage,
+  frame,
+  clientX,
+  clientY,
+  point,
+  fit,
+  base,
+}: {
+  frameOffset: Point | null;
+  stage: HTMLDivElement | null;
+  frame: HTMLDivElement | null;
+  clientX: number;
+  clientY: number;
+  point: Point;
+  fit: number;
+  base: Dimensions;
+}): { frameOffset: Point | null; point: Point } {
+  if (!frameOffset || !stage || !frame) return { frameOffset, point };
+  const delta = frameAutoPanDelta({ stage, frame, clientX, clientY });
+  if (!delta) return { frameOffset, point };
+  return {
+    frameOffset: {
+      x: frameOffset.x + delta.x,
+      y: frameOffset.y + delta.y,
+    },
+    point: {
+      x: clamp(point.x - delta.x / fit, 0, base.width),
+      y: clamp(point.y - delta.y / fit, 0, base.height),
+    },
+  };
 }
 
 function rectFrom(a: Point, b: Point, base: Dimensions): Rect {
@@ -1499,6 +1615,39 @@ function startEditorDrag({
   };
 }
 
+function startCropHandleDrag({
+  crop,
+  handle,
+  base,
+  stage,
+  cropPreview,
+  fit,
+  annotations,
+}: {
+  crop: Rect;
+  handle: Handle;
+  base: Dimensions;
+  stage: HTMLDivElement | null;
+  cropPreview: boolean;
+  fit: number;
+  annotations: Annotation[];
+}): { drag: ResizeDrag; frameOffset: Point | null; frozenFit: number | null } {
+  // When the handle is grabbed from the zoomed crop preview, keep the current
+  // zoom level (frozenFit) and pan the now-oversized frame so the crop region
+  // stays put — instead of snapping back to the full-image scale.
+  const pan = cropPreview && !!stage;
+  return {
+    drag: {
+      type: 'resize',
+      handle,
+      startCrop: crop,
+      snapshot: snapshotFromValues(crop, annotations),
+    },
+    frameOffset: pan ? frameOffsetForCrop(crop, base, fit) : null,
+    frozenFit: pan ? fit : null,
+  };
+}
+
 function useViewportFit(
   stageRef: React.RefObject<HTMLDivElement | null>,
   viewport: Rect | null,
@@ -1509,12 +1658,9 @@ function useViewportFit(
     const stage = stageRef.current;
     if (!stage || !viewport) return;
     const compute = () => {
-      const pad = 40;
-      const availW = stage.clientWidth - pad;
-      const availH = stage.clientHeight - pad;
-      const f = Math.min(availW / viewport.w, availH / viewport.h, 1);
-      setFit(f > 0 && Number.isFinite(f) ? f : 1);
+      setFit(fitViewportToStage(stage, viewport));
     };
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- fit is derived from ResizeObserver measurements and the active image viewport
     compute();
     const ro = new ResizeObserver(compute);
     ro.observe(stage);
@@ -1524,24 +1670,100 @@ function useViewportFit(
   return fit;
 }
 
-function EditorStage({
-  src,
-  base,
-  crop,
-  annotations,
-  selectedId,
-  draft,
-  tool,
-  color,
-  strokeWidth,
-  error,
-  onCrop,
-  onCommitCrop,
-  onDraft,
-  onSelect,
-  onCommitAnnotation,
-  onUpdateAnnotation,
-}: {
+type FramePan = {
+  handle: Handle;
+  startCrop: Rect;
+  base: Dimensions;
+  fit: number;
+};
+
+// Owns the frame translation used while a crop handle is dragged out of the
+// zoomed preview: it freezes the zoom level, keeps the crop region in place, and
+// runs an auto-pan loop so holding the cursor at a stage edge keeps panning.
+function useFramePan(
+  stageRef: React.RefObject<HTMLDivElement | null>,
+  frameRef: React.RefObject<HTMLDivElement | null>,
+  onCrop: (crop: Rect) => void,
+) {
+  const [frameOffset, setFrameOffset] = useState<Point | null>(null);
+  const [frozenFit, setFrozenFit] = useState<number | null>(null);
+  const frameOffsetRef = useRef<Point | null>(null);
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
+  const panStateRef = useRef<FramePan | null>(null);
+  const onCropRef = useRef(onCrop);
+  useEffect(() => {
+    onCropRef.current = onCrop;
+  });
+
+  function setFrameOffsetValue(next: Point | null) {
+    frameOffsetRef.current = next;
+    setFrameOffset(next);
+  }
+
+  function reset() {
+    panStateRef.current = null;
+    pointerRef.current = null;
+    setFrozenFit(null);
+    setFrameOffsetValue(null);
+  }
+
+  function begin(
+    pan: FramePan,
+    offset: Point,
+    clientX: number,
+    clientY: number,
+  ) {
+    panStateRef.current = pan;
+    pointerRef.current = { x: clientX, y: clientY };
+    setFrameOffsetValue(offset);
+    setFrozenFit(pan.fit);
+  }
+
+  function trackPointer(clientX: number, clientY: number) {
+    if (panStateRef.current) pointerRef.current = { x: clientX, y: clientY };
+  }
+
+  useEffect(() => {
+    if (frozenFit == null) return;
+    let raf = 0;
+    const tick = () => {
+      const pan = panStateRef.current;
+      const pointer = pointerRef.current;
+      const stage = stageRef.current;
+      const frame = frameRef.current;
+      if (pan && pointer && stage && frame) {
+        const rect = frame.getBoundingClientRect();
+        const point = {
+          x: clamp((pointer.x - rect.left) / pan.fit, 0, pan.base.width),
+          y: clamp((pointer.y - rect.top) / pan.fit, 0, pan.base.height),
+        };
+        const next = applyFrameAutoPan({
+          frameOffset: frameOffsetRef.current,
+          stage,
+          frame,
+          clientX: pointer.x,
+          clientY: pointer.y,
+          point,
+          fit: pan.fit,
+          base: pan.base,
+        });
+        if (next.frameOffset !== frameOffsetRef.current) {
+          setFrameOffsetValue(next.frameOffset);
+          onCropRef.current(
+            resizeCrop(pan.startCrop, pan.handle, next.point, pan.base),
+          );
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [frozenFit, stageRef, frameRef]);
+
+  return { frameOffset, frozenFit, reset, begin, trackPointer };
+}
+
+type EditorStageProps = {
   src: string | null;
   base: Dimensions | null;
   crop: Rect | null;
@@ -1562,7 +1784,26 @@ function EditorStage({
     commit?: boolean,
     undoSnapshot?: EditorSnapshot,
   ) => void;
-}) {
+};
+
+function EditorStage({
+  src,
+  base,
+  crop,
+  annotations,
+  selectedId,
+  draft,
+  tool,
+  color,
+  strokeWidth,
+  error,
+  onCrop,
+  onCommitCrop,
+  onDraft,
+  onSelect,
+  onCommitAnnotation,
+  onUpdateAnnotation,
+}: EditorStageProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1571,14 +1812,24 @@ function EditorStage({
   const [cropPreview, setCropPreview] = useState(false);
   const dragRef = useRef<Drag | null>(null);
   const draftRef = useRef<Annotation | null>(null);
+  const wasPreviewRef = useRef(false);
+  const {
+    frameOffset,
+    frozenFit,
+    reset: resetFramePan,
+    begin: beginFramePan,
+    trackPointer,
+  } = useFramePan(stageRef, frameRef, onCrop);
 
   const canToggleCropPreview = !!base && !!crop && !fillsBase(crop, base);
   const effectiveCropPreview = cropPreview && canToggleCropPreview;
   const viewport = editorViewport(base, crop, effectiveCropPreview);
-  const fit = useViewportFit(stageRef, viewport);
+  const measuredFit = useViewportFit(stageRef, viewport);
+  const fit = frozenFit ?? measuredFit;
 
   function toggleCropPreview() {
     if (!canToggleCropPreview) return;
+    resetFramePan();
     setCropPreview((value) => !value);
   }
 
@@ -1640,6 +1891,7 @@ function EditorStage({
       const hit = hitTestAnnotation(annotations, point, 10 / fit);
       if (!hit) {
         setCropPreview(false);
+        resetFramePan();
         return;
       }
       onSelect(hit.id);
@@ -1665,6 +1917,7 @@ function EditorStage({
     });
     if (next.restoreCropPreview) {
       setCropPreview(false);
+      resetFramePan();
     }
     if (next.selectedId !== undefined) onSelect(next.selectedId);
     if (next.draft !== undefined) onDraft(next.draft);
@@ -1681,6 +1934,9 @@ function EditorStage({
       return;
     }
     if (!base) return;
+    // While zoom is frozen for a handle drag, the auto-pan loop owns edge
+    // panning; the move handler only records the latest cursor position.
+    trackPointer(e.clientX, e.clientY);
     updateEditorDrag({
       drag,
       point,
@@ -1713,7 +1969,11 @@ function EditorStage({
       drag.type === 'move' ||
       drag.type === 'resize'
     ) {
-      setCropPreview(true);
+      // A handle resize started from the full view shouldn't yank the user into
+      // the zoomed preview; drawing/moving a crop still shows the result there.
+      const keepPreview = drag.type !== 'resize' || wasPreviewRef.current;
+      resetFramePan();
+      if (keepPreview) setCropPreview(true);
     }
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -1724,18 +1984,32 @@ function EditorStage({
     e: React.PointerEvent<HTMLSpanElement>,
     handle: Handle,
   ) {
-    if (!crop || tool !== 'crop') return;
+    if (!crop || !base || tool !== 'crop') return;
     e.preventDefault();
     e.stopPropagation();
-    setCropPreview(false);
-    dragRef.current = {
-      type: 'resize',
+    const next = startCropHandleDrag({
+      crop,
       handle,
-      startCrop: crop,
-      snapshot: snapshotFromValues(crop, annotations),
-    };
-    const frame = frameRef.current;
-    frame?.setPointerCapture(e.pointerId);
+      base,
+      stage: stageRef.current,
+      cropPreview: effectiveCropPreview,
+      fit,
+      annotations,
+    });
+    wasPreviewRef.current = effectiveCropPreview;
+    if (next.frozenFit != null && next.frameOffset) {
+      beginFramePan(
+        { handle, startCrop: crop, base, fit: next.frozenFit },
+        next.frameOffset,
+        e.clientX,
+        e.clientY,
+      );
+    } else {
+      resetFramePan();
+    }
+    setCropPreview(false);
+    dragRef.current = next.drag;
+    frameRef.current?.setPointerCapture(e.pointerId);
   }
 
   function onAnnotationHandleDown(
@@ -1789,6 +2063,8 @@ function EditorStage({
       tool={tool}
       fit={fit}
       viewport={viewport}
+      frameOffset={frameOffset}
+      panning={frozenFit != null}
       cropPreview={effectiveCropPreview}
       canToggleCropPreview={canToggleCropPreview}
       grabCursor={grabCursor}
@@ -1816,6 +2092,8 @@ function EditorStageView({
   tool,
   fit,
   viewport,
+  frameOffset,
+  panning,
   cropPreview,
   canToggleCropPreview,
   grabCursor,
@@ -1839,6 +2117,8 @@ function EditorStageView({
   tool: Tool;
   fit: number;
   viewport: Rect | null;
+  frameOffset: Point | null;
+  panning: boolean;
   cropPreview: boolean;
   canToggleCropPreview: boolean;
   grabCursor: boolean;
@@ -1880,7 +2160,15 @@ function EditorStageView({
           data-grabbable={grabCursor}
           style={
             viewport
-              ? { width: viewport.w * fit, height: viewport.h * fit }
+              ? {
+                  width: viewport.w * fit,
+                  height: viewport.h * fit,
+                  transform: frameOffset
+                    ? `translate(${frameOffset.x}px, ${frameOffset.y}px)`
+                    : undefined,
+                  maxWidth: panning ? 'none' : undefined,
+                  maxHeight: panning ? 'none' : undefined,
+                }
               : undefined
           }
           onPointerDown={onFrameDown}
