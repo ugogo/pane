@@ -6,6 +6,8 @@ import {
   Check,
   Crop as CropIcon,
   Highlighter,
+  Maximize2,
+  Minimize2,
   Pencil,
   RectangleHorizontal,
   Redo2,
@@ -67,18 +69,22 @@ type Annotation =
 interface DrawDrag {
   type: 'draw';
   start: Point;
+  startCrop: Rect | null;
+  active: boolean;
 }
 
 interface ResizeDrag {
   type: 'resize';
   handle: Handle;
   startCrop: Rect;
+  snapshot: EditorSnapshot;
 }
 
 interface MoveDrag {
   type: 'move';
   start: Point;
   startCrop: Rect;
+  snapshot: EditorSnapshot;
 }
 
 interface AnnotationDrag {
@@ -87,7 +93,41 @@ interface AnnotationDrag {
   start: Point;
 }
 
-type Drag = DrawDrag | ResizeDrag | MoveDrag | AnnotationDrag;
+interface AnnotationMoveDrag {
+  type: 'annotation-move';
+  start: Point;
+  annotation: Annotation;
+  snapshot: EditorSnapshot;
+}
+
+interface AnnotationResizeDrag {
+  type: 'annotation-resize';
+  handle: Handle;
+  startBounds: Rect;
+  annotation: Annotation;
+  snapshot: EditorSnapshot;
+}
+
+interface ArrowPointDrag {
+  type: 'arrow-point';
+  point: 'from' | 'to';
+  annotation: Extract<Annotation, { kind: 'arrow' }>;
+  snapshot: EditorSnapshot;
+}
+
+type Drag =
+  | DrawDrag
+  | ResizeDrag
+  | MoveDrag
+  | AnnotationDrag
+  | AnnotationMoveDrag
+  | AnnotationResizeDrag
+  | ArrowPointDrag;
+
+interface EditorSnapshot {
+  crop: Rect | null;
+  annotations: Annotation[];
+}
 
 interface EditorState {
   src: string | null;
@@ -95,7 +135,9 @@ interface EditorState {
   base: Dimensions | null;
   crop: Rect | null;
   annotations: Annotation[];
-  redo: Annotation[];
+  undo: EditorSnapshot[];
+  redo: EditorSnapshot[];
+  selectedId: string | null;
   draft: Annotation | null;
   tool: Tool;
   color: string;
@@ -117,8 +159,17 @@ type EditorAction =
   | { type: 'set-color'; color: string }
   | { type: 'set-width'; width: number }
   | { type: 'set-crop'; crop: Rect }
+  | { type: 'commit-crop'; snapshot: EditorSnapshot }
+  | { type: 'select-annotation'; id: string | null }
   | { type: 'set-draft'; draft: Annotation | null }
   | { type: 'commit-annotation'; annotation: Annotation }
+  | {
+      type: 'update-annotation';
+      annotation: Annotation;
+      commit?: boolean;
+      undoSnapshot?: EditorSnapshot;
+    }
+  | { type: 'delete-selected' }
   | { type: 'undo' }
   | { type: 'redo' }
   | { type: 'reset' }
@@ -132,11 +183,13 @@ const initialEditorState: EditorState = {
   base: null,
   crop: null,
   annotations: [],
+  undo: [],
   redo: [],
+  selectedId: null,
   draft: null,
   tool: 'crop',
-  color: '#38bdf8',
-  strokeWidth: 5,
+  color: '#f43f5e',
+  strokeWidth: 8,
   save: 'idle',
 };
 
@@ -152,7 +205,8 @@ const TOOLS: Array<{
   { id: 'pen', label: 'Pen', icon: Pencil },
 ];
 
-const SWATCHES = ['#38bdf8', '#f43f5e', '#facc15', '#22c55e', '#f8fafc'];
+const SWATCHES = ['#f43f5e', '#38bdf8', '#facc15', '#22c55e', '#f8fafc'];
+const CROP_DRAG_THRESHOLD = 10;
 
 function clamp(value: number, min: number, max: number) {
   if (!Number.isFinite(value)) return min;
@@ -166,6 +220,45 @@ function roundRect(rect: Rect): Rect {
     w: Math.round(rect.w),
     h: Math.round(rect.h),
   };
+}
+
+function sameRect(a: Rect | null, b: Rect | null) {
+  if (!a || !b) return a === b;
+  return a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
+}
+
+function snapshotFrom(state: EditorState): EditorSnapshot {
+  return { crop: state.crop, annotations: state.annotations };
+}
+
+function snapshotFromValues(
+  crop: Rect | null,
+  annotations: Annotation[],
+): EditorSnapshot {
+  return { crop, annotations };
+}
+
+function baseViewport(base: Dimensions): Rect {
+  return { x: 0, y: 0, w: base.width, h: base.height };
+}
+
+function rectToViewport(rect: Rect, viewport: Rect): Rect {
+  return {
+    x: rect.x - viewport.x,
+    y: rect.y - viewport.y,
+    w: rect.w,
+    h: rect.h,
+  };
+}
+
+function editorViewport(
+  base: Dimensions | null,
+  crop: Rect | null,
+  cropPreview: boolean,
+) {
+  if (!base) return null;
+  if (cropPreview && crop && !fillsBase(crop, base)) return crop;
+  return baseViewport(base);
 }
 
 function rectFrom(a: Point, b: Point, base: Dimensions): Rect {
@@ -228,6 +321,23 @@ function rectContains(rect: Rect, point: Point) {
   );
 }
 
+function inflateRect(rect: Rect, amount: number): Rect {
+  return {
+    x: rect.x - amount,
+    y: rect.y - amount,
+    w: rect.w + amount * 2,
+    h: rect.h + amount * 2,
+  };
+}
+
+function rectRight(rect: Rect) {
+  return rect.x + rect.w;
+}
+
+function rectBottom(rect: Rect) {
+  return rect.y + rect.h;
+}
+
 function fillsBase(rect: Rect, base: Dimensions) {
   return (
     rect.x === 0 &&
@@ -239,6 +349,165 @@ function fillsBase(rect: Rect, base: Dimensions) {
 
 function makeAnnotationId() {
   return `annotation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function pointsBounds(points: Point[]): Rect {
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const left = Math.min(...xs);
+  const top = Math.min(...ys);
+  return {
+    x: left,
+    y: top,
+    w: Math.max(1, Math.max(...xs) - left),
+    h: Math.max(1, Math.max(...ys) - top),
+  };
+}
+
+function annotationBounds(annotation: Annotation): Rect {
+  if (annotation.kind === 'arrow') {
+    return pointsBounds([annotation.from, annotation.to]);
+  }
+  if (annotation.kind === 'pen') {
+    return pointsBounds(annotation.points);
+  }
+  return annotation.rect;
+}
+
+function translatePoint(point: Point, dx: number, dy: number): Point {
+  return { x: point.x + dx, y: point.y + dy };
+}
+
+function moveAnnotation(
+  annotation: Annotation,
+  start: Point,
+  point: Point,
+  base: Dimensions,
+): Annotation {
+  const bounds = annotationBounds(annotation);
+  const rawDx = point.x - start.x;
+  const rawDy = point.y - start.y;
+  const dx = clamp(rawDx, -bounds.x, base.width - rectRight(bounds));
+  const dy = clamp(rawDy, -bounds.y, base.height - rectBottom(bounds));
+
+  if (annotation.kind === 'arrow') {
+    return {
+      ...annotation,
+      from: translatePoint(annotation.from, dx, dy),
+      to: translatePoint(annotation.to, dx, dy),
+    };
+  }
+  if (annotation.kind === 'pen') {
+    return {
+      ...annotation,
+      points: annotation.points.map((drawPoint) =>
+        translatePoint(drawPoint, dx, dy),
+      ),
+    };
+  }
+  return {
+    ...annotation,
+    rect: roundRect({
+      ...annotation.rect,
+      x: annotation.rect.x + dx,
+      y: annotation.rect.y + dy,
+    }),
+  };
+}
+
+function resizeBounds(
+  bounds: Rect,
+  handle: Handle,
+  point: Point,
+  base: Dimensions,
+) {
+  return resizeCrop(bounds, handle, point, base);
+}
+
+function scalePoint(point: Point, from: Rect, to: Rect): Point {
+  const sx = from.w === 0 ? 0 : (point.x - from.x) / from.w;
+  const sy = from.h === 0 ? 0 : (point.y - from.y) / from.h;
+  return {
+    x: to.x + sx * to.w,
+    y: to.y + sy * to.h,
+  };
+}
+
+function resizeAnnotation(
+  annotation: Annotation,
+  startBounds: Rect,
+  handle: Handle,
+  point: Point,
+  base: Dimensions,
+): Annotation {
+  const nextBounds = resizeBounds(startBounds, handle, point, base);
+  if (annotation.kind === 'arrow') {
+    return {
+      ...annotation,
+      from: scalePoint(annotation.from, startBounds, nextBounds),
+      to: scalePoint(annotation.to, startBounds, nextBounds),
+    };
+  }
+  if (annotation.kind === 'pen') {
+    return {
+      ...annotation,
+      points: annotation.points.map((drawPoint) =>
+        scalePoint(drawPoint, startBounds, nextBounds),
+      ),
+    };
+  }
+  return {
+    ...annotation,
+    rect: nextBounds,
+  };
+}
+
+function moveArrowPoint(
+  annotation: Extract<Annotation, { kind: 'arrow' }>,
+  pointName: 'from' | 'to',
+  point: Point,
+  base: Dimensions,
+): Annotation {
+  return {
+    ...annotation,
+    [pointName]: {
+      x: clamp(point.x, 0, base.width),
+      y: clamp(point.y, 0, base.height),
+    },
+  };
+}
+
+function setAnnotationColor(annotation: Annotation, color: string): Annotation {
+  return { ...annotation, color };
+}
+
+function setAnnotationWidth(annotation: Annotation, width: number): Annotation {
+  if (annotation.kind === 'highlight') return annotation;
+  return { ...annotation, width };
+}
+
+function selectedAnnotationFrom(state: EditorState) {
+  return (
+    state.annotations.find(
+      (annotation) => annotation.id === state.selectedId,
+    ) ?? null
+  );
+}
+
+function hitTestAnnotation(
+  annotations: Annotation[],
+  point: Point,
+  tolerance: number,
+) {
+  for (let i = annotations.length - 1; i >= 0; i -= 1) {
+    const annotation = annotations[i];
+    if (
+      rectContains(inflateRect(annotationBounds(annotation), tolerance), point)
+    ) {
+      return annotation;
+    }
+  }
+  return null;
 }
 
 function annotationFromDrag(
@@ -315,7 +584,9 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         base: action.size,
         crop: action.crop,
         annotations: [],
+        undo: [],
         redo: [],
+        selectedId: null,
         draft: null,
         error: undefined,
         save: 'idle',
@@ -323,41 +594,125 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     case 'capture-error':
       return { ...state, error: action.error };
     case 'set-tool':
-      return { ...state, tool: action.tool, draft: null };
-    case 'set-color':
-      return { ...state, color: action.color };
-    case 'set-width':
-      return { ...state, strokeWidth: action.width };
+      return {
+        ...state,
+        tool: action.tool,
+        selectedId: action.tool === 'crop' ? null : state.selectedId,
+        draft: null,
+      };
+    case 'set-color': {
+      const selected = selectedAnnotationFrom(state);
+      if (!selected) return { ...state, color: action.color };
+      return {
+        ...state,
+        color: action.color,
+        annotations: state.annotations.map((annotation) =>
+          annotation.id === selected.id
+            ? setAnnotationColor(annotation, action.color)
+            : annotation,
+        ),
+        undo: [...state.undo, snapshotFrom(state)],
+        redo: [],
+        save: 'idle',
+      };
+    }
+    case 'set-width': {
+      const selected = selectedAnnotationFrom(state);
+      if (!selected || selected.kind === 'highlight') {
+        return { ...state, strokeWidth: action.width };
+      }
+      return {
+        ...state,
+        strokeWidth: action.width,
+        annotations: state.annotations.map((annotation) =>
+          annotation.id === selected.id
+            ? setAnnotationWidth(annotation, action.width)
+            : annotation,
+        ),
+        undo: [...state.undo, snapshotFrom(state)],
+        redo: [],
+        save: 'idle',
+      };
+    }
     case 'set-crop':
       return { ...state, crop: action.crop, save: 'idle' };
+    case 'commit-crop':
+      if (sameRect(action.snapshot.crop, state.crop)) return state;
+      return {
+        ...state,
+        undo: [...state.undo, action.snapshot],
+        redo: [],
+        save: 'idle',
+      };
+    case 'select-annotation':
+      return { ...state, selectedId: action.id, draft: null };
     case 'set-draft':
       return { ...state, draft: action.draft, save: 'idle' };
     case 'commit-annotation':
       return {
         ...state,
         annotations: [...state.annotations, action.annotation],
+        undo: [...state.undo, snapshotFrom(state)],
         redo: [],
+        selectedId: action.annotation.id,
         draft: null,
         save: 'idle',
       };
-    case 'undo': {
-      const annotation = state.annotations[state.annotations.length - 1];
-      if (!annotation) return state;
+    case 'update-annotation':
       return {
         ...state,
-        annotations: state.annotations.slice(0, -1),
-        redo: [annotation, ...state.redo],
+        annotations: state.annotations.map((annotation) =>
+          annotation.id === action.annotation.id
+            ? action.annotation
+            : annotation,
+        ),
+        undo: action.commit
+          ? [...state.undo, action.undoSnapshot ?? snapshotFrom(state)]
+          : state.undo,
+        redo: action.commit ? [] : state.redo,
+        selectedId: action.annotation.id,
+        save: 'idle',
+      };
+    case 'delete-selected': {
+      if (!state.selectedId) return state;
+      const nextAnnotations = state.annotations.filter(
+        (annotation) => annotation.id !== state.selectedId,
+      );
+      if (nextAnnotations.length === state.annotations.length) return state;
+      return {
+        ...state,
+        annotations: nextAnnotations,
+        undo: [...state.undo, snapshotFrom(state)],
+        redo: [],
+        selectedId: null,
+        draft: null,
+        save: 'idle',
+      };
+    }
+    case 'undo': {
+      const previous = state.undo[state.undo.length - 1];
+      if (!previous) return state;
+      return {
+        ...state,
+        crop: previous.crop,
+        annotations: previous.annotations,
+        undo: state.undo.slice(0, -1),
+        redo: [snapshotFrom(state), ...state.redo],
+        selectedId: null,
         draft: null,
         save: 'idle',
       };
     }
     case 'redo': {
-      const [annotation, ...redo] = state.redo;
-      if (!annotation) return state;
+      const [next, ...redo] = state.redo;
+      if (!next) return state;
       return {
         ...state,
-        annotations: [...state.annotations, annotation],
+        crop: next.crop,
+        annotations: next.annotations,
+        undo: [...state.undo, snapshotFrom(state)],
         redo,
+        selectedId: null,
         draft: null,
         save: 'idle',
       };
@@ -373,7 +728,9 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
               h: state.base.height,
             },
             annotations: [],
+            undo: [...state.undo, snapshotFrom(state)],
             redo: [],
+            selectedId: null,
             draft: null,
             save: 'idle',
           }
@@ -410,16 +767,25 @@ function drawAnnotation(ctx: CanvasRenderingContext2D, annotation: Annotation) {
 
   if (annotation.kind === 'arrow') {
     ctx.lineWidth = annotation.width;
-    ctx.beginPath();
-    ctx.moveTo(annotation.from.x, annotation.from.y);
-    ctx.lineTo(annotation.to.x, annotation.to.y);
-    ctx.stroke();
-
+    const dx = annotation.to.x - annotation.from.x;
+    const dy = annotation.to.y - annotation.from.y;
+    const length = Math.hypot(dx, dy);
     const angle = Math.atan2(
       annotation.to.y - annotation.from.y,
       annotation.to.x - annotation.from.x,
     );
-    const head = Math.max(12, annotation.width * 3.5);
+    const head = Math.max(18, annotation.width * 4.8);
+    if (length > head * 0.9) {
+      const shaftLength = length - head * 0.9;
+      ctx.beginPath();
+      ctx.moveTo(annotation.from.x, annotation.from.y);
+      ctx.lineTo(
+        annotation.from.x + (dx / length) * shaftLength,
+        annotation.from.y + (dy / length) * shaftLength,
+      );
+      ctx.stroke();
+    }
+
     ctx.beginPath();
     ctx.moveTo(annotation.to.x, annotation.to.y);
     ctx.lineTo(
@@ -459,15 +825,20 @@ function drawEditorCanvas(
   base: Dimensions,
   annotations: Annotation[],
   draft: Annotation | null,
+  viewport?: Rect,
 ) {
-  if (canvas.width !== base.width) canvas.width = base.width;
-  if (canvas.height !== base.height) canvas.height = base.height;
+  const view = viewport ?? { x: 0, y: 0, w: base.width, h: base.height };
+  if (canvas.width !== view.w) canvas.width = view.w;
+  if (canvas.height !== view.h) canvas.height = view.h;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  ctx.clearRect(0, 0, base.width, base.height);
-  ctx.drawImage(image, 0, 0, base.width, base.height);
+  ctx.clearRect(0, 0, view.w, view.h);
+  ctx.drawImage(image, view.x, view.y, view.w, view.h, 0, 0, view.w, view.h);
+  ctx.save();
+  ctx.translate(-view.x, -view.y);
   annotations.forEach((annotation) => drawAnnotation(ctx, annotation));
   if (draft) drawAnnotation(ctx, draft);
+  ctx.restore();
 }
 
 function loadImage(src: string) {
@@ -519,7 +890,9 @@ export default function ImageEditorPage() {
     base,
     crop,
     annotations,
+    undo,
     redo,
+    selectedId,
     draft,
     tool,
     color,
@@ -552,6 +925,9 @@ export default function ImageEditorPage() {
   const onFetch = useEffectEvent(() => void fetchCapture());
   const onUndo = useEffectEvent(() => dispatch({ type: 'undo' }));
   const onRedo = useEffectEvent(() => dispatch({ type: 'redo' }));
+  const onDeleteSelected = useEffectEvent(() =>
+    dispatch({ type: 'delete-selected' }),
+  );
 
   useEffect(() => {
     document.documentElement.style.background = 'transparent';
@@ -575,6 +951,15 @@ export default function ImageEditorPage() {
       if ((e.ctrlKey || e.metaKey) && e.code === 'KeyY') {
         e.preventDefault();
         onRedo();
+        return;
+      }
+      if (e.code === 'Delete' || e.code === 'Backspace') {
+        const target = e.target as HTMLElement | null;
+        if (target?.closest('input, textarea, [contenteditable="true"]')) {
+          return;
+        }
+        e.preventDefault();
+        onDeleteSelected();
         return;
       }
       if (e.code === 'Escape') {
@@ -638,6 +1023,12 @@ export default function ImageEditorPage() {
     crop.y === 0 &&
     crop.w === base.width &&
     crop.h === base.height;
+  const selectedAnnotation = selectedAnnotationFrom(state);
+  const displayColor = selectedAnnotation?.color ?? color;
+  const displayStrokeWidth =
+    selectedAnnotation && selectedAnnotation.kind !== 'highlight'
+      ? selectedAnnotation.width
+      : strokeWidth;
 
   return (
     <div className="image-editor-root">
@@ -671,17 +1062,30 @@ export default function ImageEditorPage() {
           base={base}
           crop={crop}
           annotations={annotations}
+          selectedId={selectedId}
           draft={draft}
           tool={tool}
           color={color}
           strokeWidth={strokeWidth}
           error={error}
           onCrop={setCrop}
+          onCommitCrop={(snapshot) =>
+            dispatch({ type: 'commit-crop', snapshot })
+          }
           onDraft={(nextDraft) =>
             dispatch({ type: 'set-draft', draft: nextDraft })
           }
+          onSelect={(id) => dispatch({ type: 'select-annotation', id })}
           onCommitAnnotation={(annotation) =>
             dispatch({ type: 'commit-annotation', annotation })
+          }
+          onUpdateAnnotation={(annotation, commit, undoSnapshot) =>
+            dispatch({
+              type: 'update-annotation',
+              annotation,
+              commit,
+              undoSnapshot,
+            })
           }
         />
 
@@ -689,9 +1093,10 @@ export default function ImageEditorPage() {
           base={base}
           crop={crop}
           tool={tool}
-          color={color}
-          strokeWidth={strokeWidth}
-          annotations={annotations}
+          color={displayColor}
+          strokeWidth={displayStrokeWidth}
+          strokeDisabled={selectedAnnotation?.kind === 'highlight'}
+          undo={undo}
           redo={redo}
           save={save}
           unchanged={unchanged}
@@ -717,7 +1122,8 @@ function EditorPanel({
   tool,
   color,
   strokeWidth,
-  annotations,
+  strokeDisabled,
+  undo,
   redo,
   save,
   unchanged,
@@ -735,8 +1141,9 @@ function EditorPanel({
   tool: Tool;
   color: string;
   strokeWidth: number;
-  annotations: Annotation[];
-  redo: Annotation[];
+  strokeDisabled: boolean;
+  undo: EditorSnapshot[];
+  redo: EditorSnapshot[];
   save: SaveState;
   unchanged: boolean;
   onTool: (tool: Tool) => void;
@@ -773,7 +1180,7 @@ function EditorPanel({
           title="Undo"
           aria-label="Undo"
           onClick={onUndo}
-          disabled={annotations.length === 0}
+          disabled={undo.length === 0}
           className="image-editor-icon-btn"
         >
           <Undo2 aria-hidden size={15} />
@@ -813,6 +1220,7 @@ function EditorPanel({
           max={18}
           step={1}
           value={strokeWidth}
+          disabled={strokeDisabled}
           onChange={(e) => onWidth(e.currentTarget.valueAsNumber)}
           className="image-editor-range"
         />
@@ -912,40 +1320,267 @@ function CropField({
   );
 }
 
+function finishEditorDrag({
+  drag,
+  draft,
+  crop,
+  annotations,
+  onCommitAnnotation,
+  onDraft,
+  onUpdateAnnotation,
+  onCommitCrop,
+}: {
+  drag: Drag;
+  draft: Annotation | null;
+  crop: Rect | null;
+  annotations: Annotation[];
+  onCommitAnnotation: (annotation: Annotation) => void;
+  onDraft: (draft: Annotation | null) => void;
+  onUpdateAnnotation: (
+    annotation: Annotation,
+    commit?: boolean,
+    undoSnapshot?: EditorSnapshot,
+  ) => void;
+  onCommitCrop: (snapshot: EditorSnapshot) => void;
+}) {
+  if (drag.type === 'annotation' && draft) {
+    if (isDrawableAnnotation(draft)) onCommitAnnotation(draft);
+    else onDraft(null);
+  } else if (
+    drag.type === 'annotation-move' ||
+    drag.type === 'annotation-resize' ||
+    drag.type === 'arrow-point'
+  ) {
+    const current = annotations.find(
+      (annotation) => annotation.id === drag.annotation.id,
+    );
+    if (current) onUpdateAnnotation(current, true, drag.snapshot);
+  } else if (drag.type === 'draw') {
+    if (drag.active && crop) {
+      onCommitCrop(
+        drag.startCrop
+          ? snapshotFromValues(drag.startCrop, annotations)
+          : snapshotFromValues(null, annotations),
+      );
+    }
+  } else if (drag.type === 'move' || drag.type === 'resize') {
+    onCommitCrop(drag.snapshot);
+  }
+}
+
+function updateEditorDrag({
+  drag,
+  point,
+  base,
+  color,
+  strokeWidth,
+  draft,
+  onCrop,
+  onDraft,
+  onUpdateAnnotation,
+}: {
+  drag: Drag;
+  point: Point;
+  base: Dimensions;
+  color: string;
+  strokeWidth: number;
+  draft: Annotation | null;
+  onCrop: (crop: Rect) => void;
+  onDraft: (draft: Annotation | null) => void;
+  onUpdateAnnotation: (
+    annotation: Annotation,
+    commit?: boolean,
+    undoSnapshot?: EditorSnapshot,
+  ) => void;
+}) {
+  if (drag.type === 'draw') {
+    const distance = Math.hypot(point.x - drag.start.x, point.y - drag.start.y);
+    if (!drag.active && distance < CROP_DRAG_THRESHOLD) return;
+    drag.active = true;
+    onCrop(rectFrom(drag.start, point, base));
+  } else if (drag.type === 'resize') {
+    onCrop(resizeCrop(drag.startCrop, drag.handle, point, base));
+  } else if (drag.type === 'move') {
+    onCrop(moveCrop(drag.startCrop, drag.start, point, base));
+  } else if (drag.type === 'annotation') {
+    onDraft(
+      annotationFromDrag(
+        drag.tool,
+        drag.start,
+        point,
+        base,
+        color,
+        strokeWidth,
+        draft,
+      ),
+    );
+  } else if (drag.type === 'annotation-move') {
+    onUpdateAnnotation(
+      moveAnnotation(drag.annotation, drag.start, point, base),
+    );
+  } else if (drag.type === 'annotation-resize') {
+    onUpdateAnnotation(
+      resizeAnnotation(
+        drag.annotation,
+        drag.startBounds,
+        drag.handle,
+        point,
+        base,
+      ),
+    );
+  } else {
+    onUpdateAnnotation(
+      moveArrowPoint(drag.annotation, drag.point, point, base),
+    );
+  }
+}
+
+function startEditorDrag({
+  tool,
+  crop,
+  base,
+  point,
+  annotations,
+  fit,
+  color,
+  strokeWidth,
+}: {
+  tool: Tool;
+  crop: Rect | null;
+  base: Dimensions;
+  point: Point;
+  annotations: Annotation[];
+  fit: number;
+  color: string;
+  strokeWidth: number;
+}): {
+  drag: Drag;
+  selectedId?: string | null;
+  draft?: Annotation | null;
+  restoreCropPreview: boolean;
+} {
+  const hit = hitTestAnnotation(annotations, point, 10 / fit);
+  if (hit) {
+    return {
+      drag: {
+        type: 'annotation-move',
+        start: point,
+        annotation: hit,
+        snapshot: snapshotFromValues(crop, annotations),
+      },
+      selectedId: hit.id,
+      restoreCropPreview: tool === 'crop',
+    };
+  }
+
+  if (tool === 'crop') {
+    if (crop && !fillsBase(crop, base) && rectContains(crop, point)) {
+      return {
+        drag: {
+          type: 'move',
+          start: point,
+          startCrop: crop,
+          snapshot: snapshotFromValues(crop, annotations),
+        },
+        restoreCropPreview: true,
+      };
+    }
+    return {
+      drag: { type: 'draw', start: point, startCrop: crop, active: false },
+      restoreCropPreview: true,
+    };
+  }
+
+  return {
+    drag: { type: 'annotation', tool, start: point },
+    selectedId: null,
+    draft: annotationFromDrag(tool, point, point, base, color, strokeWidth),
+    restoreCropPreview: false,
+  };
+}
+
+function useViewportFit(
+  stageRef: React.RefObject<HTMLDivElement | null>,
+  viewport: Rect | null,
+) {
+  const [fit, setFit] = useState(1);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage || !viewport) return;
+    const compute = () => {
+      const pad = 40;
+      const availW = stage.clientWidth - pad;
+      const availH = stage.clientHeight - pad;
+      const f = Math.min(availW / viewport.w, availH / viewport.h, 1);
+      setFit(f > 0 && Number.isFinite(f) ? f : 1);
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(stage);
+    return () => ro.disconnect();
+  }, [stageRef, viewport]);
+
+  return fit;
+}
+
 function EditorStage({
   src,
   base,
   crop,
   annotations,
+  selectedId,
   draft,
   tool,
   color,
   strokeWidth,
   error,
   onCrop,
+  onCommitCrop,
   onDraft,
+  onSelect,
   onCommitAnnotation,
+  onUpdateAnnotation,
 }: {
   src: string | null;
   base: Dimensions | null;
   crop: Rect | null;
   annotations: Annotation[];
+  selectedId: string | null;
   draft: Annotation | null;
   tool: Tool;
   color: string;
   strokeWidth: number;
   error?: string;
   onCrop: (crop: Rect) => void;
+  onCommitCrop: (snapshot: EditorSnapshot) => void;
   onDraft: (draft: Annotation | null) => void;
+  onSelect: (id: string | null) => void;
   onCommitAnnotation: (annotation: Annotation) => void;
+  onUpdateAnnotation: (
+    annotation: Annotation,
+    commit?: boolean,
+    undoSnapshot?: EditorSnapshot,
+  ) => void;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
-  const [fit, setFit] = useState(1);
+  const [grabCursor, setGrabCursor] = useState(false);
+  const [cropPreview, setCropPreview] = useState(false);
   const dragRef = useRef<Drag | null>(null);
   const draftRef = useRef<Annotation | null>(null);
+
+  const canToggleCropPreview = !!base && !!crop && !fillsBase(crop, base);
+  const effectiveCropPreview = cropPreview && canToggleCropPreview;
+  const viewport = editorViewport(base, crop, effectiveCropPreview);
+  const fit = useViewportFit(stageRef, viewport);
+
+  function toggleCropPreview() {
+    if (!canToggleCropPreview) return;
+    setCropPreview((value) => !value);
+  }
 
   useEffect(() => {
     draftRef.current = draft;
@@ -955,7 +1590,14 @@ function EditorStage({
     const canvas = canvasRef.current;
     const image = nextImage ?? imageRef.current;
     if (!canvas || !image || !base) return;
-    drawEditorCanvas(canvas, image, base, annotations, draft);
+    drawEditorCanvas(
+      canvas,
+      image,
+      base,
+      annotations,
+      draft,
+      viewport ?? undefined,
+    );
   });
 
   useEffect(() => {
@@ -976,31 +1618,15 @@ function EditorStage({
 
   useEffect(() => {
     drawLatest();
-  }, [annotations, base, draft]);
-
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage || !base) return;
-    const compute = () => {
-      const pad = 40;
-      const availW = stage.clientWidth - pad;
-      const availH = stage.clientHeight - pad;
-      const f = Math.min(availW / base.width, availH / base.height, 1);
-      setFit(f > 0 && Number.isFinite(f) ? f : 1);
-    };
-    compute();
-    const ro = new ResizeObserver(compute);
-    ro.observe(stage);
-    return () => ro.disconnect();
-  }, [base]);
+  }, [annotations, base, effectiveCropPreview, draft, crop]);
 
   function pointFromEvent(e: React.PointerEvent) {
     const frame = frameRef.current;
-    if (!frame || !base || fit <= 0) return null;
+    if (!frame || !base || !viewport || fit <= 0) return null;
     const rect = frame.getBoundingClientRect();
     return {
-      x: clamp((e.clientX - rect.left) / fit, 0, base.width),
-      y: clamp((e.clientY - rect.top) / fit, 0, base.height),
+      x: clamp(viewport.x + (e.clientX - rect.left) / fit, 0, base.width),
+      y: clamp(viewport.y + (e.clientY - rect.top) / fit, 0, base.height),
     };
   }
 
@@ -1010,57 +1636,84 @@ function EditorStage({
     if (!point) return;
     e.preventDefault();
 
-    if (tool === 'crop') {
-      if (crop && !fillsBase(crop, base) && rectContains(crop, point)) {
-        dragRef.current = { type: 'move', start: point, startCrop: crop };
-      } else {
-        dragRef.current = { type: 'draw', start: point };
-        onCrop(rectFrom(point, point, base));
+    if (effectiveCropPreview && tool === 'crop') {
+      const hit = hitTestAnnotation(annotations, point, 10 / fit);
+      if (!hit) {
+        setCropPreview(false);
+        return;
       }
-    } else {
-      dragRef.current = { type: 'annotation', tool, start: point };
-      onDraft(annotationFromDrag(tool, point, point, base, color, strokeWidth));
+      onSelect(hit.id);
+      dragRef.current = {
+        type: 'annotation-move',
+        start: point,
+        annotation: hit,
+        snapshot: snapshotFromValues(crop, annotations),
+      };
+      e.currentTarget.setPointerCapture(e.pointerId);
+      return;
     }
+
+    const next = startEditorDrag({
+      tool,
+      crop,
+      base,
+      point,
+      annotations,
+      fit,
+      color,
+      strokeWidth,
+    });
+    if (next.restoreCropPreview) {
+      setCropPreview(false);
+    }
+    if (next.selectedId !== undefined) onSelect(next.selectedId);
+    if (next.draft !== undefined) onDraft(next.draft);
+    dragRef.current = next.drag;
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
   function onFrameMove(e: React.PointerEvent<HTMLDivElement>) {
     const drag = dragRef.current;
-    if (!drag || !base) return;
     const point = pointFromEvent(e);
     if (!point) return;
-
-    if (drag.type === 'draw') {
-      onCrop(rectFrom(drag.start, point, base));
-    } else if (drag.type === 'resize') {
-      onCrop(resizeCrop(drag.startCrop, drag.handle, point, base));
-    } else if (drag.type === 'move') {
-      onCrop(moveCrop(drag.startCrop, drag.start, point, base));
-    } else {
-      onDraft(
-        annotationFromDrag(
-          drag.tool,
-          drag.start,
-          point,
-          base,
-          color,
-          strokeWidth,
-          draftRef.current,
-        ),
-      );
+    if (!drag) {
+      setGrabCursor(!!hitTestAnnotation(annotations, point, 10 / fit));
+      return;
     }
+    if (!base) return;
+    updateEditorDrag({
+      drag,
+      point,
+      base,
+      color,
+      strokeWidth,
+      draft: draftRef.current,
+      onCrop,
+      onDraft,
+      onUpdateAnnotation,
+    });
   }
 
   function endFrameDrag(e: React.PointerEvent<HTMLDivElement>) {
     const drag = dragRef.current;
     if (!drag) return;
     dragRef.current = null;
-    if (drag.type === 'annotation' && draftRef.current) {
-      if (isDrawableAnnotation(draftRef.current)) {
-        onCommitAnnotation(draftRef.current);
-      } else {
-        onDraft(null);
-      }
+    finishEditorDrag({
+      drag,
+      draft: draftRef.current,
+      crop,
+      annotations,
+      onCommitAnnotation,
+      onDraft,
+      onUpdateAnnotation,
+      onCommitCrop,
+    });
+    if (
+      (drag.type === 'draw' && drag.active) ||
+      drag.type === 'move' ||
+      drag.type === 'resize'
+    ) {
+      setCropPreview(true);
     }
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -1074,13 +1727,148 @@ function EditorStage({
     if (!crop || tool !== 'crop') return;
     e.preventDefault();
     e.stopPropagation();
-    dragRef.current = { type: 'resize', handle, startCrop: crop };
+    setCropPreview(false);
+    dragRef.current = {
+      type: 'resize',
+      handle,
+      startCrop: crop,
+      snapshot: snapshotFromValues(crop, annotations),
+    };
+    const frame = frameRef.current;
+    frame?.setPointerCapture(e.pointerId);
+  }
+
+  function onAnnotationHandleDown(
+    e: React.PointerEvent<HTMLSpanElement>,
+    handle: Handle,
+    annotation: Annotation,
+  ) {
+    if (!base) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onSelect(annotation.id);
+    dragRef.current = {
+      type: 'annotation-resize',
+      handle,
+      startBounds: annotationBounds(annotation),
+      annotation,
+      snapshot: snapshotFromValues(crop, annotations),
+    };
+    const frame = frameRef.current;
+    frame?.setPointerCapture(e.pointerId);
+  }
+
+  function onArrowPointDown(
+    e: React.PointerEvent<HTMLSpanElement>,
+    pointName: 'from' | 'to',
+    annotation: Extract<Annotation, { kind: 'arrow' }>,
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    onSelect(annotation.id);
+    dragRef.current = {
+      type: 'arrow-point',
+      point: pointName,
+      annotation,
+      snapshot: snapshotFromValues(crop, annotations),
+    };
     const frame = frameRef.current;
     frame?.setPointerCapture(e.pointerId);
   }
 
   const displayCrop = crop && crop.w > 0 && crop.h > 0 ? crop : null;
+  const selectedAnnotation =
+    annotations.find((annotation) => annotation.id === selectedId) ?? null;
+  const selectedBounds = selectedAnnotation
+    ? annotationBounds(selectedAnnotation)
+    : null;
 
+  return (
+    <EditorStageView
+      src={src}
+      tool={tool}
+      fit={fit}
+      viewport={viewport}
+      cropPreview={effectiveCropPreview}
+      canToggleCropPreview={canToggleCropPreview}
+      grabCursor={grabCursor}
+      error={error}
+      stageRef={stageRef}
+      frameRef={frameRef}
+      canvasRef={canvasRef}
+      displayCrop={displayCrop}
+      selectedAnnotation={selectedAnnotation}
+      selectedBounds={selectedBounds}
+      onFrameDown={onFrameDown}
+      onFrameMove={onFrameMove}
+      onFrameEnd={endFrameDrag}
+      onFrameLeave={() => setGrabCursor(false)}
+      onToggleCropPreview={toggleCropPreview}
+      onCropHandle={onHandleDown}
+      onAnnotationHandle={onAnnotationHandleDown}
+      onArrowPoint={onArrowPointDown}
+    />
+  );
+}
+
+function EditorStageView({
+  src,
+  tool,
+  fit,
+  viewport,
+  cropPreview,
+  canToggleCropPreview,
+  grabCursor,
+  error,
+  stageRef,
+  frameRef,
+  canvasRef,
+  displayCrop,
+  selectedAnnotation,
+  selectedBounds,
+  onFrameDown,
+  onFrameMove,
+  onFrameEnd,
+  onFrameLeave,
+  onToggleCropPreview,
+  onCropHandle,
+  onAnnotationHandle,
+  onArrowPoint,
+}: {
+  src: string | null;
+  tool: Tool;
+  fit: number;
+  viewport: Rect | null;
+  cropPreview: boolean;
+  canToggleCropPreview: boolean;
+  grabCursor: boolean;
+  error?: string;
+  stageRef: React.RefObject<HTMLDivElement | null>;
+  frameRef: React.RefObject<HTMLDivElement | null>;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  displayCrop: Rect | null;
+  selectedAnnotation: Annotation | null;
+  selectedBounds: Rect | null;
+  onFrameDown: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onFrameMove: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onFrameEnd: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onFrameLeave: () => void;
+  onToggleCropPreview: () => void;
+  onCropHandle: (
+    e: React.PointerEvent<HTMLSpanElement>,
+    handle: Handle,
+  ) => void;
+  onAnnotationHandle: (
+    e: React.PointerEvent<HTMLSpanElement>,
+    handle: Handle,
+    annotation: Annotation,
+  ) => void;
+  onArrowPoint: (
+    e: React.PointerEvent<HTMLSpanElement>,
+    pointName: 'from' | 'to',
+    annotation: Extract<Annotation, { kind: 'arrow' }>,
+  ) => void;
+}) {
   return (
     <div className="image-editor-stage" ref={stageRef}>
       {error ? <p className="image-editor-error">{error}</p> : null}
@@ -1089,46 +1877,176 @@ function EditorStage({
           ref={frameRef}
           className="image-editor-frame"
           data-tool={tool}
+          data-grabbable={grabCursor}
           style={
-            base
-              ? { width: base.width * fit, height: base.height * fit }
+            viewport
+              ? { width: viewport.w * fit, height: viewport.h * fit }
               : undefined
           }
           onPointerDown={onFrameDown}
           onPointerMove={onFrameMove}
-          onPointerUp={endFrameDrag}
-          onPointerCancel={endFrameDrag}
+          onPointerUp={onFrameEnd}
+          onPointerCancel={onFrameEnd}
+          onPointerLeave={onFrameLeave}
         >
           <canvas
             ref={canvasRef}
             aria-label="Capture annotation canvas"
             className="image-editor-preview"
           />
-          {displayCrop ? (
-            <div
-              className="image-editor-selection"
-              data-active={tool === 'crop'}
-              style={{
-                left: displayCrop.x * fit,
-                top: displayCrop.y * fit,
-                width: displayCrop.w * fit,
-                height: displayCrop.h * fit,
+          {canToggleCropPreview ? (
+            <button
+              type="button"
+              className="image-editor-view-toggle"
+              title={cropPreview ? 'Show full capture' : 'Show crop content'}
+              aria-label={
+                cropPreview ? 'Show full capture' : 'Show crop content'
+              }
+              aria-pressed={cropPreview}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleCropPreview();
               }}
             >
-              {tool === 'crop'
-                ? HANDLES.map((h) => (
-                    <span
-                      key={h}
-                      className="image-editor-handle"
-                      data-pos={h}
-                      onPointerDown={(e) => onHandleDown(e, h)}
-                    />
-                  ))
-                : null}
-            </div>
+              {cropPreview ? (
+                <Maximize2 aria-hidden size={15} />
+              ) : (
+                <Minimize2 aria-hidden size={15} />
+              )}
+            </button>
+          ) : null}
+          {displayCrop ? (
+            <CropSelectionOverlay
+              crop={displayCrop}
+              viewport={viewport}
+              fit={fit}
+              active={tool === 'crop'}
+              onHandle={onCropHandle}
+            />
+          ) : null}
+          {selectedAnnotation && selectedBounds ? (
+            <ObjectSelectionOverlay
+              annotation={selectedAnnotation}
+              bounds={selectedBounds}
+              viewport={viewport}
+              fit={fit}
+              onHandle={onAnnotationHandle}
+              onArrowPoint={onArrowPoint}
+            />
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function CropSelectionOverlay({
+  crop,
+  viewport,
+  fit,
+  active,
+  onHandle,
+}: {
+  crop: Rect;
+  viewport: Rect | null;
+  fit: number;
+  active: boolean;
+  onHandle: (e: React.PointerEvent<HTMLSpanElement>, handle: Handle) => void;
+}) {
+  const displayCrop = viewport ? rectToViewport(crop, viewport) : crop;
+  return (
+    <div
+      className="image-editor-selection"
+      data-active={active}
+      style={{
+        left: displayCrop.x * fit,
+        top: displayCrop.y * fit,
+        width: displayCrop.w * fit,
+        height: displayCrop.h * fit,
+      }}
+    >
+      {active
+        ? HANDLES.map((h) => (
+            <span
+              key={h}
+              className="image-editor-handle"
+              data-pos={h}
+              onPointerDown={(e) => onHandle(e, h)}
+            />
+          ))
+        : null}
+    </div>
+  );
+}
+
+function ObjectSelectionOverlay({
+  annotation,
+  bounds,
+  viewport,
+  fit,
+  onHandle,
+  onArrowPoint,
+}: {
+  annotation: Annotation;
+  bounds: Rect;
+  viewport: Rect | null;
+  fit: number;
+  onHandle: (
+    e: React.PointerEvent<HTMLSpanElement>,
+    handle: Handle,
+    annotation: Annotation,
+  ) => void;
+  onArrowPoint: (
+    e: React.PointerEvent<HTMLSpanElement>,
+    pointName: 'from' | 'to',
+    annotation: Extract<Annotation, { kind: 'arrow' }>,
+  ) => void;
+}) {
+  const displayBounds = viewport ? rectToViewport(bounds, viewport) : bounds;
+  if (annotation.kind === 'arrow') {
+    return (
+      <>
+        <span
+          className="image-editor-arrow-point"
+          data-point="from"
+          style={{
+            left: (annotation.from.x - (viewport?.x ?? 0)) * fit,
+            top: (annotation.from.y - (viewport?.y ?? 0)) * fit,
+          }}
+          onPointerDown={(e) => onArrowPoint(e, 'from', annotation)}
+        />
+        <span
+          className="image-editor-arrow-point"
+          data-point="to"
+          style={{
+            left: (annotation.to.x - (viewport?.x ?? 0)) * fit,
+            top: (annotation.to.y - (viewport?.y ?? 0)) * fit,
+          }}
+          onPointerDown={(e) => onArrowPoint(e, 'to', annotation)}
+        />
+      </>
+    );
+  }
+
+  return (
+    <div
+      className="image-editor-object-selection"
+      style={{
+        left: displayBounds.x * fit,
+        top: displayBounds.y * fit,
+        width: displayBounds.w * fit,
+        height: displayBounds.h * fit,
+      }}
+    >
+      {HANDLES.map((h) => (
+        <span
+          key={h}
+          className="image-editor-object-handle"
+          data-pos={h}
+          onPointerDown={(e) => onHandle(e, h, annotation)}
+        />
+      ))}
     </div>
   );
 }
