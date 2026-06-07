@@ -1,18 +1,19 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
   ArrowUpRight,
   Check,
   Crop as CropIcon,
+  Hand,
   Highlighter,
-  Maximize2,
-  Minimize2,
   Pencil,
   RectangleHorizontal,
   Redo2,
   RotateCcw,
   Save,
+  Scan,
   Undo2,
   X,
 } from '@pane/ui';
@@ -28,7 +29,9 @@ type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
 type SaveState = 'idle' | 'busy' | 'success';
-type Tool = 'crop' | 'arrow' | 'rect' | 'highlight' | 'pen';
+type Tool = 'crop' | 'pan' | 'arrow' | 'rect' | 'highlight' | 'pen';
+// Tools that create/edit annotations (everything except crop + the pan/hand tool).
+type AnnotationTool = Exclude<Tool, 'crop' | 'pan'>;
 
 interface Dimensions {
   width: number;
@@ -78,6 +81,16 @@ interface ResizeDrag {
   handle: Handle;
   startCrop: Rect;
   snapshot: EditorSnapshot;
+  // Whether the resize began from the zoomed crop preview (controls whether the
+  // preview is restored when the gesture ends).
+  fromPreview: boolean;
+}
+
+// Transient gesture entered when the pointer leaves the crop preview: a drag
+// turns it into a crop draw on the full capture; a plain click just unzooms.
+interface PendingDrawDrag {
+  type: 'pending-draw';
+  pressPoint: Point;
 }
 
 interface MoveDrag {
@@ -89,7 +102,7 @@ interface MoveDrag {
 
 interface AnnotationDrag {
   type: 'annotation';
-  tool: Exclude<Tool, 'crop'>;
+  tool: AnnotationTool;
   start: Point;
 }
 
@@ -122,7 +135,8 @@ type Drag =
   | AnnotationDrag
   | AnnotationMoveDrag
   | AnnotationResizeDrag
-  | ArrowPointDrag;
+  | ArrowPointDrag
+  | PendingDrawDrag;
 
 interface EditorSnapshot {
   crop: Rect | null;
@@ -142,6 +156,10 @@ interface EditorState {
   tool: Tool;
   color: string;
   strokeWidth: number;
+  // Output background: padding is a percent of the crop's longer side, background
+  // is a CSS color (null = transparent). Non-undoable output settings.
+  padding: number;
+  background: string | null;
   save: SaveState;
   error?: string;
 }
@@ -159,6 +177,8 @@ type EditorAction =
   | { type: 'set-color'; color: string }
   | { type: 'set-width'; width: number }
   | { type: 'set-crop'; crop: Rect }
+  | { type: 'set-padding'; padding: number }
+  | { type: 'set-background'; background: string | null }
   | { type: 'commit-crop'; snapshot: EditorSnapshot }
   | { type: 'select-annotation'; id: string | null }
   | { type: 'set-draft'; draft: Annotation | null }
@@ -177,6 +197,34 @@ type EditorAction =
   | { type: 'save-success' }
   | { type: 'save-error'; error: string };
 
+type Gradient = { id: string; label: string; angle: number; stops: string[] };
+
+// Curated "premium UI" background gradients (the background value is a gradient id).
+const GRADIENTS: Gradient[] = [
+  { id: 'sunset', label: 'Sunset', angle: 135, stops: ['#ff7e5f', '#feb47b'] },
+  { id: 'ocean', label: 'Ocean', angle: 135, stops: ['#2193b0', '#6dd5ed'] },
+  { id: 'grape', label: 'Grape', angle: 135, stops: ['#667eea', '#764ba2'] },
+  { id: 'peach', label: 'Peach', angle: 135, stops: ['#ffecd2', '#fcb69f'] },
+  { id: 'mint', label: 'Mint', angle: 135, stops: ['#1d976c', '#93f9b9'] },
+  {
+    id: 'midnight',
+    label: 'Midnight',
+    angle: 135,
+    stops: ['#141e30', '#243b55'],
+  },
+  { id: 'bloom', label: 'Bloom', angle: 135, stops: ['#f093fb', '#f5576c'] },
+  { id: 'sky', label: 'Sky', angle: 135, stops: ['#4facfe', '#00f2fe'] },
+  { id: 'mango', label: 'Mango', angle: 135, stops: ['#ffe259', '#ffa751'] },
+  {
+    id: 'graphite',
+    label: 'Graphite',
+    angle: 135,
+    stops: ['#0f2027', '#203a43', '#2c5364'],
+  },
+];
+
+const DEFAULT_BACKGROUND = GRADIENTS[0].id;
+
 const initialEditorState: EditorState = {
   src: null,
   sessionId: null,
@@ -190,6 +238,8 @@ const initialEditorState: EditorState = {
   tool: 'crop',
   color: '#f43f5e',
   strokeWidth: 8,
+  padding: 0,
+  background: DEFAULT_BACKGROUND,
   save: 'idle',
 };
 
@@ -199,6 +249,7 @@ const TOOLS: Array<{
   icon: typeof CropIcon;
 }> = [
   { id: 'crop', label: 'Crop', icon: CropIcon },
+  { id: 'pan', label: 'Hand (pan)', icon: Hand },
   { id: 'arrow', label: 'Arrow', icon: ArrowUpRight },
   { id: 'rect', label: 'Rectangle', icon: RectangleHorizontal },
   { id: 'highlight', label: 'Highlight', icon: Highlighter },
@@ -206,6 +257,23 @@ const TOOLS: Array<{
 ];
 
 const SWATCHES = ['#f43f5e', '#38bdf8', '#facc15', '#22c55e', '#f8fafc'];
+
+function gradientById(id: string | null): Gradient | null {
+  return id ? (GRADIENTS.find((g) => g.id === id) ?? null) : null;
+}
+
+function gradientCss(gradient: Gradient): string {
+  return `linear-gradient(${gradient.angle}deg, ${gradient.stops.join(', ')})`;
+}
+
+const MAX_PADDING = 256;
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 5;
+const ZOOM_WHEEL_SENSITIVITY = 0.0015;
+const CORNER_RADIUS = 0;
+const SHADOW_BLUR = 32;
+const SHADOW_OFFSET_Y = 12;
+const SHADOW_COLOR = 'rgba(15, 23, 42, 0.35)';
 const CROP_DRAG_THRESHOLD = 10;
 const STAGE_FIT_PADDING = 40;
 const FRAME_AUTOPAN_EDGE = 36;
@@ -215,6 +283,12 @@ const FRAME_AUTOPAN_MIN_STEP = 1.5;
 function clamp(value: number, min: number, max: number) {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, value));
+}
+
+// Compile-time exhaustiveness guard: reaching this with a real value means a
+// union member (e.g. a new gesture) was left unhandled.
+function assertNever(value: never): never {
+  throw new Error(`Unhandled case: ${JSON.stringify(value)}`);
 }
 
 function roundRect(rect: Rect): Rect {
@@ -244,6 +318,17 @@ function snapshotFromValues(
 
 function baseViewport(base: Dimensions): Rect {
   return { x: 0, y: 0, w: base.width, h: base.height };
+}
+
+// Background margin in image-space px (the stored value is already px).
+function paddingPx(padding: number): number {
+  return padding > 0 ? Math.round(padding) : 0;
+}
+
+// Viewport grown by the background margin so `fit` leaves room for the padding.
+function paddedFitViewport(viewport: Rect | null, padPx: number): Rect | null {
+  if (!viewport || padPx <= 0) return viewport;
+  return { x: 0, y: 0, w: viewport.w + padPx * 2, h: viewport.h + padPx * 2 };
 }
 
 function rectToViewport(rect: Rect, viewport: Rect): Rect {
@@ -627,7 +712,7 @@ function hitTestAnnotation(
 }
 
 function annotationFromDrag(
-  tool: Exclude<Tool, 'crop'>,
+  tool: AnnotationTool,
   start: Point,
   point: Point,
   base: Dimensions,
@@ -752,6 +837,10 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     }
     case 'set-crop':
       return { ...state, crop: action.crop, save: 'idle' };
+    case 'set-padding':
+      return { ...state, padding: action.padding, save: 'idle' };
+    case 'set-background':
+      return { ...state, background: action.background, save: 'idle' };
     case 'commit-crop':
       if (sameRect(action.snapshot.crop, state.crop)) return state;
       return {
@@ -844,6 +933,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
               h: state.base.height,
             },
             annotations: [],
+            padding: 0,
+            background: DEFAULT_BACKGROUND,
             undo: [...state.undo, snapshotFrom(state)],
             redo: [],
             selectedId: null,
@@ -966,27 +1057,108 @@ function loadImage(src: string) {
   });
 }
 
+function canvasGradient(
+  ctx: CanvasRenderingContext2D,
+  gradient: Gradient,
+  w: number,
+  h: number,
+): CanvasGradient {
+  // Convert a CSS linear-gradient angle (0deg = up, clockwise) to a canvas line
+  // through the box center spanning the full gradient extent.
+  const rad = (gradient.angle * Math.PI) / 180;
+  const dx = Math.sin(rad);
+  const dy = -Math.cos(rad);
+  const len = Math.abs(w * dx) + Math.abs(h * dy);
+  const cx = w / 2;
+  const cy = h / 2;
+  const grad = ctx.createLinearGradient(
+    cx - (dx * len) / 2,
+    cy - (dy * len) / 2,
+    cx + (dx * len) / 2,
+    cy + (dy * len) / 2,
+  );
+  const last = gradient.stops.length - 1;
+  gradient.stops.forEach((color, i) => {
+    grad.addColorStop(last === 0 ? 0 : i / last, color);
+  });
+  return grad;
+}
+
 async function rasterizeEdit(
   src: string,
   base: Dimensions,
   crop: Rect,
   annotations: Annotation[],
+  padding: number,
+  background: Gradient | null,
 ) {
   const image = await loadImage(src);
-  const canvas = document.createElement('canvas');
-  canvas.width = crop.w;
-  canvas.height = crop.h;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Unable to prepare edited image.');
 
-  ctx.drawImage(image, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
-  ctx.save();
-  ctx.translate(-crop.x, -crop.y);
-  ctx.beginPath();
-  ctx.rect(crop.x, crop.y, crop.w, crop.h);
-  ctx.clip();
-  annotations.forEach((annotation) => drawAnnotation(ctx, annotation));
-  ctx.restore();
+  // Inner canvas: the cropped image with annotations clipped to the crop.
+  const inner = document.createElement('canvas');
+  inner.width = crop.w;
+  inner.height = crop.h;
+  const innerCtx = inner.getContext('2d');
+  if (!innerCtx) throw new Error('Unable to prepare edited image.');
+
+  innerCtx.drawImage(
+    image,
+    crop.x,
+    crop.y,
+    crop.w,
+    crop.h,
+    0,
+    0,
+    crop.w,
+    crop.h,
+  );
+  innerCtx.save();
+  innerCtx.translate(-crop.x, -crop.y);
+  innerCtx.beginPath();
+  innerCtx.rect(crop.x, crop.y, crop.w, crop.h);
+  innerCtx.clip();
+  annotations.forEach((annotation) => drawAnnotation(innerCtx, annotation));
+  innerCtx.restore();
+
+  const pad = paddingPx(padding);
+  let canvas = inner;
+  if (pad > 0 || background) {
+    // Outer canvas: background fill + soft shadow + rounded-corner inner image.
+    const outer = document.createElement('canvas');
+    outer.width = crop.w + pad * 2;
+    outer.height = crop.h + pad * 2;
+    const ctx = outer.getContext('2d');
+    if (!ctx) throw new Error('Unable to prepare edited image.');
+    const radius = Math.min(CORNER_RADIUS, crop.w / 2, crop.h / 2);
+
+    if (background) {
+      ctx.fillStyle = canvasGradient(
+        ctx,
+        background,
+        outer.width,
+        outer.height,
+      );
+      ctx.fillRect(0, 0, outer.width, outer.height);
+    }
+    if (pad > 0) {
+      ctx.save();
+      ctx.shadowColor = SHADOW_COLOR;
+      ctx.shadowBlur = SHADOW_BLUR;
+      ctx.shadowOffsetY = SHADOW_OFFSET_Y;
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.roundRect(pad, pad, crop.w, crop.h, radius);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(pad, pad, crop.w, crop.h, radius);
+    ctx.clip();
+    ctx.drawImage(inner, pad, pad);
+    ctx.restore();
+    canvas = outer;
+  }
 
   const dataUrl = canvas.toDataURL('image/png');
   if (!dataUrl.startsWith('data:image/png')) {
@@ -1013,6 +1185,8 @@ export default function ImageEditorPage() {
     tool,
     color,
     strokeWidth,
+    padding,
+    background,
     save,
     error,
   } = state;
@@ -1110,7 +1284,8 @@ export default function ImageEditorPage() {
     }
     dispatch({ type: 'save-start' });
     try {
-      if (annotations.length === 0) {
+      const hasBackground = paddingPx(padding) > 0 || !!background;
+      if (annotations.length === 0 && !hasBackground) {
         await commitLatestCaptureEdit(
           sessionId,
           crop.x,
@@ -1119,7 +1294,14 @@ export default function ImageEditorPage() {
           crop.h,
         );
       } else {
-        const dataUrl = await rasterizeEdit(src, base, crop, annotations);
+        const dataUrl = await rasterizeEdit(
+          src,
+          base,
+          crop,
+          annotations,
+          padding,
+          gradientById(background),
+        );
         await Promise.all([
           replaceLatestCaptureWithEdit(dataUrl),
           hideImageEditor(),
@@ -1135,6 +1317,8 @@ export default function ImageEditorPage() {
     !!base &&
     !!crop &&
     annotations.length === 0 &&
+    padding === 0 &&
+    background === DEFAULT_BACKGROUND &&
     crop.x === 0 &&
     crop.y === 0 &&
     crop.w === base.width &&
@@ -1174,6 +1358,7 @@ export default function ImageEditorPage() {
 
       <div className="image-editor-body">
         <EditorStage
+          key={sessionId ?? 'none'}
           src={src}
           base={base}
           crop={crop}
@@ -1183,6 +1368,8 @@ export default function ImageEditorPage() {
           tool={tool}
           color={color}
           strokeWidth={strokeWidth}
+          padding={padding}
+          background={background}
           error={error}
           onCrop={setCrop}
           onCommitCrop={(snapshot) =>
@@ -1212,6 +1399,8 @@ export default function ImageEditorPage() {
           color={displayColor}
           strokeWidth={displayStrokeWidth}
           strokeDisabled={selectedAnnotation?.kind === 'highlight'}
+          padding={padding}
+          background={background}
           undo={undo}
           redo={redo}
           save={save}
@@ -1221,6 +1410,10 @@ export default function ImageEditorPage() {
             dispatch({ type: 'set-color', color: nextColor })
           }
           onWidth={(width) => dispatch({ type: 'set-width', width })}
+          onPadding={(next) => dispatch({ type: 'set-padding', padding: next })}
+          onBackground={(next) =>
+            dispatch({ type: 'set-background', background: next })
+          }
           onCrop={setCrop}
           onUndo={() => dispatch({ type: 'undo' })}
           onRedo={() => dispatch({ type: 'redo' })}
@@ -1239,6 +1432,8 @@ function EditorPanel({
   color,
   strokeWidth,
   strokeDisabled,
+  padding,
+  background,
   undo,
   redo,
   save,
@@ -1246,6 +1441,8 @@ function EditorPanel({
   onTool,
   onColor,
   onWidth,
+  onPadding,
+  onBackground,
   onCrop,
   onUndo,
   onRedo,
@@ -1258,6 +1455,8 @@ function EditorPanel({
   color: string;
   strokeWidth: number;
   strokeDisabled: boolean;
+  padding: number;
+  background: string | null;
   undo: EditorSnapshot[];
   redo: EditorSnapshot[];
   save: SaveState;
@@ -1265,6 +1464,8 @@ function EditorPanel({
   onTool: (tool: Tool) => void;
   onColor: (color: string) => void;
   onWidth: (width: number) => void;
+  onPadding: (padding: number) => void;
+  onBackground: (background: string | null) => void;
   onCrop: (crop: Rect) => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -1343,6 +1544,13 @@ function EditorPanel({
         <output>{strokeWidth}px</output>
       </label>
 
+      <BackgroundControls
+        padding={padding}
+        background={background}
+        onPadding={onPadding}
+        onBackground={onBackground}
+      />
+
       <h2 className="image-editor-section">Crop</h2>
       <div className="image-editor-crop-grid">
         <CropField
@@ -1404,6 +1612,51 @@ function EditorPanel({
         </button>
       </div>
     </div>
+  );
+}
+
+function BackgroundControls({
+  padding,
+  background,
+  onPadding,
+  onBackground,
+}: {
+  padding: number;
+  background: string | null;
+  onPadding: (padding: number) => void;
+  onBackground: (background: string | null) => void;
+}) {
+  return (
+    <>
+      <h2 className="image-editor-section">Background</h2>
+      <label className="image-editor-range-field">
+        <span>Padding</span>
+        <input
+          type="range"
+          min={0}
+          max={MAX_PADDING}
+          step={2}
+          value={padding}
+          onChange={(e) => onPadding(e.currentTarget.valueAsNumber)}
+          className="image-editor-range"
+        />
+        <output>{padding}px</output>
+      </label>
+      <div className="image-editor-swatch-row">
+        {GRADIENTS.map((gradient) => (
+          <button
+            key={gradient.id}
+            type="button"
+            title={gradient.label}
+            aria-label={`Use ${gradient.label} gradient`}
+            aria-pressed={background === gradient.id}
+            onClick={() => onBackground(gradient.id)}
+            className="image-editor-swatch"
+            style={{ backgroundImage: gradientCss(gradient) }}
+          />
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -1509,7 +1762,9 @@ function updateEditorDrag({
     undoSnapshot?: EditorSnapshot,
   ) => void;
 }) {
-  if (drag.type === 'draw') {
+  if (drag.type === 'pending-draw') {
+    return;
+  } else if (drag.type === 'draw') {
     const distance = Math.hypot(point.x - drag.start.x, point.y - drag.start.y);
     if (!drag.active && distance < CROP_DRAG_THRESHOLD) return;
     drag.active = true;
@@ -1544,10 +1799,12 @@ function updateEditorDrag({
         base,
       ),
     );
-  } else {
+  } else if (drag.type === 'arrow-point') {
     onUpdateAnnotation(
       moveArrowPoint(drag.annotation, drag.point, point, base),
     );
+  } else {
+    assertNever(drag);
   }
 }
 
@@ -1561,7 +1818,7 @@ function startEditorDrag({
   color,
   strokeWidth,
 }: {
-  tool: Tool;
+  tool: Exclude<Tool, 'pan'>;
   crop: Rect | null;
   base: Dimensions;
   point: Point;
@@ -1642,6 +1899,7 @@ function startCropHandleDrag({
       handle,
       startCrop: crop,
       snapshot: snapshotFromValues(crop, annotations),
+      fromPreview: cropPreview,
     },
     frameOffset: pan ? frameOffsetForCrop(crop, base, fit) : null,
     frozenFit: pan ? fit : null,
@@ -1668,6 +1926,35 @@ function useViewportFit(
   }, [stageRef, viewport]);
 
   return fit;
+}
+
+function annotationResizeDrag(
+  handle: Handle,
+  annotation: Annotation,
+  crop: Rect | null,
+  annotations: Annotation[],
+): AnnotationResizeDrag {
+  return {
+    type: 'annotation-resize',
+    handle,
+    startBounds: annotationBounds(annotation),
+    annotation,
+    snapshot: snapshotFromValues(crop, annotations),
+  };
+}
+
+function arrowPointDrag(
+  pointName: 'from' | 'to',
+  annotation: Extract<Annotation, { kind: 'arrow' }>,
+  crop: Rect | null,
+  annotations: Annotation[],
+): ArrowPointDrag {
+  return {
+    type: 'arrow-point',
+    point: pointName,
+    annotation,
+    snapshot: snapshotFromValues(crop, annotations),
+  };
 }
 
 type FramePan = {
@@ -1763,79 +2050,28 @@ function useFramePan(
   return { frameOffset, frozenFit, reset, begin, trackPointer };
 }
 
-type EditorStageProps = {
-  src: string | null;
-  base: Dimensions | null;
-  crop: Rect | null;
-  annotations: Annotation[];
-  selectedId: string | null;
-  draft: Annotation | null;
-  tool: Tool;
-  color: string;
-  strokeWidth: number;
-  error?: string;
-  onCrop: (crop: Rect) => void;
-  onCommitCrop: (snapshot: EditorSnapshot) => void;
-  onDraft: (draft: Annotation | null) => void;
-  onSelect: (id: string | null) => void;
-  onCommitAnnotation: (annotation: Annotation) => void;
-  onUpdateAnnotation: (
-    annotation: Annotation,
-    commit?: boolean,
-    undoSnapshot?: EditorSnapshot,
-  ) => void;
-};
-
-function EditorStage({
+// Loads the source image and keeps the preview canvas redrawn as the image,
+// annotations, draft, or viewport change.
+function useCanvasPreview({
+  canvasRef,
   src,
   base,
-  crop,
   annotations,
-  selectedId,
   draft,
-  tool,
-  color,
-  strokeWidth,
-  error,
-  onCrop,
-  onCommitCrop,
-  onDraft,
-  onSelect,
-  onCommitAnnotation,
-  onUpdateAnnotation,
-}: EditorStageProps) {
-  const stageRef = useRef<HTMLDivElement>(null);
-  const frameRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  viewport,
+  crop,
+  cropPreview,
+}: {
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  src: string | null;
+  base: Dimensions | null;
+  annotations: Annotation[];
+  draft: Annotation | null;
+  viewport: Rect | null;
+  crop: Rect | null;
+  cropPreview: boolean;
+}) {
   const imageRef = useRef<HTMLImageElement | null>(null);
-  const [grabCursor, setGrabCursor] = useState(false);
-  const [cropPreview, setCropPreview] = useState(false);
-  const dragRef = useRef<Drag | null>(null);
-  const draftRef = useRef<Annotation | null>(null);
-  const wasPreviewRef = useRef(false);
-  const {
-    frameOffset,
-    frozenFit,
-    reset: resetFramePan,
-    begin: beginFramePan,
-    trackPointer,
-  } = useFramePan(stageRef, frameRef, onCrop);
-
-  const canToggleCropPreview = !!base && !!crop && !fillsBase(crop, base);
-  const effectiveCropPreview = cropPreview && canToggleCropPreview;
-  const viewport = editorViewport(base, crop, effectiveCropPreview);
-  const measuredFit = useViewportFit(stageRef, viewport);
-  const fit = frozenFit ?? measuredFit;
-
-  function toggleCropPreview() {
-    if (!canToggleCropPreview) return;
-    resetFramePan();
-    setCropPreview((value) => !value);
-  }
-
-  useEffect(() => {
-    draftRef.current = draft;
-  }, [draft]);
 
   const drawLatest = useEffectEvent((nextImage?: HTMLImageElement | null) => {
     const canvas = canvasRef.current;
@@ -1869,29 +2105,223 @@ function EditorStage({
 
   useEffect(() => {
     drawLatest();
-  }, [annotations, base, effectiveCropPreview, draft, crop]);
+  }, [annotations, base, cropPreview, draft, crop]);
+}
+
+// Keeps the zoomed/panned content from being dragged entirely off the stage.
+function clampPan(pan: Point, zoom: number, stage: HTMLDivElement): Point {
+  const maxX = (stage.clientWidth * (zoom - 1)) / 2 + STAGE_FIT_PADDING;
+  const maxY = (stage.clientHeight * (zoom - 1)) / 2 + STAGE_FIT_PADDING;
+  return { x: clamp(pan.x, -maxX, maxX), y: clamp(pan.y, -maxY, maxY) };
+}
+
+// Manual zoom (1×–MAX_ZOOM) + pan as an outer transform on the canvas wrapper,
+// for inspecting/editing detail. Deliberately separate from `fit` so the crop and
+// frozen-pan math stay untouched; pointer math derives its scale from the rect.
+function useZoomPan(
+  stageRef: RefObject<HTMLDivElement | null>,
+  wrapperRef: RefObject<HTMLDivElement | null>,
+) {
+  const [view, setView] = useState<{ zoom: number; pan: Point }>({
+    zoom: 1,
+    pan: { x: 0, y: 0 },
+  });
+  // Mirrors `view` for synchronous reads from the (effect-bound) wheel handler and
+  // rapid pointer events; only ever written from event handlers, never in render.
+  const viewRef = useRef(view);
+
+  function apply(zoom: number, pan: Point) {
+    const stage = stageRef.current;
+    const next = {
+      zoom,
+      pan:
+        zoom <= 1 ? { x: 0, y: 0 } : stage ? clampPan(pan, zoom, stage) : pan,
+    };
+    viewRef.current = next;
+    setView(next);
+  }
+
+  function reset() {
+    apply(1, { x: 0, y: 0 });
+  }
+
+  function panBy(dx: number, dy: number) {
+    const { zoom, pan } = viewRef.current;
+    apply(zoom, { x: pan.x + dx, y: pan.y + dy });
+  }
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    function onWheel(e: WheelEvent) {
+      const { zoom, pan } = viewRef.current;
+      if (e.ctrlKey || e.metaKey) {
+        const wrapper = wrapperRef.current;
+        if (!wrapper) return;
+        e.preventDefault();
+        const next = clamp(
+          zoom * Math.exp(-e.deltaY * ZOOM_WHEEL_SENSITIVITY),
+          MIN_ZOOM,
+          MAX_ZOOM,
+        );
+        if (next === zoom) return;
+        // Keep the point under the cursor fixed (transform-origin is top-left).
+        const rect = wrapper.getBoundingClientRect();
+        const k = 1 - next / zoom;
+        apply(next, {
+          x: pan.x + (e.clientX - rect.left) * k,
+          y: pan.y + (e.clientY - rect.top) * k,
+        });
+      } else if (zoom > 1) {
+        e.preventDefault();
+        apply(zoom, { x: pan.x - e.deltaX, y: pan.y - e.deltaY });
+      }
+    }
+    // eslint-disable-next-line react-doctor/client-passive-event-listeners -- the handler calls preventDefault to own zoom/pan
+    stage.addEventListener('wheel', onWheel, { passive: false });
+    return () => stage.removeEventListener('wheel', onWheel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps, react-doctor/exhaustive-deps -- handler reads viewRef + stable setters
+  }, [stageRef, wrapperRef]);
+
+  return { zoom: view.zoom, pan: view.pan, reset, panBy };
+}
+
+type EditorStageProps = {
+  src: string | null;
+  base: Dimensions | null;
+  crop: Rect | null;
+  annotations: Annotation[];
+  selectedId: string | null;
+  draft: Annotation | null;
+  tool: Tool;
+  color: string;
+  strokeWidth: number;
+  padding: number;
+  background: string | null;
+  error?: string;
+  onCrop: (crop: Rect) => void;
+  onCommitCrop: (snapshot: EditorSnapshot) => void;
+  onDraft: (draft: Annotation | null) => void;
+  onSelect: (id: string | null) => void;
+  onCommitAnnotation: (annotation: Annotation) => void;
+  onUpdateAnnotation: (
+    annotation: Annotation,
+    commit?: boolean,
+    undoSnapshot?: EditorSnapshot,
+  ) => void;
+};
+
+// Interaction host: owns the pointer gesture wiring and stitches together the
+// extracted concerns (useFramePan, useCanvasPreview, useZoomPan, geometry
+// helpers). It's intentionally a bit long; the pure/mechanism logic already lives
+// outside it. A focused follow-up could lift the gesture handlers into a hook.
+// eslint-disable-next-line react-doctor/no-giant-component -- see note above
+function EditorStage({
+  src,
+  base,
+  crop,
+  annotations,
+  selectedId,
+  draft,
+  tool,
+  color,
+  strokeWidth,
+  padding,
+  background,
+  error,
+  onCrop,
+  onCommitCrop,
+  onDraft,
+  onSelect,
+  onCommitAnnotation,
+  onUpdateAnnotation,
+}: EditorStageProps) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [grabCursor, setGrabCursor] = useState(false);
+  const [cropPreview, setCropPreview] = useState(false);
+  const dragRef = useRef<Drag | null>(null);
+  const draftRef = useRef<Annotation | null>(null);
+  const panDragRef = useRef<{ x: number; y: number } | null>(null);
+  const {
+    frameOffset,
+    frozenFit,
+    reset: resetFramePan,
+    begin: beginFramePan,
+    trackPointer,
+  } = useFramePan(stageRef, frameRef, onCrop);
+  const {
+    zoom,
+    pan,
+    reset: resetZoom,
+    panBy,
+  } = useZoomPan(stageRef, wrapperRef);
+
+  const canToggleCropPreview = !!base && !!crop && !fillsBase(crop, base);
+  const effectiveCropPreview = cropPreview && canToggleCropPreview;
+  const viewport = editorViewport(base, crop, effectiveCropPreview);
+  // Background margin (image px); fit shrinks so the padded content fits.
+  const padPx = paddingPx(padding);
+  const fitVp = paddedFitViewport(viewport, padPx);
+  const measuredFit = useViewportFit(stageRef, fitVp);
+  const fit = frozenFit ?? measuredFit;
+  const gradient = gradientById(background);
+  const backgroundCss = gradient ? gradientCss(gradient) : null;
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  useCanvasPreview({
+    canvasRef,
+    src,
+    base,
+    annotations,
+    draft,
+    viewport,
+    crop,
+    cropPreview: effectiveCropPreview,
+  });
+
+  // On-screen px per image px, read from the rendered rect so it accounts for the
+  // zoom transform automatically (equals `fit` when zoom is 1).
+  const pointerScale = fit * zoom;
 
   function pointFromEvent(e: React.PointerEvent) {
     const frame = frameRef.current;
-    if (!frame || !base || !viewport || fit <= 0) return null;
+    if (!frame || !base || !viewport) return null;
     const rect = frame.getBoundingClientRect();
+    const scale = rect.width / viewport.w;
+    if (!(scale > 0)) return null;
     return {
-      x: clamp(viewport.x + (e.clientX - rect.left) / fit, 0, base.width),
-      y: clamp(viewport.y + (e.clientY - rect.top) / fit, 0, base.height),
+      x: clamp(viewport.x + (e.clientX - rect.left) / scale, 0, base.width),
+      y: clamp(viewport.y + (e.clientY - rect.top) / scale, 0, base.height),
     };
   }
 
   function onFrameDown(e: React.PointerEvent<HTMLDivElement>) {
     if (!base) return;
+    if (tool === 'pan') {
+      // Hand tool: drag pans the zoomed view instead of editing.
+      panDragRef.current = { x: e.clientX, y: e.clientY };
+      e.currentTarget.setPointerCapture(e.pointerId);
+      return;
+    }
     const point = pointFromEvent(e);
     if (!point) return;
     e.preventDefault();
 
     if (effectiveCropPreview && tool === 'crop') {
-      const hit = hitTestAnnotation(annotations, point, 10 / fit);
+      const hit = hitTestAnnotation(annotations, point, 10 / pointerScale);
       if (!hit) {
+        // Leave the zoomed preview; a drag from here draws a new crop on the
+        // full capture (anchored at this point), a plain click just unzooms.
         setCropPreview(false);
         resetFramePan();
+        dragRef.current = { type: 'pending-draw', pressPoint: point };
+        e.currentTarget.setPointerCapture(e.pointerId);
         return;
       }
       onSelect(hit.id);
@@ -1926,11 +2356,28 @@ function EditorStage({
   }
 
   function onFrameMove(e: React.PointerEvent<HTMLDivElement>) {
-    const drag = dragRef.current;
+    if (panDragRef.current) {
+      const last = panDragRef.current;
+      panBy(e.clientX - last.x, e.clientY - last.y);
+      panDragRef.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
+    let drag = dragRef.current;
     const point = pointFromEvent(e);
     if (!point) return;
+    // First move after leaving the preview: turn the deferred gesture into a crop
+    // draw anchored at the original press point (kept in absolute image coords).
+    if (drag?.type === 'pending-draw') {
+      drag = {
+        type: 'draw',
+        start: drag.pressPoint,
+        startCrop: crop,
+        active: false,
+      };
+      dragRef.current = drag;
+    }
     if (!drag) {
-      setGrabCursor(!!hitTestAnnotation(annotations, point, 10 / fit));
+      setGrabCursor(!!hitTestAnnotation(annotations, point, 10 / pointerScale));
       return;
     }
     if (!base) return;
@@ -1951,29 +2398,42 @@ function EditorStage({
   }
 
   function endFrameDrag(e: React.PointerEvent<HTMLDivElement>) {
+    if (panDragRef.current) {
+      panDragRef.current = null;
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+      return;
+    }
     const drag = dragRef.current;
-    if (!drag) return;
     dragRef.current = null;
-    finishEditorDrag({
-      drag,
-      draft: draftRef.current,
-      crop,
-      annotations,
-      onCommitAnnotation,
-      onDraft,
-      onUpdateAnnotation,
-      onCommitCrop,
-    });
-    if (
-      (drag.type === 'draw' && drag.active) ||
-      drag.type === 'move' ||
-      drag.type === 'resize'
-    ) {
-      // A handle resize started from the full view shouldn't yank the user into
-      // the zoomed preview; drawing/moving a crop still shows the result there.
-      const keepPreview = drag.type !== 'resize' || wasPreviewRef.current;
-      resetFramePan();
-      if (keepPreview) setCropPreview(true);
+    // A 'pending-draw' that never moved is a click that only left the preview —
+    // already unzoomed on pointer-down, so there is nothing to commit or restore.
+    if (drag && drag.type !== 'pending-draw') {
+      finishEditorDrag({
+        drag,
+        draft: draftRef.current,
+        crop,
+        annotations,
+        onCommitAnnotation,
+        onDraft,
+        onUpdateAnnotation,
+        onCommitCrop,
+      });
+      if (
+        (drag.type === 'draw' && drag.active) ||
+        drag.type === 'move' ||
+        drag.type === 'resize'
+      ) {
+        // A handle resize started from the full view shouldn't yank the user into
+        // the zoomed preview; drawing/moving a crop still shows the result there.
+        const keepPreview = drag.type !== 'resize' || drag.fromPreview;
+        resetFramePan();
+        if (keepPreview) {
+          resetZoom();
+          setCropPreview(true);
+        }
+      }
     }
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -1987,6 +2447,8 @@ function EditorStage({
     if (!crop || !base || tool !== 'crop') return;
     e.preventDefault();
     e.stopPropagation();
+    // Frozen-pan resize relies on a 1:1 outer transform, so drop any manual zoom.
+    resetZoom();
     const next = startCropHandleDrag({
       crop,
       handle,
@@ -1996,7 +2458,6 @@ function EditorStage({
       fit,
       annotations,
     });
-    wasPreviewRef.current = effectiveCropPreview;
     if (next.frozenFit != null && next.frameOffset) {
       beginFramePan(
         { handle, startCrop: crop, base, fit: next.frozenFit },
@@ -2021,15 +2482,13 @@ function EditorStage({
     e.preventDefault();
     e.stopPropagation();
     onSelect(annotation.id);
-    dragRef.current = {
-      type: 'annotation-resize',
+    dragRef.current = annotationResizeDrag(
       handle,
-      startBounds: annotationBounds(annotation),
       annotation,
-      snapshot: snapshotFromValues(crop, annotations),
-    };
-    const frame = frameRef.current;
-    frame?.setPointerCapture(e.pointerId);
+      crop,
+      annotations,
+    );
+    frameRef.current?.setPointerCapture(e.pointerId);
   }
 
   function onArrowPointDown(
@@ -2040,14 +2499,8 @@ function EditorStage({
     e.preventDefault();
     e.stopPropagation();
     onSelect(annotation.id);
-    dragRef.current = {
-      type: 'arrow-point',
-      point: pointName,
-      annotation,
-      snapshot: snapshotFromValues(crop, annotations),
-    };
-    const frame = frameRef.current;
-    frame?.setPointerCapture(e.pointerId);
+    dragRef.current = arrowPointDrag(pointName, annotation, crop, annotations);
+    frameRef.current?.setPointerCapture(e.pointerId);
   }
 
   const displayCrop = crop && crop.w > 0 && crop.h > 0 ? crop : null;
@@ -2065,11 +2518,16 @@ function EditorStage({
       viewport={viewport}
       frameOffset={frameOffset}
       panning={frozenFit != null}
+      background={backgroundCss}
+      framePadding={padPx * fit}
+      cornerRadius={CORNER_RADIUS * fit}
       cropPreview={effectiveCropPreview}
-      canToggleCropPreview={canToggleCropPreview}
       grabCursor={grabCursor}
+      zoom={zoom}
+      pan={pan}
       error={error}
       stageRef={stageRef}
+      wrapperRef={wrapperRef}
       frameRef={frameRef}
       canvasRef={canvasRef}
       displayCrop={displayCrop}
@@ -2079,7 +2537,7 @@ function EditorStage({
       onFrameMove={onFrameMove}
       onFrameEnd={endFrameDrag}
       onFrameLeave={() => setGrabCursor(false)}
-      onToggleCropPreview={toggleCropPreview}
+      onFitZoom={resetZoom}
       onCropHandle={onHandleDown}
       onAnnotationHandle={onAnnotationHandleDown}
       onArrowPoint={onArrowPointDown}
@@ -2094,11 +2552,16 @@ function EditorStageView({
   viewport,
   frameOffset,
   panning,
+  background,
+  framePadding,
+  cornerRadius,
   cropPreview,
-  canToggleCropPreview,
   grabCursor,
+  zoom,
+  pan,
   error,
   stageRef,
+  wrapperRef,
   frameRef,
   canvasRef,
   displayCrop,
@@ -2108,7 +2571,7 @@ function EditorStageView({
   onFrameMove,
   onFrameEnd,
   onFrameLeave,
-  onToggleCropPreview,
+  onFitZoom,
   onCropHandle,
   onAnnotationHandle,
   onArrowPoint,
@@ -2119,11 +2582,16 @@ function EditorStageView({
   viewport: Rect | null;
   frameOffset: Point | null;
   panning: boolean;
+  background: string | null;
+  framePadding: number;
+  cornerRadius: number;
   cropPreview: boolean;
-  canToggleCropPreview: boolean;
   grabCursor: boolean;
+  zoom: number;
+  pan: Point;
   error?: string;
   stageRef: React.RefObject<HTMLDivElement | null>;
+  wrapperRef: React.RefObject<HTMLDivElement | null>;
   frameRef: React.RefObject<HTMLDivElement | null>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   displayCrop: Rect | null;
@@ -2133,7 +2601,7 @@ function EditorStageView({
   onFrameMove: (e: React.PointerEvent<HTMLDivElement>) => void;
   onFrameEnd: (e: React.PointerEvent<HTMLDivElement>) => void;
   onFrameLeave: () => void;
-  onToggleCropPreview: () => void;
+  onFitZoom: () => void;
   onCropHandle: (
     e: React.PointerEvent<HTMLSpanElement>,
     handle: Handle,
@@ -2154,75 +2622,86 @@ function EditorStageView({
       {error ? <p className="image-editor-error">{error}</p> : null}
       {src ? (
         <div
-          ref={frameRef}
-          className="image-editor-frame"
-          data-tool={tool}
-          data-grabbable={grabCursor}
-          style={
-            viewport
-              ? {
-                  width: viewport.w * fit,
-                  height: viewport.h * fit,
-                  transform: frameOffset
-                    ? `translate(${frameOffset.x}px, ${frameOffset.y}px)`
-                    : undefined,
-                  maxWidth: panning ? 'none' : undefined,
-                  maxHeight: panning ? 'none' : undefined,
-                }
-              : undefined
-          }
-          onPointerDown={onFrameDown}
-          onPointerMove={onFrameMove}
-          onPointerUp={onFrameEnd}
-          onPointerCancel={onFrameEnd}
-          onPointerLeave={onFrameLeave}
+          ref={wrapperRef}
+          className="image-editor-canvas"
+          style={{
+            padding: framePadding,
+            background: background ?? undefined,
+            maxWidth: panning ? 'none' : undefined,
+            maxHeight: panning ? 'none' : undefined,
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: '0 0',
+          }}
         >
-          <canvas
-            ref={canvasRef}
-            aria-label="Capture annotation canvas"
-            className="image-editor-preview"
-          />
-          {canToggleCropPreview ? (
-            <button
-              type="button"
-              className="image-editor-view-toggle"
-              title={cropPreview ? 'Show full capture' : 'Show crop content'}
-              aria-label={
-                cropPreview ? 'Show full capture' : 'Show crop content'
-              }
-              aria-pressed={cropPreview}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleCropPreview();
-              }}
-            >
-              {cropPreview ? (
-                <Maximize2 aria-hidden size={15} />
-              ) : (
-                <Minimize2 aria-hidden size={15} />
-              )}
-            </button>
-          ) : null}
-          {displayCrop ? (
-            <CropSelectionOverlay
-              crop={displayCrop}
-              viewport={viewport}
-              fit={fit}
-              active={tool === 'crop'}
-              onHandle={onCropHandle}
+          <div
+            ref={frameRef}
+            className="image-editor-frame"
+            data-tool={tool}
+            data-grabbable={grabCursor}
+            data-grab={tool === 'pan'}
+            style={
+              viewport
+                ? {
+                    width: viewport.w * fit,
+                    height: viewport.h * fit,
+                    transform: frameOffset
+                      ? `translate(${frameOffset.x}px, ${frameOffset.y}px)`
+                      : undefined,
+                    maxWidth: panning ? 'none' : undefined,
+                    maxHeight: panning ? 'none' : undefined,
+                    borderRadius: cornerRadius,
+                    boxShadow: `0 ${SHADOW_OFFSET_Y * fit}px ${
+                      SHADOW_BLUR * fit
+                    }px ${SHADOW_COLOR}`,
+                  }
+                : undefined
+            }
+            onPointerDown={onFrameDown}
+            onPointerMove={onFrameMove}
+            onPointerUp={onFrameEnd}
+            onPointerCancel={onFrameEnd}
+            onPointerLeave={onFrameLeave}
+          >
+            <canvas
+              ref={canvasRef}
+              aria-label="Capture annotation canvas"
+              className="image-editor-preview"
             />
-          ) : null}
-          {selectedAnnotation && selectedBounds ? (
-            <ObjectSelectionOverlay
-              annotation={selectedAnnotation}
-              bounds={selectedBounds}
-              viewport={viewport}
-              fit={fit}
-              onHandle={onAnnotationHandle}
-              onArrowPoint={onArrowPoint}
-            />
-          ) : null}
+            {displayCrop ? (
+              <CropSelectionOverlay
+                crop={displayCrop}
+                viewport={viewport}
+                fit={fit}
+                active={tool === 'crop'}
+                preview={cropPreview}
+                onHandle={onCropHandle}
+              />
+            ) : null}
+            {selectedAnnotation && selectedBounds ? (
+              <ObjectSelectionOverlay
+                annotation={selectedAnnotation}
+                bounds={selectedBounds}
+                viewport={viewport}
+                fit={fit}
+                onHandle={onAnnotationHandle}
+                onArrowPoint={onArrowPoint}
+              />
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      {src && zoom !== 1 ? (
+        <div className="image-editor-viewbar">
+          <button
+            type="button"
+            className="image-editor-viewbar-btn"
+            title="Fit to window"
+            aria-label="Fit to window"
+            onClick={onFitZoom}
+          >
+            <Scan aria-hidden size={15} />
+            <span>{Math.round(zoom * 100)}%</span>
+          </button>
         </div>
       ) : null}
     </div>
@@ -2234,19 +2713,25 @@ function CropSelectionOverlay({
   viewport,
   fit,
   active,
+  preview,
   onHandle,
 }: {
   crop: Rect;
   viewport: Rect | null;
   fit: number;
   active: boolean;
+  preview: boolean;
   onHandle: (e: React.PointerEvent<HTMLSpanElement>, handle: Handle) => void;
 }) {
   const displayCrop = viewport ? rectToViewport(crop, viewport) : crop;
+  // Handles show whenever the crop tool is selected (active); other tools get a
+  // clean, handle-free preview.
+  const showHandles = active;
   return (
     <div
       className="image-editor-selection"
       data-active={active}
+      data-preview={preview}
       style={{
         left: displayCrop.x * fit,
         top: displayCrop.y * fit,
@@ -2254,7 +2739,7 @@ function CropSelectionOverlay({
         height: displayCrop.h * fit,
       }}
     >
-      {active
+      {showHandles
         ? HANDLES.map((h) => (
             <span
               key={h}

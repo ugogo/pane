@@ -547,14 +547,18 @@
   background: var(--app-panel);
 }
 
-.image-editor-frame {
+.image-editor-canvas {
   position: relative;
   flex: none;
   max-width: 100%;
   max-height: 100%;
-  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.image-editor-frame {
+  position: relative;
+  flex: none;
   overflow: hidden;
-  box-shadow: 0 8px 24px var(--app-shadow-strong);
   cursor: crosshair;
   touch-action: none;
 }
@@ -574,29 +578,37 @@
   cursor: grab;
 }
 
-.image-editor-preview {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: fill;
-  border-radius: 4px;
-  pointer-events: none;
+/* Hand tool overrides the per-tool cursor while panning the zoomed view. */
+.image-editor-frame[data-grab='true'] {
+  cursor: grab;
 }
 
-.image-editor-view-toggle {
+.image-editor-frame[data-grab='true']:active {
+  cursor: grabbing;
+}
+
+.image-editor-viewbar {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 5;
+  top: 12px;
+  right: 12px;
+  z-index: 6;
+  display: flex;
+  gap: 6px;
+}
+
+.image-editor-viewbar-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 30px;
+  gap: 5px;
   height: 30px;
+  padding: 0 9px;
   border: 1px solid var(--app-border);
   border-radius: 8px;
   background: color-mix(in srgb, var(--app-panel-raised) 88%, transparent);
   color: var(--app-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   box-shadow: 0 8px 22px var(--app-shadow-strong);
   cursor: pointer;
   transition:
@@ -604,13 +616,22 @@
     border-color 120ms ease;
 }
 
-.image-editor-view-toggle:hover {
+.image-editor-viewbar-btn:hover {
   border-color: var(--app-border-strong);
   background: var(--app-panel-hover);
 }
 
-.image-editor-view-toggle[aria-pressed='true'] {
+.image-editor-viewbar-btn[aria-pressed='true'] {
   border-color: var(--app-ring);
+  color: var(--app-primary);
+}
+
+.image-editor-preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
 }
 
 .image-editor-selection {
@@ -625,6 +646,14 @@
 .image-editor-selection[data-active='false'] {
   border-style: dashed;
   opacity: 0.72;
+}
+
+/* In the centered crop preview the selection rect hugs the rounded image, so
+   drop its border + dim and keep only the resize handles. */
+.image-editor-selection[data-preview='true'] {
+  border-color: transparent;
+  box-shadow: none;
+  opacity: 1;
 }
 
 .image-editor-object-selection {
@@ -834,7 +863,7 @@
 
 .image-editor-tool-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -892,6 +921,7 @@
 
 .image-editor-swatch-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
