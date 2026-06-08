@@ -1210,7 +1210,15 @@ export default function ImageEditorPage() {
     error,
   } = state;
 
+  const fetchInFlight = useRef(false);
+
   function fetchCapture() {
+    // One fetch at a time. A new capture-edit session is minted server-side on
+    // every call, so overlapping fetches (e.g. StrictMode's double-mounted
+    // refresh-capture listener in dev) would each spin up a session and dispatch
+    // a redundant capture-loaded; the guard collapses them to one.
+    if (fetchInFlight.current) return Promise.resolve();
+    fetchInFlight.current = true;
     return takeLatestCaptureEdit()
       .then((c) => {
         dispatch({
@@ -1228,7 +1236,10 @@ export default function ImageEditorPage() {
       })
       .catch((e: unknown) =>
         dispatch({ type: 'capture-error', error: String(e) }),
-      );
+      )
+      .finally(() => {
+        fetchInFlight.current = false;
+      });
   }
 
   const onFetch = useEffectEvent(() => void fetchCapture());

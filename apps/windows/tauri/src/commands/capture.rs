@@ -60,6 +60,9 @@ pub struct StoredCapture {
     /// Lazily-encoded data URL for the enlarged preview, cached so the (heavy)
     /// PNG encode happens once per capture rather than on every Space press.
     pub full_data_url: Option<String>,
+    /// Lazily-encoded full-resolution data URL for the image editor, cached so
+    /// re-opening the editor for the same capture skips the PNG encode.
+    pub edit_data_url: Option<String>,
 }
 
 #[derive(Clone)]
@@ -208,6 +211,7 @@ pub fn make_stored_capture(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<Store
         height: img.height(),
         edit_source: None,
         full_data_url: None,
+        edit_data_url: None,
     })
 }
 
@@ -254,11 +258,26 @@ fn encode_png_bytes(capture: &StoredCapture) -> Result<Vec<u8>, String> {
     Ok(buf)
 }
 
+/// PNG data URL for the editor's *display* image. Uses fast (low-effort) zlib
+/// compression with adaptive row filtering: filtering is cheap but shrinks a
+/// screenshot several-fold, and the resulting bytes cross IPC and get base64'd,
+/// so a smaller payload dominates the end-to-end open time far more than the
+/// extra filtering CPU. (The save-to-desktop path keeps the default
+/// high-compression encoder via `encode_png_bytes`.)
 fn rgba_png_data_url(width: u32, height: u32, rgba: &[u8]) -> Result<String, String> {
-    let img = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(width, height, rgba.to_vec())
-        .ok_or_else(|| "Capture pixels are invalid.".to_string())?;
+    use image::codecs::png::{CompressionType, FilterType as PngFilterType, PngEncoder};
+    use image::{ExtendedColorType, ImageEncoder};
+
+    let expected = (width as usize)
+        .checked_mul(height as usize)
+        .and_then(|px| px.checked_mul(4));
+    if expected != Some(rgba.len()) {
+        return Err("Capture pixels are invalid.".into());
+    }
+
     let mut buf = Vec::new();
-    img.write_to(&mut Cursor::new(&mut buf), ImageFormat::Png)
+    PngEncoder::new_with_quality(&mut buf, CompressionType::Fast, PngFilterType::Adaptive)
+        .write_image(rgba, width, height, ExtendedColorType::Rgba8)
         .map_err(|e| e.to_string())?;
     Ok(format!("data:image/png;base64,{}", B64.encode(&buf)))
 }
@@ -353,30 +372,52 @@ pub fn take_latest_capture_full(
     })
 }
 
+// Async so the (potentially heavy) PNG encode runs on a runtime worker thread
+// instead of blocking the main UI thread while the editor window opens.
 #[tauri::command]
-pub fn take_latest_capture_edit(
+pub async fn take_latest_capture_edit(
     window: tauri::WebviewWindow,
     latest: State<'_, LatestCapture>,
     edit_sessions: State<'_, CaptureEditSessions>,
 ) -> Result<CaptureEditResult, String> {
     crate::commands::require_window(&window, &["image-editor", "main"])?;
-    let capture = latest_capture(latest)?;
-    let source = capture.edit_source.unwrap_or(EditSource {
-        rgba: capture.rgba,
-        width: capture.width,
-        height: capture.height,
-        crop: EditRect {
-            x: 0,
-            y: 0,
+
+    // Resolve the edit source and (re)use the cached editor data URL, computing
+    // it once per capture. The guard is never held across an await.
+    let (source, data_url) = {
+        let mut guard = latest.0.lock().unwrap();
+        let capture = guard
+            .as_mut()
+            .ok_or_else(|| "No capture available.".to_string())?;
+        let source = capture.edit_source.clone().unwrap_or_else(|| EditSource {
+            rgba: capture.rgba.clone(),
             width: capture.width,
             height: capture.height,
-        },
-    });
+            crop: EditRect {
+                x: 0,
+                y: 0,
+                width: capture.width,
+                height: capture.height,
+            },
+        });
+        if capture.edit_data_url.is_none() {
+            capture.edit_data_url = Some(rgba_png_data_url(
+                source.width,
+                source.height,
+                &source.rgba,
+            )?);
+        }
+        (
+            source.clone(),
+            capture.edit_data_url.clone().unwrap_or_default(),
+        )
+    };
+
     let session_id = edit_sessions.store(source.clone());
 
     Ok(CaptureEditResult {
         session_id,
-        data_url: rgba_png_data_url(source.width, source.height, &source.rgba)?,
+        data_url,
         width: source.width,
         height: source.height,
         crop: source.crop,
