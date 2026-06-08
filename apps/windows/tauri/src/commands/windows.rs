@@ -220,12 +220,6 @@ pub async fn prepare_capture_windows(app: AppHandle) -> Result<(), String> {
     if app.get_webview_window(CAPTURE_ZOOM_LABEL).is_none() {
         create_capture_zoom_window(&app)?;
     }
-    // Warm the editor as well: building its (larger) webview and bundling its
-    // route is the bulk of the first "Edit" latency, so do it up front while the
-    // user is idle rather than when they click Edit.
-    if app.get_webview_window(IMAGE_EDITOR_LABEL).is_none() {
-        create_image_editor_window(&app)?;
-    }
     Ok(())
 }
 

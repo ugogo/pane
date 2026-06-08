@@ -38,14 +38,26 @@ export function useAppBoot() {
         if (cancelled) return;
         setIsBooting(false);
 
-        void prepareCaptureWindows().catch((err) => {
-          console.error('Failed to prepare capture windows', err);
-        });
-
-        // Show the Tauri window after the first render completes.
+        // Reveal the shell first, then warm hidden capture webviews on idle time.
+        // v1.3.0 pre-warmed the image editor here as well; building several heavy
+        // child webviews in parallel with the first main-window paint left some
+        // production installs stuck on the acrylic splash with no content.
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             void getCurrentWindow().show().catch(console.error);
+
+            const warmCaptureWindows = () => {
+              if (cancelled) return;
+              void prepareCaptureWindows().catch((err) => {
+                console.error('Failed to prepare capture windows', err);
+              });
+            };
+
+            if ('requestIdleCallback' in window) {
+              window.requestIdleCallback(warmCaptureWindows, { timeout: 2000 });
+            } else {
+              window.setTimeout(warmCaptureWindows, 500);
+            }
           });
         });
       },
