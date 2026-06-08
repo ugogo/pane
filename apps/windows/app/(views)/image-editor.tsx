@@ -247,13 +247,27 @@ const TOOLS: Array<{
   id: Tool;
   label: string;
   icon: typeof CropIcon;
+  code: string; // KeyboardEvent.code for the shortcut
+  hint: string; // human-readable key shown in the tooltip
 }> = [
-  { id: 'crop', label: 'Crop', icon: CropIcon },
-  { id: 'pan', label: 'Hand (pan)', icon: Hand },
-  { id: 'arrow', label: 'Arrow', icon: ArrowUpRight },
-  { id: 'rect', label: 'Rectangle', icon: RectangleHorizontal },
-  { id: 'highlight', label: 'Highlight', icon: Highlighter },
-  { id: 'pen', label: 'Pen', icon: Pencil },
+  { id: 'crop', label: 'Crop', icon: CropIcon, code: 'KeyC', hint: 'C' },
+  { id: 'pan', label: 'Hand (pan)', icon: Hand, code: 'Space', hint: 'Space' },
+  { id: 'arrow', label: 'Arrow', icon: ArrowUpRight, code: 'KeyA', hint: 'A' },
+  {
+    id: 'rect',
+    label: 'Rectangle',
+    icon: RectangleHorizontal,
+    code: 'KeyR',
+    hint: 'R',
+  },
+  {
+    id: 'highlight',
+    label: 'Highlight',
+    icon: Highlighter,
+    code: 'KeyH',
+    hint: 'H',
+  },
+  { id: 'pen', label: 'Pen', icon: Pencil, code: 'KeyP', hint: 'P' },
 ];
 
 const SWATCHES = ['#f43f5e', '#38bdf8', '#facc15', '#22c55e', '#f8fafc'];
@@ -1223,6 +1237,9 @@ export default function ImageEditorPage() {
   const onDeleteSelected = useEffectEvent(() =>
     dispatch({ type: 'delete-selected' }),
   );
+  const onSetTool = useEffectEvent((tool: Tool) =>
+    dispatch({ type: 'set-tool', tool }),
+  );
 
   useEffect(() => {
     document.documentElement.style.background = 'transparent';
@@ -1248,11 +1265,12 @@ export default function ImageEditorPage() {
         onRedo();
         return;
       }
+      const target = e.target as HTMLElement | null;
+      const inField = !!target?.closest(
+        'input, textarea, [contenteditable="true"]',
+      );
       if (e.code === 'Delete' || e.code === 'Backspace') {
-        const target = e.target as HTMLElement | null;
-        if (target?.closest('input, textarea, [contenteditable="true"]')) {
-          return;
-        }
+        if (inField) return;
         e.preventDefault();
         onDeleteSelected();
         return;
@@ -1260,6 +1278,15 @@ export default function ImageEditorPage() {
       if (e.code === 'Escape') {
         e.preventDefault();
         void hideImageEditor();
+        return;
+      }
+      // Single-key tool shortcuts (c/space/a/r/h/p), unless typing in a field.
+      if (!inField && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const shortcut = TOOLS.find((t) => t.code === e.code);
+        if (shortcut) {
+          e.preventDefault();
+          onSetTool(shortcut.id);
+        }
       }
     }
 
@@ -1482,11 +1509,11 @@ function EditorPanel({
     <div className="image-editor-panel">
       <h2 className="image-editor-section">Tools</h2>
       <div className="image-editor-tool-grid">
-        {TOOLS.map(({ id, label, icon: Icon }) => (
+        {TOOLS.map(({ id, label, icon: Icon, hint }) => (
           <button
             key={id}
             type="button"
-            title={label}
+            title={`${label} (${hint})`}
             aria-label={label}
             aria-pressed={tool === id}
             onClick={() => onTool(id)}
@@ -2065,8 +2092,6 @@ function useCanvasPreview({
   annotations,
   draft,
   viewport,
-  crop,
-  cropPreview,
 }: {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   src: string | null;
@@ -2074,10 +2099,13 @@ function useCanvasPreview({
   annotations: Annotation[];
   draft: Annotation | null;
   viewport: Rect | null;
-  crop: Rect | null;
-  cropPreview: boolean;
 }) {
   const imageRef = useRef<HTMLImageElement | null>(null);
+  // Value key so the canvas redraws on any viewport change (crop, preview toggle,
+  // or the in-preview draw freeze/unfreeze) without churning on object identity.
+  const viewportKey = viewport
+    ? `${viewport.x}:${viewport.y}:${viewport.w}:${viewport.h}`
+    : 'none';
 
   const drawLatest = useEffectEvent((nextImage?: HTMLImageElement | null) => {
     const canvas = canvasRef.current;
@@ -2111,7 +2139,7 @@ function useCanvasPreview({
 
   useEffect(() => {
     drawLatest();
-  }, [annotations, base, cropPreview, draft, crop]);
+  }, [annotations, base, draft, viewportKey]);
 }
 
 // Keeps the zoomed/panned content from being dragged entirely off the stage.
@@ -2248,6 +2276,10 @@ function EditorStage({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [grabCursor, setGrabCursor] = useState(false);
   const [cropPreview, setCropPreview] = useState(false);
+  // While drawing a new crop from the zoomed preview, the viewport is pinned to
+  // the crop that was showing so the view doesn't zoom out (or chase the live
+  // crop) mid-draw. Null at all other times.
+  const [viewportFreeze, setViewportFreeze] = useState<Rect | null>(null);
   const dragRef = useRef<Drag | null>(null);
   const draftRef = useRef<Annotation | null>(null);
   const panDragRef = useRef<{ x: number; y: number } | null>(null);
@@ -2267,7 +2299,8 @@ function EditorStage({
 
   const canToggleCropPreview = !!base && !!crop && !fillsBase(crop, base);
   const effectiveCropPreview = cropPreview && canToggleCropPreview;
-  const viewport = editorViewport(base, crop, effectiveCropPreview);
+  const viewport =
+    viewportFreeze ?? editorViewport(base, crop, effectiveCropPreview);
   // Background margin (image px); fit shrinks so the padded content fits.
   const padPx = paddingPx(padding);
   const fitVp = paddedFitViewport(viewport, padPx);
@@ -2287,8 +2320,6 @@ function EditorStage({
     annotations,
     draft,
     viewport,
-    crop,
-    cropPreview: effectiveCropPreview,
   });
 
   // On-screen px per image px, read from the rendered rect so it accounts for the
@@ -2322,10 +2353,8 @@ function EditorStage({
     if (effectiveCropPreview && tool === 'crop') {
       const hit = hitTestAnnotation(annotations, point, 10 / pointerScale);
       if (!hit) {
-        // Leave the zoomed preview; a drag from here draws a new crop on the
-        // full capture (anchored at this point), a plain click just unzooms.
-        setCropPreview(false);
-        resetFramePan();
+        // Defer: a drag draws a new crop within the current view (no zoom-out,
+        // anchored at this point); a plain click leaves the preview.
         dragRef.current = { type: 'pending-draw', pressPoint: point };
         e.currentTarget.setPointerCapture(e.pointerId);
         return;
@@ -2371,9 +2400,11 @@ function EditorStage({
     let drag = dragRef.current;
     const point = pointFromEvent(e);
     if (!point) return;
-    // First move after leaving the preview: turn the deferred gesture into a crop
-    // draw anchored at the original press point (kept in absolute image coords).
+    // First move: turn the deferred gesture into a crop draw anchored at the
+    // press point. If it began in the preview, pin the viewport to the current
+    // crop so the view stays put (no zoom-out) while the new crop is drawn.
     if (drag?.type === 'pending-draw') {
+      if (effectiveCropPreview && crop) setViewportFreeze(crop);
       drag = {
         type: 'draw',
         start: drag.pressPoint,
@@ -2413,9 +2444,13 @@ function EditorStage({
     }
     const drag = dragRef.current;
     dragRef.current = null;
-    // A 'pending-draw' that never moved is a click that only left the preview —
-    // already unzoomed on pointer-down, so there is nothing to commit or restore.
-    if (drag && drag.type !== 'pending-draw') {
+    // End any in-preview crop draw: unpin the viewport so it re-centers on the
+    // committed crop below.
+    if (viewportFreeze) setViewportFreeze(null);
+    if (drag?.type === 'pending-draw') {
+      // A click that never became a drag: leave the zoomed preview.
+      setCropPreview(false);
+    } else if (drag) {
       finishEditorDrag({
         drag,
         draft: draftRef.current,
@@ -2527,7 +2562,7 @@ function EditorStage({
       background={backgroundCss}
       framePadding={padPx * fit}
       cornerRadius={CORNER_RADIUS * fit}
-      cropPreview={effectiveCropPreview}
+      cropPreview={effectiveCropPreview && viewportFreeze === null}
       grabCursor={grabCursor}
       zoom={zoom}
       pan={pan}
