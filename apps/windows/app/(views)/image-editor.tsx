@@ -156,8 +156,8 @@ interface EditorState {
   tool: Tool;
   color: string;
   strokeWidth: number;
-  // Output background: padding is a percent of the crop's longer side, background
-  // is a CSS color (null = transparent). Non-undoable output settings.
+  // Output background: padding is in image-space px around the crop, background is
+  // a gradient id (see GRADIENTS). Non-undoable output settings.
   padding: number;
   background: string | null;
   save: SaveState;
@@ -804,6 +804,9 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     case 'set-color': {
       const selected = selectedAnnotationFrom(state);
       if (!selected) return { ...state, color: action.color };
+      // Re-applying the same color is a no-op — don't push a phantom undo step.
+      if (selected.color === action.color)
+        return { ...state, color: action.color };
       return {
         ...state,
         color: action.color,
@@ -820,6 +823,10 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     case 'set-width': {
       const selected = selectedAnnotationFrom(state);
       if (!selected || selected.kind === 'highlight') {
+        return { ...state, strokeWidth: action.width };
+      }
+      // Re-applying the same width is a no-op — don't push a phantom undo step.
+      if (selected.width === action.width) {
         return { ...state, strokeWidth: action.width };
       }
       return {
@@ -1122,7 +1129,7 @@ async function rasterizeEdit(
 
   const pad = paddingPx(padding);
   let canvas = inner;
-  if (pad > 0 || background) {
+  if (pad > 0) {
     // Outer canvas: background fill + soft shadow + rounded-corner inner image.
     const outer = document.createElement('canvas');
     outer.width = crop.w + pad * 2;
@@ -1140,17 +1147,15 @@ async function rasterizeEdit(
       );
       ctx.fillRect(0, 0, outer.width, outer.height);
     }
-    if (pad > 0) {
-      ctx.save();
-      ctx.shadowColor = SHADOW_COLOR;
-      ctx.shadowBlur = SHADOW_BLUR;
-      ctx.shadowOffsetY = SHADOW_OFFSET_Y;
-      ctx.fillStyle = '#000';
-      ctx.beginPath();
-      ctx.roundRect(pad, pad, crop.w, crop.h, radius);
-      ctx.fill();
-      ctx.restore();
-    }
+    ctx.save();
+    ctx.shadowColor = SHADOW_COLOR;
+    ctx.shadowBlur = SHADOW_BLUR;
+    ctx.shadowOffsetY = SHADOW_OFFSET_Y;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.roundRect(pad, pad, crop.w, crop.h, radius);
+    ctx.fill();
+    ctx.restore();
     ctx.save();
     ctx.beginPath();
     ctx.roundRect(pad, pad, crop.w, crop.h, radius);
@@ -1284,7 +1289,9 @@ export default function ImageEditorPage() {
     }
     dispatch({ type: 'save-start' });
     try {
-      const hasBackground = paddingPx(padding) > 0 || !!background;
+      // The background only shows in the padding margin, so a gradient with no
+      // padding has no visible effect — a plain crop can still take the fast path.
+      const hasBackground = paddingPx(padding) > 0;
       if (annotations.length === 0 && !hasBackground) {
         await commitLatestCaptureEdit(
           sessionId,
@@ -1318,7 +1325,6 @@ export default function ImageEditorPage() {
     !!crop &&
     annotations.length === 0 &&
     padding === 0 &&
-    background === DEFAULT_BACKGROUND &&
     crop.x === 0 &&
     crop.y === 0 &&
     crop.w === base.width &&
