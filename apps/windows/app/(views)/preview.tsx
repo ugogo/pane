@@ -96,6 +96,7 @@ export default function PreviewPage() {
 
   const closeTimer = useRef<number | undefined>(undefined);
   const lastFetchAt = useRef(0);
+  const fetchInFlight = useRef(false);
   const phaseRef = useRef<Phase>('hidden');
   const captureRef = useRef<CaptureResult | null>(null);
   const pending = useRef<CaptureResult | null>(null);
@@ -121,6 +122,12 @@ export default function PreviewPage() {
   }, []);
 
   function fetchLatest(isRefresh = false) {
+    // One fetch at a time. The refresh-capture event and the focus/visibility
+    // wake-ups all fire together when a capture is shown, but take_latest_capture
+    // always returns the newest capture, so a single in-flight fetch covers the
+    // whole burst — the others would just re-fetch identical bytes.
+    if (fetchInFlight.current) return Promise.resolve();
+    fetchInFlight.current = true;
     const started = performance.now();
     lastFetchAt.current = started;
     return takeLatestCapture()
@@ -149,7 +156,10 @@ export default function PreviewPage() {
           setView((v) => ({ ...v, capture: c, revision: v.revision + 1 }));
         }
       })
-      .catch((e: unknown) => setError(String(e)));
+      .catch((e: unknown) => setError(String(e)))
+      .finally(() => {
+        fetchInFlight.current = false;
+      });
   }
 
   const onFirstFetch = useEffectEvent(() => void fetchLatest());
