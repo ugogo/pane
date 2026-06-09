@@ -109,12 +109,7 @@ export default function MainLayout() {
     useUpdateCheck();
 
   if (bootError) {
-    return (
-      <YStack height="100vh" overflow="hidden">
-        <AppTitlebar />
-        <AppBootFailure message={bootError} />
-      </YStack>
-    );
+    return <AppBootFailure message={bootError} />;
   }
 
   if (isBooting) {
@@ -148,10 +143,7 @@ function MainShellErrorBoundary({ children }: { children: ReactNode }) {
   return (
     <AppErrorBoundary
       renderFallback={(message) => (
-        <YStack height="100vh" overflow="hidden">
-          <AppTitlebar />
-          <AppBootFailure title="Pane ran into a problem" message={message} />
-        </YStack>
+        <AppBootFailure title="Pane ran into a problem" message={message} />
       )}
     >
       {children}

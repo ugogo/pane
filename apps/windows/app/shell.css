@@ -1156,3 +1156,60 @@
   color: currentcolor;
   stroke: currentcolor;
 }
+
+/* Boot/render failure fallback. Plain-CSS only (no Tamagui tokens) so it still
+   styles correctly when the failure is the Tamagui CSS layer itself. */
+.app-boot-failure {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-boot-failure-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 24px;
+}
+
+.app-boot-failure-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 480px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+}
+
+.app-boot-failure-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-boot-failure-title {
+  margin: 0;
+  color: var(--app-destructive);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.app-boot-failure-message {
+  margin: 0;
+  color: var(--app-destructive);
+  font-size: 13px;
+}
+
+.app-boot-failure-hint {
+  margin: 0;
+  color: var(--app-foreground-muted);
+  font-size: 12px;
+}
