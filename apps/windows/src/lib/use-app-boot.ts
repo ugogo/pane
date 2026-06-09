@@ -53,7 +53,7 @@ export function useAppBoot() {
               });
             };
 
-            if ('requestIdleCallback' in window) {
+            if (typeof window.requestIdleCallback === 'function') {
               window.requestIdleCallback(warmCaptureWindows, { timeout: 2000 });
             } else {
               window.setTimeout(warmCaptureWindows, 500);
