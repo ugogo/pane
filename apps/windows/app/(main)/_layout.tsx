@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Link, Slot, usePathname } from 'expo-router';
 import {
   Activity,
@@ -32,6 +32,8 @@ import {
   XStack,
   YStack,
 } from '@pane/ui';
+import { AppBootFailure } from '@/components/app-boot-failure';
+import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { APP_DISPLAY_NAME } from '@/lib/app-name';
 import { useAppBoot } from '@/lib/use-app-boot';
 import { useUpdateCheck, type UpdateNoticeState } from '@/lib/use-update-check';
@@ -102,9 +104,18 @@ function formatBytes(bytes: number) {
 }
 
 export default function MainLayout() {
-  const { isBooting, appVersion } = useAppBoot();
+  const { isBooting, appVersion, bootError } = useAppBoot();
   const { notice: updateNotice, install: handleInstallUpdate } =
     useUpdateCheck();
+
+  if (bootError) {
+    return (
+      <YStack height="100vh" overflow="hidden">
+        <AppTitlebar />
+        <AppBootFailure message={bootError} />
+      </YStack>
+    );
+  }
 
   if (isBooting) {
     return (
@@ -123,11 +134,28 @@ export default function MainLayout() {
   }
 
   return (
-    <AppShell
-      appVersion={appVersion}
-      updateNotice={updateNotice}
-      onInstallUpdate={handleInstallUpdate}
-    />
+    <MainShellErrorBoundary>
+      <AppShell
+        appVersion={appVersion}
+        updateNotice={updateNotice}
+        onInstallUpdate={handleInstallUpdate}
+      />
+    </MainShellErrorBoundary>
+  );
+}
+
+function MainShellErrorBoundary({ children }: { children: ReactNode }) {
+  return (
+    <AppErrorBoundary
+      renderFallback={(message) => (
+        <YStack height="100vh" overflow="hidden">
+          <AppTitlebar />
+          <AppBootFailure title="Pane ran into a problem" message={message} />
+        </YStack>
+      )}
+    >
+      {children}
+    </AppErrorBoundary>
   );
 }
 

@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { prepareCaptureWindows } from '@/lib/commands';
+import { formatAppError } from '@/lib/format-app-error';
+import { revealMainWindow } from '@/lib/reveal-main-window';
+
+const BOOT_TIMEOUT_MS = 15_000;
 
 /**
  * Gates the first paint of the main window: waits for the initial render (two
@@ -12,12 +15,48 @@ import { prepareCaptureWindows } from '@/lib/commands';
 export function useAppBoot() {
   const [isBooting, setIsBooting] = useState(true);
   const [appVersion, setAppVersion] = useState<string | null>(null);
+  const [bootError, setBootError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     let firstFrame = 0;
     let secondFrame = 0;
     let bootTimer = 0;
+    let bootTimeout = 0;
+    let finished = false;
+
+    const finishBoot = (error: string | null) => {
+      if (cancelled || finished) return;
+      finished = true;
+      if (error) setBootError(error);
+      setIsBooting(false);
+      window.clearTimeout(bootTimeout);
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          void revealMainWindow().catch((err) => {
+            if (cancelled) return;
+            setBootError((current) => current ?? formatAppError(err));
+            setIsBooting(false);
+          });
+
+          if (error) return;
+
+          const warmCaptureWindows = () => {
+            if (cancelled) return;
+            void prepareCaptureWindows().catch((err) => {
+              console.error('Failed to prepare capture windows', err);
+            });
+          };
+
+          if (typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(warmCaptureWindows, { timeout: 2000 });
+          } else {
+            window.setTimeout(warmCaptureWindows, 500);
+          }
+        });
+      });
+    };
 
     const afterFirstPaint = new Promise<void>((resolve) => {
       firstFrame = requestAnimationFrame(() => {
@@ -33,33 +72,15 @@ export function useAppBoot() {
         console.error('Failed to load app version', err);
       });
 
+    bootTimeout = window.setTimeout(() => {
+      finishBoot(
+        'Pane is taking too long to start. Try closing and reopening the app.',
+      );
+    }, BOOT_TIMEOUT_MS);
+
     void Promise.allSettled([afterFirstPaint, minimumBoot, versionTask]).then(
       () => {
-        if (cancelled) return;
-        setIsBooting(false);
-
-        // Reveal the shell first, then warm hidden capture webviews on idle time.
-        // v1.3.0 pre-warmed the image editor here as well; building several heavy
-        // child webviews in parallel with the first main-window paint left some
-        // production installs stuck on the acrylic splash with no content.
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            void getCurrentWindow().show().catch(console.error);
-
-            const warmCaptureWindows = () => {
-              if (cancelled) return;
-              void prepareCaptureWindows().catch((err) => {
-                console.error('Failed to prepare capture windows', err);
-              });
-            };
-
-            if (typeof window.requestIdleCallback === 'function') {
-              window.requestIdleCallback(warmCaptureWindows, { timeout: 2000 });
-            } else {
-              window.setTimeout(warmCaptureWindows, 500);
-            }
-          });
-        });
+        finishBoot(null);
       },
     );
 
@@ -68,8 +89,9 @@ export function useAppBoot() {
       cancelAnimationFrame(firstFrame);
       cancelAnimationFrame(secondFrame);
       window.clearTimeout(bootTimer);
+      window.clearTimeout(bootTimeout);
     };
   }, []);
 
-  return { isBooting, appVersion };
+  return { isBooting, appVersion, bootError };
 }
