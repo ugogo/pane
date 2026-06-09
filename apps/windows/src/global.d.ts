@@ -8,6 +8,6 @@ declare module '*.css' {
 }
 
 declare module '*.woff2' {
-  const asset: number;
+  const asset: string | number;
   export default asset;
 }

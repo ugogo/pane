@@ -26,9 +26,11 @@ export function AppBootFailure({
         gap="$3"
         padding="$4"
         width="100%"
-        style={{ maxWidth: 480 }}
-        backgroundColor={colors.errorSurface}
-        borderColor={colors.errorBorder}
+        style={{
+          maxWidth: 480,
+          backgroundColor: colors.errorSurface,
+          borderColor: colors.errorBorder,
+        }}
       >
         <XStack gap="$2" alignItems="flex-start">
           <AlertTriangle aria-hidden color="$red11" size={18} />
