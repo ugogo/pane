@@ -1,6 +1,6 @@
 [package]
 name = "pane"
-version = "1.4.1"
+version = "1.4.2"
 description = "Pane desktop utility suite"
 authors = ["Pane"]
 edition = "2021"
