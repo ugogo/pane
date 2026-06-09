@@ -1,6 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Cpu, Monitor, Mouse, RotateCcw, Trash2 } from '@pane/ui';
+import {
+  ChevronDown,
+  ChevronRight,
+  Cpu,
+  Monitor,
+  Mouse,
+  RotateCcw,
+  Trash2,
+} from '@pane/ui';
 import {
   Button,
   Card,
@@ -11,6 +19,7 @@ import {
   PresetIconButton,
   PresetNameButton,
   Slider,
+  Switch,
   Text,
   XStack,
   YStack,
@@ -19,14 +28,24 @@ import {
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusBadge, StatusText } from '@/components/features/status-ui';
 import {
+  ambientSyncStatus,
   applyDxLight,
   applyDynamicLighting,
   applyLightPreset,
   applyMsiLighting,
   deleteLightPreset,
   dxLightOff,
+  getAmbientSettings,
   getLightPresets,
+  saveAmbientSettings,
   saveLightPreset,
+  setAmbientBrightness,
+  setAmbientFps,
+  setAmbientSaturation,
+  setAmbientWarmth,
+  setAmbientZones,
+  startAmbientSync,
+  stopAmbientSync,
   type LightPreset,
   type LightPresetTarget,
   type LightState,
@@ -287,6 +306,224 @@ function LightRow({
   );
 }
 
+function AmbientSyncCard() {
+  const queryClient = useQueryClient();
+  const statusQuery = useQuery({
+    queryKey: queryKeys.ambientSync,
+    queryFn: ambientSyncStatus,
+    // The loop can stop itself (device unplugged, capture error), so poll
+    // while it's meant to be running to keep the toggle honest.
+    refetchInterval: (query) => (query.state.data ? 2000 : false),
+  });
+  const running = statusQuery.data ?? false;
+  // Persisted tuning, fetched once to seed the sliders.
+  const settingsQuery = useQuery({
+    queryKey: queryKeys.ambientSettings,
+    queryFn: getAmbientSettings,
+  });
+  // Slider values, in display units (percentages for brightness/saturation/
+  // warmth; counts for zones/fps). Seeded from the persisted settings below.
+  const [settings, setSettings] = useState({
+    brightness: 60,
+    saturation: 150,
+    warmth: 150,
+    zones: 5,
+    fps: 30,
+  });
+  const { brightness, saturation, warmth, zones, fps } = settings;
+  const [busy, setBusy] = useState(false);
+  // Config sliders stay tucked away — by default the card is just an on/off switch.
+  const [expanded, setExpanded] = useState(false);
+  const result = useActionStatus();
+
+  // Seed the sliders from persisted settings once, the first time they arrive.
+  const seeded = useRef(false);
+  useEffect(() => {
+    const data = settingsQuery.data;
+    if (!data || seeded.current) return;
+    seeded.current = true;
+    setSettings({
+      brightness: Math.round(data.brightness * 100),
+      saturation: Math.round(data.saturation * 100),
+      warmth: Math.round(data.warmth * 100),
+      zones: data.zones,
+      fps: data.fps,
+    });
+  }, [settingsQuery.data]);
+
+  // Persist tuning, debounced so dragging a slider doesn't hammer the disk.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    },
+    [],
+  );
+  function persist(next: typeof settings) {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      void saveAmbientSettings({
+        brightness: next.brightness / 100,
+        saturation: next.saturation / 100,
+        warmth: next.warmth / 100,
+        zones: next.zones,
+        fps: next.fps,
+      });
+    }, 500);
+  }
+
+  async function toggle() {
+    setBusy(true);
+    try {
+      if (running) {
+        await stopAmbientSync();
+        result.set('pass', 'Screen sync off.');
+      } else {
+        await startAmbientSync(
+          brightness / 100,
+          saturation / 100,
+          warmth / 100,
+          zones,
+          fps,
+        );
+        result.set(
+          'pass',
+          `Syncing the strip to your screen — ${zones} zone${zones === 1 ? '' : 's'} at ${fps} fps.`,
+        );
+      }
+      await queryClient.invalidateQueries({ queryKey: queryKeys.ambientSync });
+    } catch (e) {
+      result.set('fail', String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Update one slider, retune a live loop in place (the backend setters no-op
+  // when idle), and queue a debounced persist of the new values.
+  function change(patch: Partial<typeof settings>, live?: () => void) {
+    const next = { ...settings, ...patch };
+    setSettings(next);
+    if (running) live?.();
+    persist(next);
+  }
+
+  function onBrightnessChange(next: number) {
+    change({ brightness: next }, () => void setAmbientBrightness(next / 100));
+  }
+
+  function onSaturationChange(next: number) {
+    change({ saturation: next }, () => void setAmbientSaturation(next / 100));
+  }
+
+  function onWarmthChange(next: number) {
+    change({ warmth: next }, () => void setAmbientWarmth(next / 100));
+  }
+
+  function onZonesChange(next: number) {
+    change({ zones: next }, () => void setAmbientZones(next));
+  }
+
+  function onFpsChange(next: number) {
+    change({ fps: next }, () => void setAmbientFps(next));
+  }
+
+  return (
+    <Card gap="$3" padding="$3">
+      <XStack gap="$3" alignItems="center">
+        <DeviceIcon>
+          <Monitor size={16} aria-hidden />
+        </DeviceIcon>
+        <YStack flex={1} style={{ minWidth: 0 }}>
+          <Text fontSize="$3" fontWeight="600" numberOfLines={1}>
+            Screen sync
+          </Text>
+          <MutedText fontSize="$2" numberOfLines={1}>
+            DX Light strip follows your screen's color
+          </MutedText>
+        </YStack>
+        <Switch
+          aria-label="Enable screen sync"
+          checked={running}
+          disabled={busy}
+          onCheckedChange={() => void toggle()}
+        />
+      </XStack>
+
+      <Button
+        alignSelf="flex-start"
+        appearance="ghost"
+        btnScale="xs"
+        icon={expanded ? ChevronDown : ChevronRight}
+        onPress={() => setExpanded((v) => !v)}
+      >
+        Adjust
+      </Button>
+
+      {expanded ? (
+        <XStack flexWrap="wrap" gap="$3" alignItems="flex-end">
+          <YStack flex={1} gap="$1" style={{ minWidth: 160 }}>
+            <MutedText fontSize="$2">Brightness {brightness}%</MutedText>
+            <Slider
+              max={100}
+              min={0}
+              step={1}
+              value={brightness}
+              onChange={onBrightnessChange}
+            />
+          </YStack>
+          <YStack flex={1} gap="$1" style={{ minWidth: 160 }}>
+            <MutedText fontSize="$2">Saturation {saturation}%</MutedText>
+            <Slider
+              max={300}
+              min={100}
+              step={5}
+              value={saturation}
+              onChange={onSaturationChange}
+            />
+          </YStack>
+          <YStack flex={1} gap="$1" style={{ minWidth: 160 }}>
+            <MutedText fontSize="$2">Warmth {warmth}%</MutedText>
+            <Slider
+              max={200}
+              min={0}
+              step={1}
+              value={warmth}
+              onChange={onWarmthChange}
+            />
+          </YStack>
+          <YStack flex={1} gap="$1" style={{ minWidth: 160 }}>
+            <MutedText fontSize="$2">
+              Zones {zones === 1 ? '1 (single color)' : zones}
+            </MutedText>
+            <Slider
+              max={10}
+              min={1}
+              step={1}
+              value={zones}
+              onChange={onZonesChange}
+            />
+          </YStack>
+          <YStack flex={1} gap="$1" style={{ minWidth: 160 }}>
+            <MutedText fontSize="$2">Frame rate {fps} fps</MutedText>
+            <Slider
+              max={60}
+              min={5}
+              step={1}
+              value={fps}
+              onChange={onFpsChange}
+            />
+          </YStack>
+        </XStack>
+      ) : null}
+
+      {result.message ? (
+        <StatusText status={result.status}>{result.message}</StatusText>
+      ) : null}
+    </Card>
+  );
+}
+
 export default function LightsPage() {
   const queryClient = useQueryClient();
   const lightsQuery = useQuery({
@@ -436,6 +673,10 @@ export default function LightsPage() {
         onDelete={(name) => void onDeletePreset(name)}
         onSave={() => void onSavePreset()}
       />
+
+      {keyedLights.some(({ light }) => light.kind === 'dxlight') ? (
+        <AmbientSyncCard />
+      ) : null}
 
       <YStack gap="$3">
         {keyedLights.map(({ key, light }) => (

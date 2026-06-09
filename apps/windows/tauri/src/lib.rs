@@ -5,6 +5,7 @@ mod commands;
 mod power_notify;
 mod tray;
 
+use commands::ambient::AmbientSync;
 use commands::capture::{CaptureEditSessions, LatestCapture};
 use commands::metrics::StartTime;
 use std::time::Instant;
@@ -23,6 +24,7 @@ pub fn run() {
         .manage(StartTime(boot))
         .manage(LatestCapture::default())
         .manage(CaptureEditSessions::default())
+        .manage(AmbientSync::default())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
@@ -48,6 +50,7 @@ pub fn run() {
             // Bind identifier-scoped storage before anything can read/write light
             // state (the restore spawn below, brightness keys, etc.).
             commands::light_state::init_storage(app.handle());
+            commands::ambient::init_storage(app.handle());
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_title(APP_DISPLAY_NAME);
                 let _ = window.set_decorations(false);
@@ -113,6 +116,16 @@ pub fn run() {
             commands::dx_light::detect_dx_light,
             commands::dx_light::apply_dx_light,
             commands::dx_light::dx_light_off,
+            commands::ambient::start_ambient_sync,
+            commands::ambient::stop_ambient_sync,
+            commands::ambient::set_ambient_brightness,
+            commands::ambient::set_ambient_saturation,
+            commands::ambient::set_ambient_warmth,
+            commands::ambient::set_ambient_zones,
+            commands::ambient::set_ambient_fps,
+            commands::ambient::ambient_sync_status,
+            commands::ambient::get_ambient_settings,
+            commands::ambient::save_ambient_settings,
             commands::dynamic_lighting::get_dynamic_lighting_status,
             commands::dynamic_lighting::list_dynamic_lighting_devices,
             commands::dynamic_lighting::get_dynamic_lighting_info,
