@@ -1,6 +1,5 @@
 import '@/lib/register-geist-font';
 import '@tamagui/web/reset.css';
-import './tamagui.generated.css';
 import './shell.css';
 import './global.css';
 import { Slot } from 'expo-router';

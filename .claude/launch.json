@@ -18,6 +18,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite"],
       "port": 1420
+    },
+    {
+      "name": "dist-static",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", "apps/windows/dist", "-p", "8900", "-c-1"],
+      "port": 8900
     }
   ]
 }

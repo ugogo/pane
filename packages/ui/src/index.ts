@@ -67,4 +67,4 @@ export {
   AnimatePresence,
 } from 'tamagui';
 
-export * from '@tamagui/lucide-icons-2';
+export * from '@tamagui/lucide-icons';

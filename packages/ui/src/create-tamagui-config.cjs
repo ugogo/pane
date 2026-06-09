@@ -1,5 +1,4 @@
 const { defaultConfig } = require('@tamagui/config/v5');
-const { animations: paneAnimations } = require('@tamagui/config/v5-css');
 const { createTamagui } = require('tamagui');
 
 const { colors } = require('./tokens.cjs');
@@ -64,7 +63,6 @@ const appTheme = {
 
 const tamaguiConfig = createTamagui({
   ...defaultConfig,
-  animations: paneAnimations,
   settings: {
     ...defaultConfig.settings,
     onlyAllowShorthands: false,

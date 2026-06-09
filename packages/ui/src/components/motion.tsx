@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { AnimatePresence, YStack, type YStackProps } from 'tamagui';
+import { YStack, type YStackProps } from 'tamagui';
 
 type PresenceMode = 'sync' | 'wait';
 
@@ -10,27 +10,22 @@ export type PageTransitionProps = Omit<YStackProps, 'children'> & {
   motionKey: string | number;
 };
 
+// Plain remount-on-key swap. (Tamagui v1 has no v5-css named transitions; the
+// enter/exit animation can be reintroduced with a v1 animation driver later.)
+// `initial`/`mode` are accepted for API compatibility but currently unused.
 export function PageTransition({
   children,
-  initial = true,
-  mode = 'wait',
+  initial,
+  mode,
   motionKey,
   ...props
 }: PageTransitionProps) {
+  void initial;
+  void mode;
   return (
-    <AnimatePresence initial={initial} mode={mode}>
-      <YStack
-        key={motionKey}
-        transition="quickLessBouncy"
-        enterStyle={{ opacity: 0, y: 8 }}
-        exitStyle={{ opacity: 0, y: -4 }}
-        opacity={1}
-        y={0}
-        {...props}
-      >
-        {children}
-      </YStack>
-    </AnimatePresence>
+    <YStack key={motionKey} {...props}>
+      {children}
+    </YStack>
   );
 }
 
@@ -43,25 +38,16 @@ export type PopupTransitionProps = Omit<YStackProps, 'children'> & {
 
 export function PopupTransition({
   children,
-  initial = true,
-  mode = 'sync',
+  initial,
+  mode,
   motionKey,
   ...props
 }: PopupTransitionProps) {
+  void initial;
+  void mode;
   return (
-    <AnimatePresence initial={initial} mode={mode}>
-      <YStack
-        key={motionKey}
-        transition="quickerLessBouncy"
-        enterStyle={{ opacity: 0, scale: 0.98, y: 4 }}
-        exitStyle={{ opacity: 0, scale: 0.98, y: 2 }}
-        opacity={1}
-        scale={1}
-        y={0}
-        {...props}
-      >
-        {children}
-      </YStack>
-    </AnimatePresence>
+    <YStack key={motionKey} {...props}>
+      {children}
+    </YStack>
   );
 }

@@ -1,5 +1,4 @@
 import { defaultConfig } from '@tamagui/config/v5';
-import { animations as paneAnimations } from '@tamagui/config/v5-css';
 import { createTamagui } from 'tamagui';
 
 import { colors } from './tokens';
@@ -64,7 +63,6 @@ const appTheme = {
 
 export const tamaguiConfig = createTamagui({
   ...defaultConfig,
-  animations: paneAnimations,
   settings: {
     ...defaultConfig.settings,
     onlyAllowShorthands: false,
