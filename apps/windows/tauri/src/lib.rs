@@ -57,7 +57,7 @@ pub fn run() {
                 let _ = window.set_theme(Some(tauri::Theme::Dark));
             }
             tray::create(app)?;
-            commands::hotkeys::restore_capture_hotkeys(app.handle());
+            commands::hotkeys::restore_hotkeys(app.handle());
             if let Err(e) = power_notify::register() {
                 eprintln!("Failed to register power notification: {e}");
             }
@@ -152,6 +152,9 @@ pub fn run() {
             commands::windows::area_selector_origin,
             commands::windows::commit_region_capture,
             commands::windows::toggle_capture_preview,
+            commands::hotkeys::list_global_hotkeys,
+            commands::hotkeys::set_global_hotkey,
+            commands::hotkeys::clear_global_hotkey,
             commands::hotkeys::get_capture_hotkeys,
             commands::hotkeys::set_capture_hotkey,
             commands::hotkeys::clear_capture_hotkey,

@@ -274,6 +274,32 @@ export function clearCaptureHotkey(action: CaptureAction) {
   return invoke<void>('clear_capture_hotkey', { action });
 }
 
+// ── Global hotkeys manager ──────────────────────────────────────────────────
+// Authoritative action ids are owned by Rust (`HotkeyAction`); the shared
+// registry in `lib/hotkey-actions.ts` maps them to display metadata.
+
+export type HotkeyAction =
+  | 'capture-fullscreen'
+  | 'capture-area'
+  | 'toggle-capture-preview';
+
+export interface HotkeyBindingView {
+  action: HotkeyAction;
+  accelerator: string;
+}
+
+export function listGlobalHotkeys() {
+  return invoke<HotkeyBindingView[]>('list_global_hotkeys');
+}
+
+export function setGlobalHotkey(action: HotkeyAction, accelerator: string) {
+  return invoke<HotkeyResult>('set_global_hotkey', { action, accelerator });
+}
+
+export function clearGlobalHotkey(action: HotkeyAction) {
+  return invoke<void>('clear_global_hotkey', { action });
+}
+
 // ── Monitor controls (DDC/CI) ──────────────────────────────────────────────────
 // `Feature` and `MonitorInfo` are shared wire types (imported from
 // @pane/protocol and re-exported above).
