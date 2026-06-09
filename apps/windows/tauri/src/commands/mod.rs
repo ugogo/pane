@@ -1,10 +1,12 @@
 pub mod accent;
+pub mod ambient;
 pub mod audio;
 pub mod brightness;
 pub mod capture;
 pub mod capture_sound;
 pub mod companion;
 mod companion_snapshot;
+pub mod desktop_duplication;
 pub mod dx_light;
 pub mod dynamic_lighting;
 pub mod hotkeys;

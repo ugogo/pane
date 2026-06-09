@@ -380,6 +380,80 @@ export function dxLightOff() {
   return invoke<void>('dx_light_off');
 }
 
+// ── Ambient screen sync ────────────────────────────────────────────────────────
+
+/** Start driving the DX Light strip from the primary monitor's on-screen color. */
+export function startAmbientSync(
+  brightness: number,
+  saturation?: number,
+  warmth?: number,
+  zones?: number,
+  fps?: number,
+) {
+  return invoke<void>('start_ambient_sync', {
+    brightness,
+    saturation: saturation ?? null,
+    warmth: warmth ?? null,
+    zones: zones ?? null,
+    fps: fps ?? null,
+  });
+}
+
+export function stopAmbientSync() {
+  return invoke<void>('stop_ambient_sync');
+}
+
+/** Retune a running sync loop's brightness without restarting it. */
+export function setAmbientBrightness(brightness: number) {
+  return invoke<void>('set_ambient_brightness', { brightness });
+}
+
+/** Retune a running sync loop's saturation boost without restarting it. */
+export function setAmbientSaturation(saturation: number) {
+  return invoke<void>('set_ambient_saturation', { saturation });
+}
+
+/** Retune a running sync loop's white-balance warmth without restarting it. */
+export function setAmbientWarmth(warmth: number) {
+  return invoke<void>('set_ambient_warmth', { warmth });
+}
+
+/** Retune a running sync loop's zone count without restarting it. */
+export function setAmbientZones(zones: number) {
+  return invoke<void>('set_ambient_zones', { zones });
+}
+
+/** Retune a running sync loop's frame rate without restarting it. */
+export function setAmbientFps(fps: number) {
+  return invoke<void>('set_ambient_fps', { fps });
+}
+
+/**
+ * Persisted screen-sync tuning, in the loop's internal units: `brightness` and
+ * `saturation`/`warmth` are factors (not percentages), `zones`/`fps` are counts.
+ */
+export interface AmbientSettings {
+  brightness: number;
+  saturation: number;
+  warmth: number;
+  zones: number;
+  fps: number;
+}
+
+/** Persisted screen-sync settings, used to seed the UI on load. */
+export function getAmbientSettings() {
+  return invoke<AmbientSettings>('get_ambient_settings');
+}
+
+/** Persist screen-sync settings so they survive restarts. */
+export function saveAmbientSettings(settings: AmbientSettings) {
+  return invoke<void>('save_ambient_settings', { settings });
+}
+
+export function ambientSyncStatus() {
+  return invoke<boolean>('ambient_sync_status');
+}
+
 // ── Light presets ────────────────────────────────────────────────────────────
 
 export interface LightPresetTarget {

@@ -1,5 +1,7 @@
 export const queryKeys = {
   accentEnabled: ['accent', 'enabled'] as const,
+  ambientSync: ['lights', 'ambient-sync'] as const,
+  ambientSettings: ['lights', 'ambient-settings'] as const,
   captureHotkeys: ['capture', 'hotkeys'] as const,
   companionStatus: ['companion', 'status'] as const,
   displayMonitors: ['display', 'monitors'] as const,

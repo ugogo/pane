@@ -101,7 +101,7 @@ pub struct CaptureEditResult {
     pub crop: EditRect,
 }
 
-fn primary_monitor() -> Result<Monitor, String> {
+pub(crate) fn primary_monitor() -> Result<Monitor, String> {
     let monitors = Monitor::all().map_err(|e| e.to_string())?;
     monitors
         .into_iter()

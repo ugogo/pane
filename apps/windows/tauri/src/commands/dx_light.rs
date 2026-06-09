@@ -35,9 +35,15 @@ const MAX_BRIGHTNESS: u8 = 255;
 const HEADER_LO: u8 = 0x52;
 const HEADER_HI: u8 = 0x42;
 
-// Default LED strip length when we haven't read it back from the device.
-// The legacy implementation uses this same fallback.
-const DEFAULT_LAMPS: u8 = 60;
+// Logical lamp addressing space the firmware exposes, independent of the
+// physical LED count. Sections are addressed within [SECTION_FIRST, SECTION_LAST].
+const SECTION_FIRST: u32 = 1;
+const SECTION_LAST: u32 = 254;
+
+// A `SetSectionLed` payload is 5 bytes per segment (`[start, r, g, b, end]`),
+// and `write_packet` caps a packet at 64 bytes (5 header + payload + 1
+// checksum), leaving 58 payload bytes → at most 11 segments. Stay under that.
+pub(crate) const MAX_ZONES: usize = 10;
 
 // Monotonic 1..=254 message id, wrapping. Matches the legacy stamp behavior
 // so any future request/response correlation logic doesn't accidentally
@@ -74,20 +80,33 @@ fn build_packet(action: u8, payload: &[u8]) -> Vec<u8> {
     bytes
 }
 
-/// Single-section "all lamps = this color" payload.
-fn section_payload(rgb: (u8, u8, u8), lamps: u8) -> Vec<u8> {
-    let (r, g, b) = rgb;
-    if lamps > 1 && lamps < 254 {
-        // Two contiguous segments to cover the strip cleanly (mirrors the
-        // legacy implementation's pattern for non-default lamp counts).
-        vec![1, r, g, b, lamps, lamps + 1, r, g, b, 254]
-    } else {
-        vec![1, r, g, b, 254]
+/// Build a `SetSectionLed` payload that splits the logical lamp range evenly
+/// into one contiguous segment per color, in order (color 0 → first lamps).
+/// A single color collapses to the whole-strip segment `[1, r, g, b, 254]`.
+fn zones_payload(colors: &[(u8, u8, u8)]) -> Vec<u8> {
+    let n = colors.len().clamp(1, MAX_ZONES) as u32;
+    let span = SECTION_LAST - SECTION_FIRST + 1;
+    let mut payload = Vec::with_capacity(n as usize * 5);
+    for (i, &(r, g, b)) in colors.iter().take(n as usize).enumerate() {
+        let i = i as u32;
+        let start = SECTION_FIRST + span * i / n;
+        let end = SECTION_FIRST + span * (i + 1) / n - 1;
+        payload.push(start as u8);
+        payload.push(r);
+        payload.push(g);
+        payload.push(b);
+        payload.push(end as u8);
     }
+    payload
 }
 
 /// Open the preferred (mi_00 / first matching) DX Light HID interface.
-fn open_device(api: &HidApi) -> Result<hidapi::HidDevice, String> {
+///
+/// `pub(crate)` so the ambient-sync loop can open the strip once and keep the
+/// handle alive for the duration of the loop instead of re-enumerating HID on
+/// every frame. Note: the returned handle is only valid while the `HidApi`
+/// passed in stays alive, so callers must keep `api` in scope.
+pub(crate) fn open_device(api: &HidApi) -> Result<hidapi::HidDevice, String> {
     let mut candidate: Option<&hidapi::DeviceInfo> = None;
     let mut preferred: Option<&hidapi::DeviceInfo> = None;
     for d in api.device_list() {
@@ -191,6 +210,30 @@ pub(crate) fn apply_dx_light_inner(r: u8, g: u8, b: u8, brightness: f64) -> Resu
 }
 
 pub(crate) fn write_dx_light(r: u8, g: u8, b: u8, brightness: f64) -> Result<(), String> {
+    let api = HidApi::new().map_err(|e| e.to_string())?;
+    let handle = open_device(&api)?;
+    write_color(&handle, r, g, b, brightness)
+}
+
+/// Push a solid color + brightness to an already-open strip handle.
+///
+/// Split out from [`write_dx_light`] so the ambient-sync loop can write every
+/// frame without paying for `HidApi::new()` + device enumeration each time.
+pub(crate) fn write_color(
+    handle: &hidapi::HidDevice,
+    r: u8,
+    g: u8,
+    b: u8,
+    brightness: f64,
+) -> Result<(), String> {
+    write_brightness(handle, brightness)?;
+    write_zones(handle, &[(r, g, b)])
+}
+
+/// Set just the brightness register on an already-open handle. The ambient loop
+/// keeps this separate from the color write so it can resend brightness only
+/// when the slider actually moves, halving HID traffic at high frame rates.
+pub(crate) fn write_brightness(handle: &hidapi::HidDevice, brightness: f64) -> Result<(), String> {
     let scale = brightness.clamp(0.0, 1.0);
     // Map 0..1 -> 5..255 so the device never receives below-minimum values
     // (firmware treats those as off).
@@ -198,20 +241,18 @@ pub(crate) fn write_dx_light(r: u8, g: u8, b: u8, brightness: f64) -> Result<(),
         + scale * (MAX_BRIGHTNESS as f64 - MIN_BRIGHTNESS as f64))
         .round()
         .clamp(MIN_BRIGHTNESS as f64, MAX_BRIGHTNESS as f64) as u8;
+    let packet = build_packet(ACTION_SET_BRIGHTNESS, &[brightness_byte]);
+    write_packet(handle, &packet)
+}
 
-    let api = HidApi::new().map_err(|e| e.to_string())?;
-    let handle = open_device(&api)?;
-
-    let brightness_packet = build_packet(ACTION_SET_BRIGHTNESS, &[brightness_byte]);
-    write_packet(&handle, &brightness_packet)?;
-
-    let color_packet = build_packet(
-        ACTION_SET_SECTION_LED,
-        &section_payload((r, g, b), DEFAULT_LAMPS),
-    );
-    write_packet(&handle, &color_packet)?;
-
-    Ok(())
+/// Paint the strip with one segment per color (left → right), in a single
+/// `SetSectionLed` packet. One color fills the whole strip.
+pub(crate) fn write_zones(
+    handle: &hidapi::HidDevice,
+    colors: &[(u8, u8, u8)],
+) -> Result<(), String> {
+    let packet = build_packet(ACTION_SET_SECTION_LED, &zones_payload(colors));
+    write_packet(handle, &packet)
 }
 
 #[tauri::command]
