@@ -1,4 +1,5 @@
 import { lazy, type LazyExoticComponent, type ComponentType } from 'react';
+import { ACCENT as TERMINAL_ACCENT } from './terminal-calm/theme';
 
 export interface PrototypeMeta {
   id: string;
@@ -39,7 +40,7 @@ export const PROTOTYPES: PrototypeMeta[] = [
     name: 'Terminal-calm',
     tagline: 'Monospace-forward, high contrast, typography does the work.',
     inspiration: 'OpenAI Codex',
-    accent: '#636aff',
+    accent: TERMINAL_ACCENT,
     Component: lazy(() => import('./terminal-calm/App')),
   },
   {

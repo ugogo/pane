@@ -42,6 +42,10 @@ monospace-accented, content-first), and Apple's System Settings / SF language
 (whitespace, restraint, soft materials). Each reimagines the *same ten feature
 areas* — the layouts diverge, the data layer is shared.
 
+> **Chosen direction:** Terminal-calm (prototype 3). To migrate the real Pane
+> app to it, see **[`MIGRATION.md`](./MIGRATION.md)** — a handoff guide whose
+> first rule is: for feature parity, **ask the maintainer, don't assume.**
+
 1. **Command-first** _(Raycast-leaning)_ — the command palette is the primary
    surface. A tight left rail, compact keyboard-navigable list rows, monospace
    metadata, dark and fast. Optimized for power users who drive by keyboard.

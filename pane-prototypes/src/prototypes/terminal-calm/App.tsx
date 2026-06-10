@@ -9,9 +9,8 @@ import { useCaptureFlow } from '../../shared/capture';
 import { useHotkeys, useChordCapture, formatChord } from '../../shared/keys';
 import { usePersistentState } from '../../shared/usePersistentState';
 import type { Hotkey } from '../../mock/types';
+import { ACCENT } from './theme';
 import './styles.css';
-
-const ACCENT = '#636aff';
 
 const NAV: { area: AreaKey; label: string; route: string }[] = [
   { area: 'capture', label: 'capture', route: 'capture' },
@@ -47,7 +46,7 @@ export default function TerminalCalmApp() {
   );
 
   return (
-    <div className="tc">
+    <div className="tc" style={{ ['--accent' as string]: ACCENT }}>
       <aside className="tc__rail">
         <div className="tc__brand">
           <span className="tc__brandmark">
