@@ -248,30 +248,59 @@ export function hideImageEditor() {
   return invoke<void>('hide_image_editor');
 }
 
-// ── Hotkeys ───────────────────────────────────────────────────────────────────
-
-export type CaptureAction = 'fullscreen' | 'area';
+// ── Global hotkeys manager ──────────────────────────────────────────────────
+// Authoritative action ids are owned by Rust (`HotkeyAction`); the shared
+// registry in `lib/hotkey-actions.ts` maps them to display metadata.
 
 export interface HotkeyResult {
   action: string;
   accelerator: string;
 }
 
-export interface CaptureHotkeys {
-  fullscreen: string;
-  area: string;
+export type HotkeyAction =
+  | 'capture-fullscreen'
+  | 'capture-area'
+  | 'toggle-capture-preview'
+  | 'show-pane'
+  | 'sleep-computer'
+  | 'restore-lights';
+
+export interface HotkeyBindingView {
+  action: HotkeyAction;
+  accelerator: string;
 }
 
-export function getCaptureHotkeys() {
-  return invoke<CaptureHotkeys>('get_capture_hotkeys');
+export function listGlobalHotkeys() {
+  return invoke<HotkeyBindingView[]>('list_global_hotkeys');
 }
 
-export function setCaptureHotkey(action: CaptureAction, accelerator: string) {
-  return invoke<HotkeyResult>('set_capture_hotkey', { action, accelerator });
+export function setGlobalHotkey(action: HotkeyAction, accelerator: string) {
+  return invoke<HotkeyResult>('set_global_hotkey', { action, accelerator });
 }
 
-export function clearCaptureHotkey(action: CaptureAction) {
-  return invoke<void>('clear_capture_hotkey', { action });
+export function clearGlobalHotkey(action: HotkeyAction) {
+  return invoke<void>('clear_global_hotkey', { action });
+}
+
+/**
+ * A key remap: pressing `source` globally synthesizes `target` (e.g. Alt+V →
+ * Ctrl+V). Accelerators use the same string form as the action bindings above.
+ */
+export interface KeyRemapView {
+  source: string;
+  target: string;
+}
+
+export function listKeyRemaps() {
+  return invoke<KeyRemapView[]>('list_key_remaps');
+}
+
+export function addKeyRemap(source: string, target: string) {
+  return invoke<KeyRemapView>('add_key_remap', { source, target });
+}
+
+export function removeKeyRemap(source: string) {
+  return invoke<void>('remove_key_remap', { source });
 }
 
 // ── Monitor controls (DDC/CI) ──────────────────────────────────────────────────
