@@ -11,7 +11,7 @@ import { usePersistentState } from '../../shared/usePersistentState';
 import type { Hotkey } from '../../mock/types';
 import './styles.css';
 
-const ACCENT = '#27d3a2';
+const ACCENT = '#636aff';
 
 const NAV: { area: AreaKey; label: string; route: string }[] = [
   { area: 'capture', label: 'capture', route: 'capture' },
@@ -524,7 +524,7 @@ function LightsPage() {
               min={4}
               max={32}
               unit=""
-              tint="#27d3a2"
+              tint="#636aff"
               onChange={(v) => actions.setAmbient({ zones: v })}
             />
           </Field>

@@ -1,15 +1,16 @@
-/* Terminal-calm — Codex-leaning. Monospace-forward, near-black, single green
+/* Terminal-calm — Codex-leaning. Monospace-forward, near-black, single blue-violet
    accent. Typography and alignment do the work; chrome is hairline. */
 .tc {
-  --accent: #27d3a2;
-  --bg: #0a0c0b;
-  --panel: #0e110f;
-  --panel-2: #11140f;
+  /* Accent: the midpoint of the logo's purple→blue gradient (#7e14ff→#47bfff). */
+  --accent: #636aff;
+  --bg: #0a0b0d;
+  --panel: #0e0f13;
+  --panel-2: #101218;
   --line: rgba(255, 255, 255, 0.07);
   --line-2: rgba(255, 255, 255, 0.12);
-  --text: #e8ece9;
-  --dim: #8b958e; /* lifted for AA on near-black body copy */
-  --faint: #626b65; /* lifted from #545d57 — was sub-AA */
+  --text: #e9eaef;
+  --dim: #8f9298; /* lifted for AA on near-black body copy */
+  --faint: #656870; /* lifted from sub-AA */
   --danger: #ff6b6b;
   --warn: #ffb020;
 
@@ -56,7 +57,7 @@
   background: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
-/* Accent-tinted focus ring for keyboard users — the theme's own green,
+/* Accent-tinted focus ring for keyboard users — the theme's own blue-violet,
    not the inherited currentColor outline. */
 .tc :focus-visible {
   outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
@@ -71,7 +72,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--s-4);
-  background: #090b0a;
+  background: #090a0c;
 }
 .tc__brand {
   display: flex;
@@ -286,7 +287,7 @@
   padding: var(--s-2) var(--s-3);
   border-radius: var(--r-xs);
   background: var(--accent);
-  color: #042019;
+  color: #08081c;
   font-family: var(--font-mono);
   font-size: var(--t-xs);
   font-weight: 600;
@@ -817,7 +818,7 @@
   grid-auto-rows: 1fr;
 }
 .tc__qrgrid span[data-on='true'] {
-  background: #0a0c0b;
+  background: #0a0b0d;
 }
 .tc__pairtext {
   display: flex;

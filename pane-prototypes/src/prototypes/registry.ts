@@ -39,7 +39,7 @@ export const PROTOTYPES: PrototypeMeta[] = [
     name: 'Terminal-calm',
     tagline: 'Monospace-forward, high contrast, typography does the work.',
     inspiration: 'OpenAI Codex',
-    accent: '#27d3a2',
+    accent: '#636aff',
     Component: lazy(() => import('./terminal-calm/App')),
   },
   {
