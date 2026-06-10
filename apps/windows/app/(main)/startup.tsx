@@ -9,6 +9,7 @@ import {
   XStack,
   YStack,
 } from '@pane/ui';
+import { GlobalHotkeysCard } from '@/components/features/global-hotkeys-card';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusText } from '@/components/features/status-ui';
 import {
@@ -109,6 +110,8 @@ export default function StartupPage() {
           {sleepStatus.message}
         </StatusText>
       ) : null}
+
+      <GlobalHotkeysCard />
     </YStack>
   );
 }
