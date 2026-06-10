@@ -1,0 +1,157 @@
+/* ============================================================
+   Pane Prototypes — global reset + shared design tokens
+   ============================================================ */
+
+:root {
+  /* Font families (bundled via @fontsource, see main.tsx) */
+  --font-ui: 'Inter Variable', 'Geist Variable', system-ui, -apple-system, sans-serif;
+  --font-display: 'Geist Variable', 'Inter Variable', system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', 'JetBrains Mono Variable', ui-monospace, monospace;
+
+  /* Type scale — a deliberate, shared modular scale (1.20 ratio off 14px).
+     Prototypes use these tokens but compose their own hierarchy. */
+  --t-2xs: 11px;
+  --t-xs: 12px;
+  --t-sm: 13px;
+  --t-base: 14px;
+  --t-md: 15px;
+  --t-lg: 17px;
+  --t-xl: 20px;
+  --t-2xl: 24px;
+  --t-3xl: 30px;
+  --t-4xl: 38px;
+  --t-5xl: 52px;
+
+  /* Spacing scale — 4px base, used everywhere for rhythm */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-20: 80px;
+
+  /* Radii */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-full: 999px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--t-base);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-synthesis: none;
+  background: #0a0a0b;
+  color: #e8e8ea;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(124, 92, 255, 0.35);
+}
+
+/* Numeric mono should use tabular figures for stable alignment */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Range input baseline reset — prototypes restyle thumbs/tracks per theme */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Scrollbars — quiet by default */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+  background-clip: padding-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
