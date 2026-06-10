@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { Command } from 'lucide-react';
 import { useActions, usePane } from '../../mock/store';
 import type { AreaKey } from '../../mock/commands';
 import { CommandPalette } from '../../shared/CommandPalette';
@@ -49,7 +50,9 @@ export default function TerminalCalmApp() {
     <div className="tc">
       <aside className="tc__rail">
         <div className="tc__brand">
-          <span className="tc__brandmark">▦</span>
+          <span className="tc__brandmark">
+            <Command size={13} strokeWidth={2.5} />
+          </span>
           <span className="tc__brandname">pane</span>
           <span className="tc__brandtag">console</span>
         </div>
