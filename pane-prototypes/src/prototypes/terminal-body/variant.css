@@ -1,0 +1,28 @@
+/* Sans-body variant of terminal-calm.
+   Geist (the Geist Mono superfamily partner) carries the reading prose; all
+   data, metadata, chords, readouts and labels stay monospace so the
+   "instrument" character is intact. */
+.tcv {
+  height: 100%;
+}
+
+.tcv--body .tc__desc,
+.tcv--body .tc__capdesc,
+.tcv--body .tc__statustext,
+.tcv--body .tc__pairtext,
+.tcv--body .tc__empty,
+.tcv--body .tc__prompttext,
+.tcv--body .tc__navlabel,
+.tcv--body .tc__blockmeta,
+.tcv--body .tc__fieldlabel {
+  font-family: var(--font-display);
+  letter-spacing: normal;
+}
+
+/* Prose wants a hair more leading than the mono baseline. */
+.tcv--body .tc__desc,
+.tcv--body .tc__capdesc,
+.tcv--body .tc__pairtext,
+.tcv--body .tc__empty {
+  line-height: 1.55;
+}

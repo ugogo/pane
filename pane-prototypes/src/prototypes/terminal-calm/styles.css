@@ -22,20 +22,20 @@
   /* The single label-column width — every field/readout aligns to this. */
   --col-label: 96px;
 
-  /* Type scale bumped to 110% — this density reads better a touch larger.
-     Every element references these tokens, so the whole prototype scales
-     uniformly without touching the layout grid or spacing. */
-  --t-2xs: 12.1px;
-  --t-xs: 13.2px;
-  --t-sm: 14.3px;
-  --t-base: 15.4px;
-  --t-md: 16.5px;
-  --t-lg: 18.7px;
+  /* Type scale bumped ~110% — this density reads better a touch larger,
+     rounded to whole pixels. Every element references these tokens, so the
+     whole prototype scales uniformly without touching layout or spacing. */
+  --t-2xs: 12px;
+  --t-xs: 13px;
+  --t-sm: 14px;
+  --t-base: 15px;
+  --t-md: 16px;
+  --t-lg: 19px;
   --t-xl: 22px;
-  --t-2xl: 26.4px;
+  --t-2xl: 26px;
   --t-3xl: 33px;
-  --t-4xl: 41.8px;
-  --t-5xl: 57.2px;
+  --t-4xl: 42px;
+  --t-5xl: 57px;
 
   /* A single off-scale micro size for uppercase pill labels (badge/conflict). */
   --t-micro: 11px;

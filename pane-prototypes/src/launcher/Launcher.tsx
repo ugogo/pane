@@ -104,6 +104,8 @@ function Preview({ id }: { id: string }) {
         </div>
       );
     case 'terminal-calm':
+    case 'terminal-body':
+    case 'terminal-head':
       return (
         <div className="pv pv--terminal">
           {['$ pane lights apply aurora', '  ✓ 3 sources · screen-sync', '$ pane display night', '  ✓ ok'].map(
