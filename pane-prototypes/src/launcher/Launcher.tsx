@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Command } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { PROTOTYPES } from '../prototypes/registry';
+import { PaneMark } from '../shared/PaneMark';
 import './launcher.css';
 
 const FEATURES = [
@@ -24,7 +25,7 @@ export function Launcher() {
         <header className="launcher__head">
           <div className="launcher__brandrow">
             <div className="launcher__logo">
-              <Command size={18} />
+              <PaneMark size={34} />
             </div>
             <span className="launcher__brand">Pane</span>
             <span className="launcher__tag">design prototypes</span>
@@ -104,8 +105,6 @@ function Preview({ id }: { id: string }) {
         </div>
       );
     case 'terminal-calm':
-    case 'terminal-body':
-    case 'terminal-head':
       return (
         <div className="pv pv--terminal">
           {['$ pane lights apply aurora', '  ✓ 3 sources · screen-sync', '$ pane display night', '  ✓ ok'].map(

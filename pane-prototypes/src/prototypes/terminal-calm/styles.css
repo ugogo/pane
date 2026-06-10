@@ -79,23 +79,12 @@
   gap: var(--s-2);
   padding: 0 var(--s-1);
 }
-/* Pane icon mark (shared across prototypes), themed for terminal-calm:
-   green gradient chip with a dark glyph + faint glow. */
+/* Pane brand mark — the favicon artwork, self-contained. */
 .tc__brandmark {
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--r-sm);
-  color: #06120e;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent) 92%, white),
-    color-mix(in srgb, var(--accent) 55%, #0a0c0b)
-  );
-  box-shadow:
-    0 0 14px color-mix(in srgb, var(--accent) 32%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 35%, transparent);
+  width: 24px;
+  height: 24px;
 }
 .tc__brandname {
   font-size: var(--t-md);
@@ -884,4 +873,17 @@
   width: 100%;
   height: var(--s-12);
   display: block;
+}
+
+/* --------------------------------------------------------- chosen direction
+   Geist sans (the Geist Mono superfamily partner) on headings/titles for a
+   touch more presence; body, data and metadata stay monospace. Keep Geist's
+   own metrics — clear the inherited mono tracking, don't impose a new one. */
+.tc__cmd,
+.tc__brandname,
+.tc__blocktitle,
+.tc__logtitle,
+.tc__capname {
+  font-family: var(--font-display);
+  letter-spacing: normal;
 }

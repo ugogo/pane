@@ -24,9 +24,7 @@
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: linear-gradient(135deg, #7c5cff, #4cc9ff);
-  color: #fff;
-  box-shadow: 0 6px 20px rgba(124, 92, 255, 0.4);
+  filter: drop-shadow(0 6px 20px rgba(124, 92, 255, 0.4));
 }
 .launcher__brand {
   font-family: var(--font-display);
