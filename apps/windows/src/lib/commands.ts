@@ -248,40 +248,22 @@ export function hideImageEditor() {
   return invoke<void>('hide_image_editor');
 }
 
-// ── Hotkeys ───────────────────────────────────────────────────────────────────
-
-export type CaptureAction = 'fullscreen' | 'area';
+// ── Global hotkeys manager ──────────────────────────────────────────────────
+// Authoritative action ids are owned by Rust (`HotkeyAction`); the shared
+// registry in `lib/hotkey-actions.ts` maps them to display metadata.
 
 export interface HotkeyResult {
   action: string;
   accelerator: string;
 }
 
-export interface CaptureHotkeys {
-  fullscreen: string;
-  area: string;
-}
-
-export function getCaptureHotkeys() {
-  return invoke<CaptureHotkeys>('get_capture_hotkeys');
-}
-
-export function setCaptureHotkey(action: CaptureAction, accelerator: string) {
-  return invoke<HotkeyResult>('set_capture_hotkey', { action, accelerator });
-}
-
-export function clearCaptureHotkey(action: CaptureAction) {
-  return invoke<void>('clear_capture_hotkey', { action });
-}
-
-// ── Global hotkeys manager ──────────────────────────────────────────────────
-// Authoritative action ids are owned by Rust (`HotkeyAction`); the shared
-// registry in `lib/hotkey-actions.ts` maps them to display metadata.
-
 export type HotkeyAction =
   | 'capture-fullscreen'
   | 'capture-area'
-  | 'toggle-capture-preview';
+  | 'toggle-capture-preview'
+  | 'show-pane'
+  | 'sleep-computer'
+  | 'restore-lights';
 
 export interface HotkeyBindingView {
   action: HotkeyAction;

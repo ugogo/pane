@@ -8,7 +8,8 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
-use crate::commands::{capture, capture_sound, windows};
+use crate::commands::{capture, capture_sound, light_state, system, windows};
+use crate::tray;
 
 /// Every Pane action that can be bound to a global shortcut. Rust owns this
 /// authoritative dispatch list; the frontend renders richer labels from a
@@ -19,14 +20,20 @@ pub enum HotkeyAction {
     CaptureFullscreen,
     CaptureArea,
     ToggleCapturePreview,
+    ShowPane,
+    SleepComputer,
+    RestoreLights,
 }
 
 impl HotkeyAction {
     /// Every action the manager exposes, in display order.
-    const ALL: [HotkeyAction; 3] = [
+    const ALL: [HotkeyAction; 6] = [
         HotkeyAction::CaptureFullscreen,
         HotkeyAction::CaptureArea,
         HotkeyAction::ToggleCapturePreview,
+        HotkeyAction::ShowPane,
+        HotkeyAction::SleepComputer,
+        HotkeyAction::RestoreLights,
     ];
 
     /// Stable id used in persistence and as the frontend registry key.
@@ -35,36 +42,14 @@ impl HotkeyAction {
             HotkeyAction::CaptureFullscreen => "capture-fullscreen",
             HotkeyAction::CaptureArea => "capture-area",
             HotkeyAction::ToggleCapturePreview => "toggle-capture-preview",
+            HotkeyAction::ShowPane => "show-pane",
+            HotkeyAction::SleepComputer => "sleep-computer",
+            HotkeyAction::RestoreLights => "restore-lights",
         }
     }
 
     fn from_id(id: &str) -> Option<HotkeyAction> {
         HotkeyAction::ALL.into_iter().find(|a| a.as_str() == id)
-    }
-}
-
-/// The two capture actions the legacy Capture page still speaks. Kept only as a
-/// compatibility boundary that maps onto [`HotkeyAction`].
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[serde(rename_all = "kebab-case")]
-pub enum CaptureAction {
-    Fullscreen,
-    Area,
-}
-
-impl CaptureAction {
-    fn as_action(self) -> HotkeyAction {
-        match self {
-            CaptureAction::Fullscreen => HotkeyAction::CaptureFullscreen,
-            CaptureAction::Area => HotkeyAction::CaptureArea,
-        }
-    }
-
-    fn as_str(self) -> &'static str {
-        match self {
-            CaptureAction::Fullscreen => "fullscreen",
-            CaptureAction::Area => "area",
-        }
     }
 }
 
@@ -269,6 +254,19 @@ async fn dispatch_hotkey(app: AppHandle, action: HotkeyAction) -> Result<(), Str
         HotkeyAction::ToggleCapturePreview => {
             windows::toggle_capture_preview(app).await?;
         }
+        HotkeyAction::ShowPane => {
+            tray::show_main_window(&app);
+        }
+        HotkeyAction::SleepComputer => {
+            system::sleep_computer_now()?;
+        }
+        HotkeyAction::RestoreLights => {
+            for (key, res) in light_state::restore_all().await {
+                if let Err(e) = res {
+                    eprintln!("Hotkey restore-lights failed for {key}: {e}");
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -387,59 +385,6 @@ pub fn clear_global_hotkey(
 ) -> Result<(), String> {
     crate::commands::require_window(&window, &["main"])?;
     clear_action(&app, action)
-}
-
-// ── Capture-page compatibility wrappers ──────────────────────────────────────
-// The legacy Capture page still speaks `fullscreen`/`area`. These thin wrappers
-// route onto the shared manager until that UI moves to the new commands.
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CaptureHotkeys {
-    pub fullscreen: String,
-    pub area: String,
-}
-
-#[tauri::command]
-pub fn get_capture_hotkeys() -> CaptureHotkeys {
-    let b = BINDINGS.lock().unwrap();
-    CaptureHotkeys {
-        fullscreen: b
-            .by_action
-            .get(&HotkeyAction::CaptureFullscreen)
-            .cloned()
-            .unwrap_or_default(),
-        area: b
-            .by_action
-            .get(&HotkeyAction::CaptureArea)
-            .cloned()
-            .unwrap_or_default(),
-    }
-}
-
-#[tauri::command]
-pub fn set_capture_hotkey(
-    window: tauri::WebviewWindow,
-    app: AppHandle,
-    action: CaptureAction,
-    accelerator: String,
-) -> Result<HotkeyResult, String> {
-    crate::commands::require_window(&window, &["main"])?;
-    let accelerator = apply_set(&app, action.as_action(), &accelerator)?;
-    Ok(HotkeyResult {
-        action: action.as_str().into(),
-        accelerator,
-    })
-}
-
-#[tauri::command]
-pub fn clear_capture_hotkey(
-    window: tauri::WebviewWindow,
-    app: AppHandle,
-    action: CaptureAction,
-) -> Result<(), String> {
-    crate::commands::require_window(&window, &["main"])?;
-    clear_action(&app, action.as_action())
 }
 
 #[cfg(test)]

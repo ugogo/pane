@@ -29,6 +29,21 @@ export const HOTKEY_ACTIONS: readonly HotkeyActionMeta[] = [
     label: 'Toggle capture preview',
     description: 'Show or hide the capture preview window.',
   },
+  {
+    action: 'show-pane',
+    label: 'Show Pane',
+    description: 'Bring the main Pane window to the front.',
+  },
+  {
+    action: 'sleep-computer',
+    label: 'Sleep computer',
+    description: 'Put Windows into sleep mode.',
+  },
+  {
+    action: 'restore-lights',
+    label: 'Restore lights',
+    description: 'Re-apply every saved light color and brightness.',
+  },
 ] as const;
 
 const META_BY_ACTION = new Map<HotkeyAction, HotkeyActionMeta>(

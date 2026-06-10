@@ -7,19 +7,28 @@ import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusText } from '@/components/features/status-ui';
 import {
   captureFullscreen,
-  clearCaptureHotkey,
-  getCaptureHotkeys,
-  setCaptureHotkey,
+  clearGlobalHotkey,
+  listGlobalHotkeys,
+  setGlobalHotkey,
   showAreaSelector,
   showCapturePreview,
   toggleCapturePreview,
-  type CaptureAction,
-  type CaptureHotkeys,
+  type HotkeyAction,
+  type HotkeyBindingView,
 } from '@/lib/commands';
 import { queryKeys } from '@/lib/query-keys';
 import { useActionStatus } from '@/lib/use-action-status';
 
-const actionLabels: Record<CaptureAction, string> = {
+// The Capture page exposes the two capture bindings of the shared global
+// hotkeys manager. `TriggerKind` names the local capture action each card runs.
+type TriggerKind = 'fullscreen' | 'area';
+
+const captureActions: Record<TriggerKind, HotkeyAction> = {
+  fullscreen: 'capture-fullscreen',
+  area: 'capture-area',
+};
+
+const actionLabels: Record<TriggerKind, string> = {
   fullscreen: 'full screen',
   area: 'area',
 };
@@ -27,48 +36,52 @@ const actionLabels: Record<CaptureAction, string> = {
 export default function CapturePage() {
   const queryClient = useQueryClient();
   const hotkeysQuery = useQuery({
-    queryKey: queryKeys.captureHotkeys,
-    queryFn: getCaptureHotkeys,
+    queryKey: queryKeys.globalHotkeys,
+    queryFn: listGlobalHotkeys,
   });
-  const hotkeys = hotkeysQuery.data ?? { fullscreen: '', area: '' };
+  const acceleratorFor = (action: HotkeyAction) =>
+    hotkeysQuery.data?.find((row) => row.action === action)?.accelerator ?? '';
+  const hotkeys = {
+    fullscreen: acceleratorFor('capture-fullscreen'),
+    area: acceleratorFor('capture-area'),
+  };
   const hotkeysError = hotkeysQuery.isError
     ? `Could not load saved hotkeys: ${String(hotkeysQuery.error)}`
     : '';
   const status = useActionStatus();
   const [previewVisible, setPreviewVisible] = useState<boolean | null>(null);
 
-  function patchHotkey(action: CaptureAction, accelerator: string) {
+  function patchHotkey(action: HotkeyAction, accelerator: string) {
     queryClient.setQueryData(
-      queryKeys.captureHotkeys,
-      (prev: CaptureHotkeys | undefined) => ({
-        fullscreen: prev?.fullscreen ?? '',
-        area: prev?.area ?? '',
-        [action]: accelerator,
-      }),
+      queryKeys.globalHotkeys,
+      (prev: HotkeyBindingView[] | undefined) =>
+        prev?.map((row) =>
+          row.action === action ? { ...row, accelerator } : row,
+        ),
     );
   }
 
   const bind = useMutation({
-    mutationFn: ({ action, accel }: { action: CaptureAction; accel: string }) =>
-      setCaptureHotkey(action, accel),
-    onSuccess: (_result, { action, accel }) => {
-      patchHotkey(action, accel);
-      status.set('pass', `${actionLabels[action]} shortcut saved.`);
+    mutationFn: ({ kind, accel }: { kind: TriggerKind; accel: string }) =>
+      setGlobalHotkey(captureActions[kind], accel),
+    onSuccess: (result, { kind }) => {
+      patchHotkey(captureActions[kind], result.accelerator);
+      status.set('pass', `${actionLabels[kind]} shortcut saved.`);
     },
     onError: (err) => status.set('fail', String(err)),
   });
 
   const clear = useMutation({
-    mutationFn: (action: CaptureAction) => clearCaptureHotkey(action),
-    onSuccess: (_result, action) => {
-      patchHotkey(action, '');
-      status.set('idle', `${actionLabels[action]} shortcut cleared.`);
+    mutationFn: (kind: TriggerKind) => clearGlobalHotkey(captureActions[kind]),
+    onSuccess: (_result, kind) => {
+      patchHotkey(captureActions[kind], '');
+      status.set('idle', `${actionLabels[kind]} shortcut cleared.`);
     },
     onError: (err) => status.set('fail', String(err)),
   });
 
   const trigger = useMutation({
-    mutationFn: async (action: CaptureAction) => {
+    mutationFn: async (action: TriggerKind) => {
       if (action === 'fullscreen') {
         await captureFullscreen();
         await showCapturePreview();
@@ -113,7 +126,7 @@ export default function CapturePage() {
           actionLabel="Capture full screen"
           shortcutLabel="Fullscreen capture shortcut"
           hotkey={hotkeys.fullscreen}
-          onCommit={(accel) => bind.mutate({ action: 'fullscreen', accel })}
+          onCommit={(accel) => bind.mutate({ kind: 'fullscreen', accel })}
           onClear={() => clear.mutate('fullscreen')}
           onTrigger={() => trigger.mutate('fullscreen')}
           busy={trigger.isPending}
@@ -123,7 +136,7 @@ export default function CapturePage() {
           actionLabel="Select area"
           shortcutLabel="Area capture shortcut"
           hotkey={hotkeys.area}
-          onCommit={(accel) => bind.mutate({ action: 'area', accel })}
+          onCommit={(accel) => bind.mutate({ kind: 'area', accel })}
           onClear={() => clear.mutate('area')}
           onTrigger={() => trigger.mutate('area')}
           busy={trigger.isPending}
