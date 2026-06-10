@@ -6,6 +6,7 @@ export const queryKeys = {
   displayMonitors: ['display', 'monitors'] as const,
   displayPresets: ['display', 'presets'] as const,
   globalHotkeys: ['hotkeys', 'global'] as const,
+  keyRemaps: ['hotkeys', 'remaps'] as const,
   lights: ['lights'] as const,
   lightPresets: ['lights', 'presets'] as const,
   metrics: ['diagnostics', 'metrics'] as const,

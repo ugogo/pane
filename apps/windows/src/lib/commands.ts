@@ -282,6 +282,27 @@ export function clearGlobalHotkey(action: HotkeyAction) {
   return invoke<void>('clear_global_hotkey', { action });
 }
 
+/**
+ * A key remap: pressing `source` globally synthesizes `target` (e.g. Alt+V →
+ * Ctrl+V). Accelerators use the same string form as the action bindings above.
+ */
+export interface KeyRemapView {
+  source: string;
+  target: string;
+}
+
+export function listKeyRemaps() {
+  return invoke<KeyRemapView[]>('list_key_remaps');
+}
+
+export function addKeyRemap(source: string, target: string) {
+  return invoke<KeyRemapView>('add_key_remap', { source, target });
+}
+
+export function removeKeyRemap(source: string) {
+  return invoke<void>('remove_key_remap', { source });
+}
+
 // ── Monitor controls (DDC/CI) ──────────────────────────────────────────────────
 // `Feature` and `MonitorInfo` are shared wire types (imported from
 // @pane/protocol and re-exported above).

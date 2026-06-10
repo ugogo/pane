@@ -1,9 +1,9 @@
 ---
 title: Global Hotkeys Manager Plan
 type: plan
-status: proposed
+status: implemented
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-10
 ---
 
 # Global Hotkeys Manager Plan
@@ -42,7 +42,41 @@ capture workflow behavior.
 | 1     | Generalize Rust hotkey model from `CaptureAction` to `HotkeyAction` while preserving current commands. | Existing capture hotkeys still load, set, clear, and dispatch.          |
 | 2     | Add manager commands to list all actions and set/clear by action id.                                   | Rust tests for duplicate detection, clear, and migration from old JSON. |
 | 3     | Add a System or dedicated Hotkeys page UI using `ShortcutInput`.                                       | `npm run lint`, `npm run typecheck`, manual binding flow.               |
-| 4     | Add more actions and route old Capture page controls to the shared manager.                            | Manual smoke for each action and startup restore.                       |
+| 4     | Add more actions, key-to-key remaps, and route old Capture page controls to the shared manager.        | Manual smoke for each action and startup restore.                       |
+
+## Status (2026-06-10)
+
+All four slices are implemented:
+
+- Slices 1–2: generalized Rust model + manager commands with migration/conflict
+  tests.
+- Slice 3: a Global shortcuts card on the System page using `ShortcutInput`.
+- Slice 4: added the `show-pane`, `sleep-computer`, and `restore-lights`
+  actions; migrated the Capture page onto the manager (the old
+  `*_capture_hotkey` wrappers and `CaptureAction` enum are removed); and added
+  **key remaps** (see below).
+
+### Key remaps (extends the action-only model)
+
+Beyond the fixed action set, the manager now supports user-defined key-to-key
+remaps (e.g. `Alt+V` → `Ctrl+V`):
+
+- Stored as a `remaps: [{ source, target }]` array in `hotkeys.json`
+  (`#[serde(default)]` keeps older files loadable).
+- The source registers as a normal global shortcut and shares the conflict
+  space with action accelerators.
+- On press, Rust synthesizes the target chord with `SendInput`, first releasing
+  any source-only modifiers still physically held (so `Alt+V` → `Ctrl+V` does
+  not arrive as `Ctrl+Alt+V`). Injected events carry the accent-popup reinject
+  magic so the low-level hook ignores them.
+- `parse_chord` maps frontend accelerator tokens to virtual-key codes and
+  rejects unsynthesizable targets at bind time.
+- UI: a Key remaps card on the System page (`add_key_remap` / `remove_key_remap`
+  / `list_key_remaps`).
+
+Manual smoke (cannot be unit-tested in this environment — the lib test binary
+fails to load WebView2 deps) still owed: bind a remap, confirm the target chord
+lands in another app, confirm restore after restart.
 
 ## Action Model
 
