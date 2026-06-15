@@ -458,23 +458,28 @@ fn run_loop(
         }
 
         if let Some(e) = lost {
-            // A lost duplication session (mode change, secure desktop, resolution
-            // switch) is recoverable — rebuild it and retry next frame. An xcap
-            // failure stays fatal, as before.
-            if matches!(source, CaptureSource::Dupl(_)) {
-                match DesktopDuplicator::new() {
-                    Ok(d) => {
-                        eprintln!("[ambient] capture lost ({e}); duplication rebuilt");
-                        source = CaptureSource::Dupl(d);
-                    }
-                    Err(e2) => {
-                        eprintln!("[ambient] capture lost and rebuild failed: {e2}");
-                        break;
-                    }
+            // A lost capture session (mode change, secure desktop, resolution
+            // switch, or a GPU reset / device-removed) is recoverable — rebuild
+            // the source and retry next frame. Both paths cache a device/handle
+            // bound to the (now dead) adapter, so a device-removed needs a fresh
+            // one whether we're on duplication or the xcap fallback.
+            let rebuilt = match source {
+                CaptureSource::Dupl(_) => DesktopDuplicator::new().map(CaptureSource::Dupl),
+                CaptureSource::Xcap(_) => capture::primary_monitor().map(CaptureSource::Xcap),
+            };
+            match rebuilt {
+                Ok(s) => {
+                    eprintln!("[ambient] capture lost ({e}); source rebuilt");
+                    source = s;
                 }
-            } else {
-                eprintln!("[ambient] capture failed: {e}");
-                break;
+                Err(e2) => {
+                    // The GPU is still recovering (a TDR reset can take a second
+                    // or two). Don't kill the loop — back off briefly and keep
+                    // retrying so sync resumes once the device is back, instead
+                    // of silently dying until the user restarts.
+                    eprintln!("[ambient] capture lost ({e}); rebuild failed ({e2}); retrying");
+                    std::thread::sleep(Duration::from_millis(500));
+                }
             }
             continue;
         }
