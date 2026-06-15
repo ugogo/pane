@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::io::Cursor;
 use std::sync::Mutex;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager, State};
 use xcap::Monitor;
 
@@ -107,6 +107,37 @@ pub(crate) fn primary_monitor() -> Result<Monitor, String> {
         .into_iter()
         .find(|m| m.is_primary().unwrap_or(false))
         .ok_or_else(|| "No primary monitor found.".into())
+}
+
+/// Capture the primary monitor, retrying briefly on transient failures.
+///
+/// Right after a GPU reset — a TDR timeout, driver update, display sleep/resume,
+/// or a hybrid-GPU switch — the D3D device xcap stands up is gone and the capture
+/// fails with `DXGI_ERROR_DEVICE_REMOVED` (0x887A0005). Windows recreates the
+/// device within a fraction of a second, so we re-enumerate the monitor (the
+/// cached handle points at the dead adapter) and retry with a short escalating
+/// backoff rather than surfacing the raw HRESULT to the user.
+fn capture_primary_with_retry() -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, String> {
+    const ATTEMPTS: u32 = 4;
+    const BACKOFF: Duration = Duration::from_millis(150);
+
+    let mut last_err = String::new();
+    for attempt in 0..ATTEMPTS {
+        match primary_monitor().and_then(|m| m.capture_image().map_err(|e| e.to_string())) {
+            Ok(img) => return Ok(img),
+            Err(e) => {
+                last_err = e;
+                if attempt + 1 < ATTEMPTS {
+                    // Linear backoff (150, 300, 450 ms) covers the GPU's recovery
+                    // window without making a screenshot feel sluggish.
+                    std::thread::sleep(BACKOFF * (attempt + 1));
+                }
+            }
+        }
+    }
+    Err(format!(
+        "Screen capture failed after {ATTEMPTS} attempts — the GPU may have just reset. Try again in a moment. ({last_err})"
+    ))
 }
 
 fn push_u16(buf: &mut Vec<u8>, value: u16) {
@@ -283,8 +314,7 @@ fn rgba_png_data_url(width: u32, height: u32, rgba: &[u8]) -> Result<String, Str
 }
 
 pub fn perform_fullscreen_capture(app: &AppHandle) -> Result<CaptureResult, String> {
-    let monitor = primary_monitor()?;
-    let mut img = monitor.capture_image().map_err(|e| e.to_string())?;
+    let mut img = capture_primary_with_retry()?;
     force_opaque(&mut img);
     let stored = make_stored_capture(&img)?;
     let result = stored.result.clone();
@@ -312,8 +342,7 @@ pub fn capture_region(
         return Err("Region width/height must be > 0.".into());
     }
 
-    let monitor = primary_monitor()?;
-    let mut full = monitor.capture_image().map_err(|e| e.to_string())?;
+    let mut full = capture_primary_with_retry()?;
     force_opaque(&mut full);
 
     let mw = full.width() as i32;

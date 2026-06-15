@@ -24,7 +24,8 @@ use windows::Win32::Graphics::Direct3D11::{
 use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC};
 use windows::Win32::Graphics::Dxgi::{
     IDXGIAdapter, IDXGIDevice, IDXGIOutput1, IDXGIOutputDuplication, IDXGIResource,
-    DXGI_ERROR_ACCESS_LOST, DXGI_ERROR_WAIT_TIMEOUT, DXGI_OUTDUPL_FRAME_INFO,
+    DXGI_ERROR_ACCESS_LOST, DXGI_ERROR_DEVICE_REMOVED, DXGI_ERROR_DEVICE_RESET,
+    DXGI_ERROR_WAIT_TIMEOUT, DXGI_OUTDUPL_FRAME_INFO,
 };
 use windows::Win32::Graphics::Gdi::{MonitorFromPoint, MONITOR_DEFAULTTOPRIMARY};
 
@@ -114,6 +115,18 @@ impl DesktopDuplicator {
                 Err(e) if e.code() == DXGI_ERROR_WAIT_TIMEOUT => return Ok(Frame::Unchanged),
                 Err(e) if e.code() == DXGI_ERROR_ACCESS_LOST => {
                     return Err(format!("duplication access lost: {e}"))
+                }
+                // A GPU reset (TDR timeout, driver update, sleep/resume, hybrid-GPU
+                // switch) removes the device with 0x887A0005 / 0x887A0007. It's
+                // recoverable — the caller rebuilds a fresh device — so surface it
+                // as a lost session rather than a hard failure. GetDeviceRemovedReason
+                // gives the underlying cause for the log.
+                Err(e)
+                    if e.code() == DXGI_ERROR_DEVICE_REMOVED
+                        || e.code() == DXGI_ERROR_DEVICE_RESET =>
+                {
+                    let reason = self.device.GetDeviceRemovedReason();
+                    return Err(format!("GPU device removed ({e}); reason: {reason:?}"));
                 }
                 Err(e) => return Err(format!("AcquireNextFrame failed: {e}")),
             }
