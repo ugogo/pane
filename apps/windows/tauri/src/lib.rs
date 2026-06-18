@@ -58,7 +58,7 @@ pub fn run() {
             }
             tray::create(app)?;
             commands::hotkeys::restore_capture_hotkeys(app.handle());
-            if let Err(e) = power_notify::register() {
+            if let Err(e) = power_notify::register(app.handle().clone()) {
                 eprintln!("Failed to register power notification: {e}");
             }
             brightness_keys::register(app.handle().clone());

@@ -61,21 +61,49 @@ const DEFAULT_SATURATION: f64 = 1.5;
 /// single-color behavior.
 const DEFAULT_ZONES: usize = 5;
 
-/// Default white-balance warmth. RGB strips with no dedicated white LED render
-/// equal R=G=B as a blue-ish white because the blue die is disproportionately
-/// bright; warmth attenuates green and blue to pull that back toward neutral.
-/// Calibrated to ~1.5 for this strip, where a full-white screen reads neutral.
-const DEFAULT_WARMTH: f64 = 1.5;
+/// Default warmth, now a *strength* dial on the calibration below: 1.0 applies
+/// the measured correction exactly, 0 passes color through raw, up to
+/// [`WARMTH_MAX`] overcorrects. The strip's green and blue dies are
+/// over-bright, so an RGB strip with no white LED skews cold; the per-channel
+/// calibration neutralizes that. Calibrated by eye for this strip — see
+/// [`apply_warmth`].
+const DEFAULT_WARMTH: f64 = 1.0;
 
-/// Warmth ceiling. Allows pushing past the calibrated point in case true neutral
-/// (or a deliberately warm look) sits beyond it. At 2.0, blue is fully cut.
+/// Warmth ceiling. Allows pushing past the calibrated point for a deliberately
+/// warm look (or to chase neutral if the calibration drifts).
 const WARMTH_MAX: f64 = 2.0;
 
-/// How much of each channel warmth removes per unit. Blue is cut hardest since
-/// it's the dominant cause of the cold cast; green gets a lighter trim. At
-/// warmth 1.0 this is green ×0.75, blue ×0.5.
-const WARMTH_GREEN_CUT: f64 = 0.25;
-const WARMTH_BLUE_CUT: f64 = 0.5;
+// ── White-balance calibration ───────────────────────────────────────────────
+//
+// The over-bright green and blue dies are attenuated toward red, but *only* in
+// proportion to the other channels present — a lone primary (pure green, pure
+// blue) needs no correction and stays vivid, while mixes (white, yellow, cyan,
+// magenta) do. So each channel's removal is a bilinear function of the two
+// channels accompanying it, fit to per-color targets measured against the strip
+// at warmth 1.0:
+//
+//   white (255,172,89)  yellow (255,82,0)  cyan (0,163,140)  magenta (255,0,140)
+//   green (0,255,0)     blue (0,0,255)     red (255,0,0)
+//
+// Green removal as a function of (red, blue); blue removal as a function of
+// (red, green); red is never touched. The negative cross term reflects that two
+// companions together remove less than the sum of each alone (an aesthetic of
+// the measured targets, not just physics).
+const GREEN_REMOVE_FROM_RED: f64 = 0.68;
+const GREEN_REMOVE_FROM_BLUE: f64 = 0.36;
+const GREEN_REMOVE_CROSS: f64 = 0.71;
+const BLUE_REMOVE_FROM_RED: f64 = 0.45;
+const BLUE_REMOVE_FROM_GREEN: f64 = 0.45;
+const BLUE_REMOVE_CROSS: f64 = 0.25;
+
+/// Brightest-channel value (0..255) below which a zone is treated as black and
+/// emitted as off. Saturation-weighting is value-independent, so faint blue
+/// noise/dither in dark content (`(0,0,3)`-style pixels read as "fully saturated
+/// blue") dominates an otherwise-black zone; and dark grey UI chrome averages to
+/// a dim equal-RGB that the strip renders as a washed white. Both make a "black"
+/// screen glow. Snapping genuinely dark zones to off kills that — still well
+/// below any intentionally dim-but-colored content.
+const BLACK_FLOOR: f64 = 16.0;
 
 // ── Persisted settings ─────────────────────────────────────────────────────────
 
@@ -205,7 +233,7 @@ struct Worker {
 }
 
 impl AmbientSync {
-    fn is_running(&self) -> bool {
+    pub(crate) fn is_running(&self) -> bool {
         self.0
             .lock()
             .unwrap()
@@ -223,8 +251,9 @@ impl AmbientSync {
 /// washed-out pastel, so each pixel is weighted by its saturation (squared):
 /// grey UI chrome barely counts while genuinely colorful content drives the hue.
 /// A plain mean is kept as a fallback for (near-)greyscale zones so we still emit
-/// a sane neutral instead of dividing by ~zero. A final saturation boost keeps
-/// the result lively on the strip.
+/// a sane neutral instead of dividing by ~zero. The result is the *raw* scene
+/// color; the saturation boost and warmth are applied per-frame downstream (see
+/// `finalize_color`).
 /// A raw captured frame: a flat pixel buffer plus how to read it. `row_pitch` is
 /// the byte stride per row (duplication pads it), and `bgra` selects channel
 /// order (duplication is BGRA, xcap RGBA).
@@ -236,12 +265,7 @@ struct RawFrame<'a> {
     bgra: bool,
 }
 
-fn zone_colors_raw(
-    frame: &RawFrame<'_>,
-    zones: usize,
-    saturation: f64,
-    warmth: f64,
-) -> Vec<(u8, u8, u8)> {
+fn zone_colors_raw(frame: &RawFrame<'_>, zones: usize) -> Vec<(u8, u8, u8)> {
     let RawFrame {
         data,
         width,
@@ -316,18 +340,43 @@ fn zone_colors_raw(
             } else {
                 (0.0, 0.0, 0.0)
             };
-            apply_warmth(boost_saturation(r, g, b, saturation), warmth)
+            // Raw scene color only. Saturation, warmth, and the black floor are
+            // applied per-frame downstream (see `finalize_color`) so moving those
+            // sliders retunes a static screen live instead of waiting for the
+            // next captured frame.
+            (r.round() as u8, g.round() as u8, b.round() as u8)
         })
         .collect()
 }
 
-/// White-balance correction: attenuate green and (more so) blue to neutralize
-/// the cold blue-white that RGB-only strips produce at equal channels. `warmth`
-/// of 0 passes color through untouched.
+/// White-balance correction for the strip's over-bright green/blue dies. Each
+/// channel is attenuated by a bilinear blend of the *other* channels present
+/// (see the calibration constants), so lone primaries stay vivid while mixes are
+/// neutralized. `warmth` scales the correction: 0 passes color through raw, 1.0
+/// applies the measured calibration, up to [`WARMTH_MAX`] overcorrects.
 fn apply_warmth((r, g, b): (u8, u8, u8), warmth: f64) -> (u8, u8, u8) {
     let w = warmth.clamp(0.0, WARMTH_MAX);
-    let scale = |c: u8, cut: f64| (c as f64 * (1.0 - w * cut)).clamp(0.0, 255.0).round() as u8;
-    (r, scale(g, WARMTH_GREEN_CUT), scale(b, WARMTH_BLUE_CUT))
+    // White balance is a property of hue, not brightness: a grey is just a dim
+    // white and must get the same correction, or its suppressed green leaves
+    // red+blue reading purple. Normalize by the max channel so the removal
+    // depends on the color's chromaticity; the calibrated corners (max = 255)
+    // are unchanged.
+    let max = r.max(g).max(b) as f64;
+    if max <= 0.0 {
+        return (r, g, b);
+    }
+    let rn = r as f64 / max;
+    let gn = g as f64 / max;
+    let bn = b as f64 / max;
+    // Fraction of each die to remove at full strength: green from the red/blue
+    // beside it, blue from the red/green beside it. Red is never touched.
+    let green_remove =
+        GREEN_REMOVE_FROM_RED * rn + GREEN_REMOVE_FROM_BLUE * bn - GREEN_REMOVE_CROSS * rn * bn;
+    let blue_remove =
+        BLUE_REMOVE_FROM_RED * rn + BLUE_REMOVE_FROM_GREEN * gn - BLUE_REMOVE_CROSS * rn * gn;
+    let scale =
+        |c: u8, remove: f64| (c as f64 * (1.0 - w * remove)).clamp(0.0, 255.0).round() as u8;
+    (r, scale(g, green_remove), scale(b, blue_remove))
 }
 
 /// Luma-preserving saturation boost: push each channel away from the color's
@@ -337,6 +386,20 @@ fn boost_saturation(r: f64, g: f64, b: f64, factor: f64) -> (u8, u8, u8) {
     let luma = 0.299 * r + 0.587 * g + 0.114 * b;
     let push = |c: f64| (luma + (c - luma) * factor).clamp(0.0, 255.0).round() as u8;
     (push(r), push(g), push(b))
+}
+
+/// Turn a raw (smoothed) scene color into the value sent to the strip: black
+/// floor, then saturation boost, then warmth. Run every frame on the current
+/// settings — not baked into the captured color — so the saturation/warmth
+/// sliders retune even a static screen live.
+fn finalize_color(r: f64, g: f64, b: f64, saturation: f64, warmth: f64) -> (u8, u8, u8) {
+    // A near-black zone carries no real color: don't let faint blue noise the
+    // saturation weighting latched onto (then the boost amplifies) light the
+    // strip on a black screen. Emit off.
+    if r.max(g).max(b) < BLACK_FLOOR {
+        return (0, 0, 0);
+    }
+    apply_warmth(boost_saturation(r, g, b, saturation), warmth)
 }
 
 fn run_loop(
@@ -431,8 +494,6 @@ fn run_loop(
                             bgra: true,
                         },
                         zone_count,
-                        sat,
-                        warm,
                     ));
                 }) {
                     lost = Some(e);
@@ -449,8 +510,6 @@ fn run_loop(
                             bgra: false,
                         },
                         zone_count,
-                        sat,
-                        warm,
                     ));
                 }
                 Err(e) => lost = Some(e.to_string()),
@@ -514,7 +573,7 @@ fn run_loop(
 
             let out: Vec<(u8, u8, u8)> = smooth
                 .iter()
-                .map(|&(r, g, b)| (r.round() as u8, g.round() as u8, b.round() as u8))
+                .map(|&(r, g, b)| finalize_color(r, g, b, sat, warm))
                 .collect();
             if last_out.as_deref() != Some(out.as_slice()) {
                 if let Err(e) = dx_light::write_zones(&handle, &out) {
@@ -565,7 +624,20 @@ pub fn start_ambient_sync(
     fps: Option<u32>,
 ) -> Result<(), String> {
     crate::commands::require_window(&window, &["main"])?;
+    start_with(&state, brightness, saturation, warmth, zones, fps)
+}
 
+/// Spin up the sync loop with explicit settings. Split out from the command so
+/// the suspend/resume handler can restart a loop that was running before sleep
+/// without a caller window. No-op if a loop is already live.
+pub(crate) fn start_with(
+    state: &AmbientSync,
+    brightness: f64,
+    saturation: Option<f64>,
+    warmth: Option<f64>,
+    zones: Option<usize>,
+    fps: Option<u32>,
+) -> Result<(), String> {
     let mut guard = state.0.lock().unwrap();
     // Reap a previous loop that exited on its own (device unplugged, capture
     // error) before deciding whether one is already live.
@@ -627,6 +699,21 @@ pub fn start_ambient_sync(
         join: Some(join),
     });
     Ok(())
+}
+
+/// Restart the loop from the persisted settings. Used by the wake handler to
+/// bring screen-sync back after it was stopped for sleep. No-op if a loop is
+/// somehow already live.
+pub(crate) fn restart_from_persisted(state: &AmbientSync) -> Result<(), String> {
+    let s = current_settings();
+    start_with(
+        state,
+        s.brightness,
+        Some(s.saturation),
+        Some(s.warmth),
+        Some(s.zones),
+        Some(s.fps),
+    )
 }
 
 /// Retune a live loop's brightness without restarting it. No-op if nothing is
