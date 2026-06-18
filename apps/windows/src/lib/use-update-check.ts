@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
-  checkForUpdatesOnLaunch,
+  checkForUpdates,
   installUpdate,
   type PendingUpdate,
+  type UpdateCheckResult,
 } from '@/lib/updater';
 
 export type UpdateNoticeState =
@@ -18,27 +19,70 @@ export type UpdateNoticeState =
   | { status: 'installed'; version: string }
   | { status: 'error'; message: string };
 
+export type UpdateCheckState =
+  | { status: 'checking' | 'current' | 'skipped' }
+  | { status: 'available'; version: string }
+  | { status: 'error'; message: string };
+
+function noticeFromResult(result: UpdateCheckResult): UpdateNoticeState | null {
+  if (result.status === 'error') {
+    return { status: 'error', message: result.message };
+  }
+  if (result.status === 'available') {
+    return {
+      status: 'available',
+      update: result.update,
+      version: result.update.version,
+    };
+  }
+  return null;
+}
+
+function stateFromResult(result: UpdateCheckResult): UpdateCheckState {
+  if (result.status === 'available') {
+    return { status: 'available', version: result.update.version };
+  }
+  if (result.status === 'error') {
+    return { status: 'error', message: result.message };
+  }
+  return { status: result.status };
+}
+
 /**
- * Checks GitHub Releases once on launch and drives the install lifecycle,
- * surfacing download progress. The returned `install` no-ops unless an update is
- * currently available.
+ * Checks GitHub Releases once on launch, supports manual rechecks, and drives
+ * the install lifecycle with download progress. `install` no-ops unless an
+ * update is currently available.
  */
 export function useUpdateCheck() {
   const [notice, setNotice] = useState<UpdateNoticeState>({ status: 'hidden' });
+  const [checkState, setCheckState] = useState<UpdateCheckState>({
+    status: 'checking',
+  });
 
   useEffect(() => {
-    void checkForUpdatesOnLaunch().then((result) => {
-      if (result.status === 'error') {
-        setNotice({ status: 'error', message: result.message });
-      } else if (result.status === 'available') {
-        setNotice({
-          status: 'available',
-          update: result.update,
-          version: result.update.version,
-        });
-      }
+    void checkForUpdates().then((result) => {
+      const nextNotice = noticeFromResult(result);
+      if (nextNotice) setNotice(nextNotice);
+      setCheckState(stateFromResult(result));
     });
   }, []);
+
+  const checkNow = async () => {
+    if (
+      checkState.status === 'checking' ||
+      notice.status === 'installing' ||
+      notice.status === 'installed'
+    ) {
+      return;
+    }
+
+    setCheckState({ status: 'checking' });
+    if (notice.status === 'error') setNotice({ status: 'hidden' });
+
+    const result = await checkForUpdates();
+    setNotice(noticeFromResult(result) ?? { status: 'hidden' });
+    setCheckState(stateFromResult(result));
+  };
 
   const install = async () => {
     if (notice.status !== 'available') return;
@@ -79,5 +123,5 @@ export function useUpdateCheck() {
     setNotice({ status: 'installed', version });
   };
 
-  return { notice, install };
+  return { notice, checkState, checkNow, install };
 }

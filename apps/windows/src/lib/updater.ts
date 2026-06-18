@@ -23,12 +23,11 @@ function formatUpdateError(err: unknown) {
 }
 
 /**
- * Check GitHub Releases for a newer signed build. Runs once on launch.
- *
- * No-ops in dev: dev builds carry a placeholder version and there's no signed
- * artifact to update to, so a check would only ever fail.
+ * Check GitHub Releases for a newer signed build. No-ops in dev: dev builds
+ * carry a placeholder version and there's no signed artifact to update to, so
+ * a check would only ever fail.
  */
-export async function checkForUpdatesOnLaunch(): Promise<UpdateCheckResult> {
+export async function checkForUpdates(): Promise<UpdateCheckResult> {
   if (__DEV__) return { status: 'skipped' };
 
   try {

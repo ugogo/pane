@@ -36,6 +36,7 @@ import { AppBootFailure } from '@/components/app-boot-failure';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { APP_DISPLAY_NAME } from '@/lib/app-name';
 import { useAppBoot } from '@/lib/use-app-boot';
+import { UpdateCheckContext } from '@/lib/update-check-context';
 import { useUpdateCheck, type UpdateNoticeState } from '@/lib/use-update-check';
 import { restartToApplyUpdate } from '@/lib/updater';
 
@@ -105,8 +106,7 @@ function formatBytes(bytes: number) {
 
 export default function MainLayout() {
   const { isBooting, appVersion, bootError } = useAppBoot();
-  const { notice: updateNotice, install: handleInstallUpdate } =
-    useUpdateCheck();
+  const updateCheck = useUpdateCheck();
 
   if (bootError) {
     return <AppBootFailure message={bootError} />;
@@ -130,11 +130,13 @@ export default function MainLayout() {
 
   return (
     <MainShellErrorBoundary>
-      <AppShell
-        appVersion={appVersion}
-        updateNotice={updateNotice}
-        onInstallUpdate={handleInstallUpdate}
-      />
+      <UpdateCheckContext.Provider value={updateCheck}>
+        <AppShell
+          appVersion={appVersion}
+          updateNotice={updateCheck.notice}
+          onInstallUpdate={updateCheck.install}
+        />
+      </UpdateCheckContext.Provider>
     </MainShellErrorBoundary>
   );
 }

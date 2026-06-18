@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Moon } from '@pane/ui';
+import { Loader2, Moon, RefreshCw } from '@pane/ui';
 import {
   Button,
   Card,
@@ -18,9 +18,67 @@ import {
 } from '@/lib/commands';
 import { queryKeys } from '@/lib/query-keys';
 import { useActionStatus } from '@/lib/use-action-status';
+import { useUpdateCheckContext } from '@/lib/update-check-context';
+import type {
+  UpdateCheckState,
+  UpdateNoticeState,
+} from '@/lib/use-update-check';
+
+function UpdateCheckMessage({
+  checkState,
+  notice,
+}: {
+  checkState: UpdateCheckState;
+  notice: UpdateNoticeState;
+}) {
+  if (notice.status === 'installing') {
+    return (
+      <StatusText status="warn">
+        Downloading and installing Pane {notice.version}…
+      </StatusText>
+    );
+  }
+  if (notice.status === 'installed') {
+    return (
+      <StatusText status="pass">
+        Pane {notice.version} is ready. Restart to finish the update.
+      </StatusText>
+    );
+  }
+  if (checkState.status === 'checking') {
+    return <StatusText status="warn">Checking for updates…</StatusText>;
+  }
+  if (checkState.status === 'available') {
+    return (
+      <StatusText status="warn">
+        A new update is available: Pane {checkState.version}.
+      </StatusText>
+    );
+  }
+  if (checkState.status === 'current') {
+    return <StatusText status="pass">Pane is up to date.</StatusText>;
+  }
+  if (checkState.status === 'error') {
+    return (
+      <StatusText status="fail">
+        Could not check for updates: {checkState.message}
+      </StatusText>
+    );
+  }
+  return (
+    <StatusText status="disabled">
+      Update checks are unavailable in dev builds.
+    </StatusText>
+  );
+}
 
 export default function StartupPage() {
   const queryClient = useQueryClient();
+  const {
+    checkState,
+    checkNow,
+    notice: updateNotice,
+  } = useUpdateCheckContext();
   const startupQuery = useQuery({
     queryKey: queryKeys.runAtStartup,
     queryFn: getRunAtStartup,
@@ -47,6 +105,10 @@ export default function StartupPage() {
     onMutate: () => sleepStatus.clear(),
     onError: (err) => sleepStatus.set('fail', String(err)),
   });
+
+  const isChecking = checkState.status === 'checking';
+  const updateBusy =
+    updateNotice.status === 'installing' || updateNotice.status === 'installed';
 
   if (
     startupQuery.isPending &&
@@ -84,6 +146,36 @@ export default function StartupPage() {
       ) : startupError ? (
         <StatusText status="fail">{startupError}</StatusText>
       ) : null}
+
+      <Card gap="$2" padding="$3">
+        <XStack gap="$4" alignItems="center" justifyContent="space-between">
+          <YStack flex={1} gap="$1">
+            <Label fontSize="$3">Software updates</Label>
+            <MutedText fontSize="$3">
+              Check GitHub Releases for a newer signed version of Pane.
+            </MutedText>
+          </YStack>
+          <Button
+            aria-label="Check for updates"
+            disabled={
+              isChecking || updateBusy || checkState.status === 'skipped'
+            }
+            icon={
+              isChecking ? (
+                <Loader2 aria-hidden size={16} />
+              ) : (
+                <RefreshCw aria-hidden size={16} />
+              )
+            }
+            btnScale="sm"
+            appearance="secondary"
+            onPress={() => void checkNow()}
+          >
+            {isChecking ? 'Checking' : 'Check for updates'}
+          </Button>
+        </XStack>
+        <UpdateCheckMessage checkState={checkState} notice={updateNotice} />
+      </Card>
 
       <Card padding="$3">
         <XStack gap="$4" alignItems="center" justifyContent="space-between">
