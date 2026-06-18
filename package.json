@@ -1,6 +1,6 @@
 {
   "name": "pane",
-  "version": "1.4.7",
+  "version": "1.4.8",
   "private": true,
   "type": "module",
   "description": "Pane — Windows desktop utility suite (Tauri 2 + React + Rust)",
