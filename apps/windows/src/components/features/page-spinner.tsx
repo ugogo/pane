@@ -1,4 +1,4 @@
-import { Loader2 } from '@pane/ui';
+import { Loader2Icon } from 'lucide-react';
 import { YStack } from '@pane/ui';
 
 export function PageSpinner() {
@@ -8,7 +8,7 @@ export function PageSpinner() {
       justifyContent="center"
       style={{ minHeight: 280 }}
     >
-      <Loader2 aria-hidden color="$placeholderColor" size={20} />
+      <Loader2Icon aria-hidden color="$placeholderColor" size={20} />
     </YStack>
   );
 }

@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ChevronDown,
-  ChevronRight,
-  Cpu,
-  Monitor,
-  Mouse,
-  RotateCcw,
-  Trash2,
-} from '@pane/ui';
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CpuIcon,
+  MonitorIcon,
+  MouseIcon,
+  RotateCcwIcon,
+  Trash2Icon,
+} from 'lucide-react';
 import {
   Button,
   Card,
@@ -80,11 +80,11 @@ function lightSubtitle(l: Light) {
 function LightIcon({ light }: { light: Light }) {
   switch (light.kind) {
     case 'dynamic':
-      return <Mouse size={16} aria-hidden />;
+      return <MouseIcon size={16} aria-hidden />;
     case 'msi':
-      return <Cpu size={16} aria-hidden />;
+      return <CpuIcon size={16} aria-hidden />;
     case 'dxlight':
-      return <Monitor size={16} aria-hidden />;
+      return <MonitorIcon size={16} aria-hidden />;
   }
 }
 
@@ -432,7 +432,7 @@ function AmbientSyncCard() {
     <Card gap="$3" padding="$3">
       <XStack gap="$3" alignItems="center">
         <DeviceIcon>
-          <Monitor size={16} aria-hidden />
+          <MonitorIcon size={16} aria-hidden />
         </DeviceIcon>
         <YStack flex={1} style={{ minWidth: 0 }}>
           <Text fontSize="$3" fontWeight="600" numberOfLines={1}>
@@ -454,7 +454,7 @@ function AmbientSyncCard() {
         alignSelf="flex-start"
         appearance="ghost"
         btnScale="xs"
-        icon={expanded ? ChevronDown : ChevronRight}
+        icon={expanded ? ChevronDownIcon : ChevronRightIcon}
         onPress={() => setExpanded((v) => !v)}
       >
         Adjust
@@ -743,14 +743,14 @@ function PresetBar({
             disabled={busy || !hasLights}
             onPress={() => onUpdate(preset.name)}
           >
-            <RotateCcw aria-hidden size={12} />
+            <RotateCcwIcon aria-hidden size={12} />
           </PresetIconButton>
           <PresetIconButton
             aria-label={`Delete ${preset.name} preset`}
             disabled={busy}
             onPress={() => onDelete(preset.name)}
           >
-            <Trash2 aria-hidden size={12} />
+            <Trash2Icon aria-hidden size={12} />
           </PresetIconButton>
         </PresetGroup>
       ))}

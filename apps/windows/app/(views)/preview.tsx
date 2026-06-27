@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Clipboard, Download, Pen, X } from '@pane/ui';
+import {
+  CheckIcon,
+  ClipboardIcon,
+  DownloadIcon,
+  PenIcon,
+  XIcon,
+} from 'lucide-react';
 import { useEffectEvent } from '@/lib/use-effect-event';
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -313,13 +319,13 @@ export default function PreviewPage() {
         {capture && (
           <div className="preview-overlay">
             <ActionButton
-              icon={actions.copy === 'success' ? Check : Clipboard}
+              icon={actions.copy === 'success' ? CheckIcon : ClipboardIcon}
               label={actions.copy === 'success' ? 'Copied' : 'Copy'}
               busy={actions.copy === 'busy'}
               onClick={() => void copyCapture()}
             />
             <ActionButton
-              icon={actions.save === 'success' ? Check : Download}
+              icon={actions.save === 'success' ? CheckIcon : DownloadIcon}
               label={actions.save === 'success' ? 'Saved' : 'Save'}
               busy={actions.save === 'busy'}
               onClick={() => void saveCapture()}
@@ -329,7 +335,7 @@ export default function PreviewPage() {
 
         {capture && (
           <PreviewChromeButton
-            icon={Pen}
+            icon={PenIcon}
             label="Edit capture"
             side="left"
             onClick={editCapture}
@@ -337,7 +343,7 @@ export default function PreviewPage() {
         )}
 
         <PreviewChromeButton
-          icon={X}
+          icon={XIcon}
           label="Close preview"
           side="right"
           onClick={() => void close()}
@@ -359,7 +365,7 @@ function PreviewChromeButton({
   side,
   onClick,
 }: {
-  icon: typeof Pen;
+  icon: typeof PenIcon;
   label: string;
   side: 'left' | 'right';
   onClick: () => void;
@@ -383,7 +389,7 @@ function ActionButton({
   busy,
   onClick,
 }: {
-  icon: typeof Clipboard;
+  icon: typeof ClipboardIcon;
   label: string;
   busy: boolean;
   onClick: () => void;

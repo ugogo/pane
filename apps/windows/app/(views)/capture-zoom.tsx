@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { X } from '@pane/ui';
+import { XIcon } from 'lucide-react';
 import { hideCaptureZoom, takeLatestCaptureFull } from '@/lib/commands';
 import { useEffectEvent } from '@/lib/use-effect-event';
 
@@ -75,7 +75,7 @@ export default function CaptureZoomPage() {
           className="capture-zoom-close"
           aria-label="Close preview"
         >
-          <X aria-hidden size={16} />
+          <XIcon aria-hidden size={16} />
         </button>
       </div>
     </div>

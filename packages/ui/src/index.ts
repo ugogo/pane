@@ -66,5 +66,3 @@ export {
   TextArea,
   AnimatePresence,
 } from 'tamagui';
-
-export * from '@tamagui/lucide-icons';

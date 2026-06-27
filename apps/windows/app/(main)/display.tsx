@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Sun, Contrast, Sunset, Trash2, RotateCcw } from '@pane/ui';
+import {
+  ContrastIcon,
+  RotateCcwIcon,
+  SunIcon,
+  SunsetIcon,
+  Trash2Icon,
+} from 'lucide-react';
 import {
   Button,
   Card,
@@ -55,9 +61,9 @@ function scanForMonitors(list: MonitorInfo[]): StatusMessage {
 
 type FeatureKey = 'brightness' | 'contrast';
 
-const sliderMeta: { key: FeatureKey; icon: typeof Sun; label: string }[] = [
-  { key: 'brightness', icon: Sun, label: 'Brightness' },
-  { key: 'contrast', icon: Contrast, label: 'Contrast' },
+const sliderMeta: { key: FeatureKey; icon: typeof SunIcon; label: string }[] = [
+  { key: 'brightness', icon: SunIcon, label: 'Brightness' },
+  { key: 'contrast', icon: ContrastIcon, label: 'Contrast' },
 ];
 
 const writers: Record<
@@ -381,14 +387,14 @@ function PresetBar({
             disabled={busy || !hasMonitors}
             onPress={() => onUpdate(p.name)}
           >
-            <RotateCcw aria-hidden size={12} />
+            <RotateCcwIcon aria-hidden size={12} />
           </PresetIconButton>
           <PresetIconButton
             aria-label={`Delete ${p.name} preset`}
             disabled={busy}
             onPress={() => onDelete(p.name)}
           >
-            <Trash2 aria-hidden size={12} />
+            <Trash2Icon aria-hidden size={12} />
           </PresetIconButton>
         </PresetGroup>
       ))}
@@ -474,7 +480,7 @@ function MonitorRow({
       {m.redGain.supported && m.greenGain.supported && m.blueGain.supported ? (
         <SliderRow>
           <SliderLabel>
-            <Sunset aria-hidden size={12} />
+            <SunsetIcon aria-hidden size={12} />
             <MutedText fontSize="$2">Warmth</MutedText>
           </SliderLabel>
           <Slider
