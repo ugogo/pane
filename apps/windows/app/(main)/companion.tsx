@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, QrCode, Wifi, X } from '@pane/ui';
+import { CopyIcon, QrCodeIcon, WifiIcon, XIcon } from 'lucide-react';
 import {
   Button,
   Card,
@@ -105,7 +105,7 @@ export default function CompanionPage() {
               <Button
                 aria-label="Cancel pairing"
                 disabled={busy}
-                icon={<X aria-hidden size={16} />}
+                icon={<XIcon aria-hidden size={16} />}
                 btnScale="sm"
                 appearance="outline"
                 onPress={() => void update(cancelCompanionPairing)}
@@ -113,7 +113,7 @@ export default function CompanionPage() {
             ) : null}
             <Button
               disabled={busy}
-              icon={<QrCode aria-hidden size={16} />}
+              icon={<QrCodeIcon aria-hidden size={16} />}
               btnScale="sm"
               appearance="outline"
               onPress={() => void update(startCompanionPairing)}
@@ -128,7 +128,7 @@ export default function CompanionPage() {
             <XStack gap="$3" alignItems="center" justifyContent="space-between">
               <Label fontSize="$3">Scan to pair</Label>
               <Button
-                icon={<Copy aria-hidden size={16} />}
+                icon={<CopyIcon aria-hidden size={16} />}
                 btnScale="sm"
                 appearance="outline"
                 onPress={() =>
@@ -159,7 +159,7 @@ export default function CompanionPage() {
 
       <Card gap="$3" padding="$3">
         <XStack gap="$2" alignItems="center">
-          <Wifi aria-hidden color="$placeholderColor" size={14} />
+          <WifiIcon aria-hidden size={14} />
           <Label fontSize="$3">Trusted devices</Label>
         </XStack>
 

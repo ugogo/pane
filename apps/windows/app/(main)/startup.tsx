@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Moon, RefreshCw } from '@pane/ui';
+import { Loader2Icon, MoonIcon, RefreshCwIcon } from 'lucide-react';
 import {
   Button,
   Card,
@@ -162,9 +162,9 @@ export default function StartupPage() {
             }
             icon={
               isChecking ? (
-                <Loader2 aria-hidden size={16} />
+                <Loader2Icon aria-hidden size={16} />
               ) : (
-                <RefreshCw aria-hidden size={16} />
+                <RefreshCwIcon aria-hidden size={16} />
               )
             }
             btnScale="sm"
@@ -187,7 +187,7 @@ export default function StartupPage() {
           </YStack>
           <Button
             aria-label="Sleep computer"
-            icon={<Moon aria-hidden size={16} />}
+            icon={<MoonIcon aria-hidden size={16} />}
             btnScale="sm"
             appearance="secondary"
             onPress={() => sleep.mutate()}

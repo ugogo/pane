@@ -1,23 +1,23 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Link, Slot, usePathname } from 'expo-router';
 import {
-  Activity,
-  AlertTriangle,
-  Camera,
-  CheckCircle2,
-  Download,
-  Languages,
-  Lightbulb,
-  Loader2,
-  Minus,
-  Monitor,
-  Power,
-  RotateCcw,
-  Smartphone,
-  Square,
-  Volume2,
-  X,
-} from '@pane/ui';
+  ActivityIcon,
+  AlertTriangleIcon,
+  CameraIcon,
+  CheckCircle2Icon,
+  DownloadIcon,
+  LanguagesIcon,
+  LightbulbIcon,
+  Loader2Icon,
+  MinusIcon,
+  MonitorIcon,
+  PowerIcon,
+  RotateCcwIcon,
+  SmartphoneIcon,
+  SquareIcon,
+  Volume2Icon,
+  XIcon,
+} from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
   Button,
@@ -46,56 +46,56 @@ const modules = [
     label: 'Capture',
     title: 'Capture',
     description: 'Fullscreen and area capture with global shortcuts.',
-    icon: Camera,
+    icon: CameraIcon,
   },
   {
     path: '/display',
     label: 'Display',
     title: 'Display',
     description: 'Monitor brightness and presets.',
-    icon: Monitor,
+    icon: MonitorIcon,
   },
   {
     path: '/sound',
     label: 'Sound',
     title: 'Sound',
     description: 'Default devices and volume.',
-    icon: Volume2,
+    icon: Volume2Icon,
   },
   {
     path: '/lights',
     label: 'Lights',
     title: 'Lights',
     description: 'Supported lighting hardware.',
-    icon: Lightbulb,
+    icon: LightbulbIcon,
   },
   {
     path: '/accent',
     label: 'Accents',
     title: 'Accents',
     description: 'Long-press letters for variants.',
-    icon: Languages,
+    icon: LanguagesIcon,
   },
   {
     path: '/startup',
     label: 'System',
     title: 'System',
     description: 'Windows launch and power commands.',
-    icon: Power,
+    icon: PowerIcon,
   },
   {
     path: '/companion',
     label: 'Companion',
     title: 'Companion',
     description: 'Control Pane settings from your iPhone.',
-    icon: Smartphone,
+    icon: SmartphoneIcon,
   },
   {
     path: '/diagnostics',
     label: 'Diagnostics',
     title: 'Diagnostics',
     description: 'Memory, startup timing, and process ID.',
-    icon: Activity,
+    icon: ActivityIcon,
   },
 ] as const;
 
@@ -122,7 +122,7 @@ export default function MainLayout() {
           alignItems="center"
           justifyContent="center"
         >
-          <Loader2 aria-hidden color="$placeholderColor" size={16} />
+          <Loader2Icon aria-hidden size={16} />
         </YStack>
       </YStack>
     );
@@ -278,7 +278,7 @@ function AppTitlebar() {
     >
       <div className="app-titlebar-left" data-tauri-drag-region>
         <span className="app-titlebar-icon" data-tauri-drag-region>
-          <Camera aria-hidden size={12} />
+          <CameraIcon aria-hidden size={12} />
         </span>
         <span className="app-titlebar-title" data-tauri-drag-region>
           {APP_DISPLAY_NAME}
@@ -294,7 +294,7 @@ function AppTitlebar() {
             void getCurrentWindow().minimize().catch(console.error)
           }
         >
-          <Minus aria-hidden size={14} />
+          <MinusIcon aria-hidden size={14} />
         </button>
         <button
           aria-label="Maximize or restore"
@@ -304,7 +304,7 @@ function AppTitlebar() {
             void getCurrentWindow().toggleMaximize().catch(console.error)
           }
         >
-          <Square aria-hidden size={12} />
+          <SquareIcon aria-hidden size={12} />
         </button>
         <button
           aria-label="Close to tray"
@@ -312,7 +312,7 @@ function AppTitlebar() {
           type="button"
           onClick={() => void getCurrentWindow().hide().catch(console.error)}
         >
-          <X aria-hidden size={14} />
+          <XIcon aria-hidden size={14} />
         </button>
       </div>
     </div>
@@ -341,7 +341,7 @@ function UpdateNotice({
         }}
       >
         <XStack gap="$2" alignItems="flex-start">
-          <AlertTriangle aria-hidden color="$red11" size={16} />
+          <AlertTriangleIcon aria-hidden size={16} />
           <YStack flex={1} gap="$1">
             <Text color="$red11" fontWeight="600">
               Update failed
@@ -360,14 +360,14 @@ function UpdateNotice({
       <Card padding="$3">
         <XStack gap="$3" alignItems="center" justifyContent="space-between">
           <XStack gap="$2" alignItems="flex-start" style={{ minWidth: 0 }}>
-            <CheckCircle2 aria-hidden size={16} />
+            <CheckCircle2Icon aria-hidden size={16} />
             <YStack style={{ minWidth: 0 }}>
               <Label>Pane {state.version} is installed</Label>
               <MutedText>Restart when ready.</MutedText>
             </YStack>
           </XStack>
           <Button
-            icon={<RotateCcw aria-hidden size={16} />}
+            icon={<RotateCcwIcon aria-hidden size={16} />}
             btnScale="sm"
             onPress={onRestart}
           >
@@ -397,9 +397,9 @@ function UpdateNotice({
       <XStack gap="$3" alignItems="center" justifyContent="space-between">
         <XStack gap="$2" alignItems="flex-start" style={{ minWidth: 0 }}>
           {isInstalling ? (
-            <Loader2 aria-hidden size={16} />
+            <Loader2Icon aria-hidden size={16} />
           ) : (
-            <Download aria-hidden size={16} />
+            <DownloadIcon aria-hidden size={16} />
           )}
           <YStack style={{ minWidth: 0 }}>
             <Label>Pane {state.version} is available</Label>
@@ -412,9 +412,9 @@ function UpdateNotice({
           disabled={isInstalling}
           icon={
             isInstalling ? (
-              <Loader2 aria-hidden size={16} />
+              <Loader2Icon aria-hidden size={16} />
             ) : (
-              <Download aria-hidden size={16} />
+              <DownloadIcon aria-hidden size={16} />
             )
           }
           btnScale="sm"

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye } from '@pane/ui';
+import { EyeIcon } from 'lucide-react';
 import { Button, Card, Label, MutedText, XStack, YStack } from '@pane/ui';
 import { ShortcutInput } from '@/components/ShortcutInput';
 import { PageSpinner } from '@/components/features/page-spinner';
@@ -133,7 +133,7 @@ export default function CapturePage() {
       <XStack flexDirection="column" gap="$2">
         <Button
           aria-pressed={previewVisible ?? undefined}
-          icon={<Eye aria-hidden size={14} />}
+          icon={<EyeIcon aria-hidden size={14} />}
           btnScale="sm"
           appearance="secondary"
           onPress={() => preview.mutate()}

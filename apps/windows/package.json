@@ -28,6 +28,7 @@
     "expo-linking": "~8.0.12",
     "expo-router": "~6.0.24",
     "expo-status-bar": "~3.0.9",
+    "lucide-react": "^1.21.0",
     "pica": "^9.0.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -44,6 +45,7 @@
     "@types/pica": "^9.0.5",
     "@types/react": "~19.1.10",
     "@types/react-dom": "~19.1.7",
+    "babel-plugin-transform-imports": "^2.0.0",
     "babel-preset-expo": "~54.0.10",
     "typescript": "^6.0.3"
   }

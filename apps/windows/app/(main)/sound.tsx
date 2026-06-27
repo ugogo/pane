@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Volume2, VolumeX, Mic, MicOff, Star } from '@pane/ui';
+import {
+  MicIcon,
+  MicOffIcon,
+  StarIcon,
+  Volume2Icon,
+  VolumeXIcon,
+} from 'lucide-react';
 import {
   Button,
   Card,
@@ -257,7 +263,7 @@ function Section({
                   disabled={busy}
                   onPress={() => onToggleFavorite(kind, d.id)}
                 >
-                  <Star
+                  <StarIcon
                     aria-hidden
                     fill={isFav ? 'currentColor' : 'none'}
                     size={13}
@@ -279,14 +285,14 @@ function Section({
           >
             {kind === 'output' ? (
               muted ? (
-                <VolumeX aria-hidden size={14} />
+                <VolumeXIcon aria-hidden size={14} />
               ) : (
-                <Volume2 aria-hidden size={14} />
+                <Volume2Icon aria-hidden size={14} />
               )
             ) : muted ? (
-              <MicOff aria-hidden size={14} />
+              <MicOffIcon aria-hidden size={14} />
             ) : (
-              <Mic aria-hidden size={14} />
+              <MicIcon aria-hidden size={14} />
             )}
           </IconButton>
           <Slider
