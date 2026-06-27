@@ -8,7 +8,7 @@ export function PageSpinner() {
       justifyContent="center"
       style={{ minHeight: 280 }}
     >
-      <Loader2Icon aria-hidden color="$placeholderColor" size={20} />
+      <Loader2Icon aria-hidden size={20} />
     </YStack>
   );
 }

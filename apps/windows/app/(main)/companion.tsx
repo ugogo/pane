@@ -159,7 +159,7 @@ export default function CompanionPage() {
 
       <Card gap="$3" padding="$3">
         <XStack gap="$2" alignItems="center">
-          <WifiIcon aria-hidden color="$placeholderColor" size={14} />
+          <WifiIcon aria-hidden size={14} />
           <Label fontSize="$3">Trusted devices</Label>
         </XStack>
 

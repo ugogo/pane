@@ -122,7 +122,7 @@ export default function MainLayout() {
           alignItems="center"
           justifyContent="center"
         >
-          <Loader2Icon aria-hidden color="$placeholderColor" size={16} />
+          <Loader2Icon aria-hidden size={16} />
         </YStack>
       </YStack>
     );
@@ -341,7 +341,7 @@ function UpdateNotice({
         }}
       >
         <XStack gap="$2" alignItems="flex-start">
-          <AlertTriangleIcon aria-hidden color="$red11" size={16} />
+          <AlertTriangleIcon aria-hidden size={16} />
           <YStack flex={1} gap="$1">
             <Text color="$red11" fontWeight="600">
               Update failed
