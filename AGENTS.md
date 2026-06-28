@@ -84,7 +84,7 @@ npm run rust:clippy    # cargo clippy --all-targets -- -D warnings
 - Reusable motion belongs in `@pane/ui`: use Tamagui animations and shared wrappers such as `PageTransition` / `PopupTransition` for page, modal, popup, preview, and cross-platform component motion. Keep CSS animations for Windows-only chrome, DOM-specific hover polish, and specialized webview flows that are tightly coupled to Tauri window readiness.
 - Windows-only chrome: `apps/windows/src/styles/shell.css` for titlebar/sidebar glass and `data-tauri-drag-region` — not in `@pane/ui`.
 - Optimize the main window for the default 800–900 px width.
-- Icons: `@tamagui/lucide-icons-2` (re-export from `@pane/ui` when needed). Do not add other icon libraries.
+- Icons: `lucide-react` in the Windows app with the `Icon` suffix (`PenIcon`, not `Pen`). The Windows Babel config rewrites these imports to per-icon modules for tree-shaking. Do not add other icon libraries.
 - Companion dev requires a **dev client** build (`npm run companion` → `expo run:ios --device`); Expo Go is not supported for native sliders/Tamagui controls.
 
 ## Rust / Tauri guidelines

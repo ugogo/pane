@@ -47,6 +47,51 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@tamagui/lucide-icons',
+              message:
+                'Use Icon-suffixed imports from lucide-react in the Windows app.',
+            },
+            {
+              name: '@tamagui/lucide-icons-2',
+              message:
+                'Use Icon-suffixed imports from lucide-react in the Windows app.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@tabler/*'],
+              message:
+                'Use Icon-suffixed imports from lucide-react in the Windows app.',
+            },
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "ImportDeclaration[source.value='lucide-react'] ImportDefaultSpecifier",
+          message:
+            'Use named Icon-suffixed lucide-react imports, for example PenIcon.',
+        },
+        {
+          selector:
+            "ImportDeclaration[source.value='lucide-react'] ImportNamespaceSpecifier",
+          message:
+            'Use named Icon-suffixed lucide-react imports, for example PenIcon.',
+        },
+        {
+          selector:
+            "ImportDeclaration[source.value='lucide-react'] ImportSpecifier:not([imported.name=/Icon$/])",
+          message:
+            'Use the Icon suffix for lucide-react imports, for example PenIcon instead of Pen.',
+        },
+      ],
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'error',
       // React-Compiler heuristics: enforced as errors now that the codebase
