@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { Card, Switch, Text, XStack, YStack } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
-import { StatusText } from '@/components/features/status-ui';
+import { PageStatus } from '@/components/page-status';
 import { getAccentPopupEnabled, setAccentPopupEnabled } from '@/lib/commands';
 import { queryKeys } from '@/lib/query-keys';
 import { useActionStatus } from '@/lib/use-action-status';
@@ -43,6 +43,54 @@ function AccentPage() {
 
   return (
     <YStack gap={4}>
+      <PageStatus status={status.status}>{status.message}</PageStatus>
+      <PageStatus status="fail">{enabledError}</PageStatus>
+
+      <div className="rounded-lg border border-border bg-muted p-4">
+        <YStack gap={2}>
+          <Text weight="bold">How accents work</Text>
+          <Text tone="muted">
+            Long-press a letter key anywhere in Windows to open the accent
+            picker. Example: hold{' '}
+            <Text as="span" variant="code">
+              a
+            </Text>{' '}
+            to choose{' '}
+            <Text as="span" variant="code">
+              à
+            </Text>
+            ,{' '}
+            <Text as="span" variant="code">
+              â
+            </Text>
+            , or{' '}
+            <Text as="span" variant="code">
+              ä
+            </Text>
+            .
+          </Text>
+          <Text tone="muted">
+            Press number keys{' '}
+            <Text as="span" variant="code">
+              1
+            </Text>
+            ,{' '}
+            <Text as="span" variant="code">
+              2
+            </Text>
+            , or{' '}
+            <Text as="span" variant="code">
+              3
+            </Text>{' '}
+            to pick a variant, or{' '}
+            <Text as="span" variant="code">
+              Esc
+            </Text>{' '}
+            to dismiss without typing.
+          </Text>
+        </YStack>
+      </div>
+
       <Card>
         <Card.Content>
           <XStack align="center" gap={4} justify="between">
@@ -52,7 +100,7 @@ function AccentPage() {
                   Enabled
                 </Text>
                 <Text tone="muted">
-                  Choose variants with click, number keys, or Esc to dismiss.
+                  Turn the accent popup on or off system-wide.
                 </Text>
               </YStack>
             </div>
@@ -65,11 +113,6 @@ function AccentPage() {
           </XStack>
         </Card.Content>
       </Card>
-      {status.message ? (
-        <StatusText status={status.status}>{status.message}</StatusText>
-      ) : enabledError ? (
-        <StatusText status="fail">{enabledError}</StatusText>
-      ) : null}
     </YStack>
   );
 }

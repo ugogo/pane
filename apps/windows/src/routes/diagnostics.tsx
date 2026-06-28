@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { Button, Grid, Switch, Text, YStack } from 'pickle-ui';
+import { Button, Card, Grid, Switch, Text, XStack, YStack } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
-import { StatusText } from '@/components/features/status-ui';
+import { PageStatus } from '@/components/page-status';
 import { getProcessMetrics } from '@/lib/commands';
 import { queryKeys } from '@/lib/query-keys';
 
@@ -35,32 +35,48 @@ function DiagnosticsPage() {
 
   return (
     <YStack gap={4}>
-      {error ? <StatusText status="fail">{error}</StatusText> : null}
+      <Text tone="muted">
+        Live process metrics for the running Pane instance.
+      </Text>
+
+      <PageStatus status="fail">{error}</PageStatus>
+
+      <XStack align="center" gap={3} wrap="wrap">
+        <Button
+          variant="outline"
+          disabled={metricsQuery.isFetching}
+          onClick={() => void metricsQuery.refetch()}
+        >
+          Refresh
+        </Button>
+        <Switch
+          checked={autoRefresh}
+          label="Auto-refresh"
+          onCheckedChange={setAutoRefresh}
+        />
+      </XStack>
+
       {metrics ? (
-        <Grid className="grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]" gap={3}>
-          <Metric label="Working set" value={fmtMb(metrics.workingSetMb)} />
-          <Metric label="Virtual mem" value={fmtMb(metrics.virtualMemoryMb)} />
-          <Metric
-            label="Startup elapsed"
-            value={fmtMs(metrics.startupElapsedMs)}
-          />
-          <Metric label="PID" value={String(metrics.pid)} />
-        </Grid>
+        <Card>
+          <Card.Content>
+            <Grid
+              className="grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]"
+              gap={3}
+            >
+              <Metric label="Working set" value={fmtMb(metrics.workingSetMb)} />
+              <Metric
+                label="Virtual mem"
+                value={fmtMb(metrics.virtualMemoryMb)}
+              />
+              <Metric
+                label="Startup elapsed"
+                value={fmtMs(metrics.startupElapsedMs)}
+              />
+              <Metric label="PID" value={String(metrics.pid)} />
+            </Grid>
+          </Card.Content>
+        </Card>
       ) : null}
-
-      <Button
-        variant="outline"
-        className="self-start"
-        onClick={() => void metricsQuery.refetch()}
-      >
-        Refresh
-      </Button>
-
-      <Switch
-        checked={autoRefresh}
-        label="Auto-refresh process metrics"
-        onCheckedChange={setAutoRefresh}
-      />
     </YStack>
   );
 }

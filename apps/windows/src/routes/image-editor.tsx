@@ -1397,9 +1397,13 @@ function ImageEditorPage() {
       : strokeWidth;
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-card text-[13px] text-foreground">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-card text-foreground">
       <ChildWindowTitlebar
-        title={<span className="text-[13px] font-semibold">Edit capture</span>}
+        title={
+          <Text as="span" variant="small" weight="bold">
+            Edit capture
+          </Text>
+        }
         closeLabel="Close editor"
         onClose={() => void hideImageEditor()}
         closeIcon={<XIcon aria-hidden size={16} />}
@@ -2678,7 +2682,9 @@ function EditorStageView({
       ref={stageRef}
     >
       {error ? (
-        <p className="text-center text-xs text-destructive">{error}</p>
+        <Text as="p" variant="small" tone="destructive" className="text-center">
+          {error}
+        </Text>
       ) : null}
       {src ? (
         <div

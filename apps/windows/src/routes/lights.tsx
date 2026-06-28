@@ -14,7 +14,6 @@ import {
   Button,
   Card,
   ColorPicker,
-  Slider,
   Switch,
   Text,
   XStack,
@@ -22,6 +21,9 @@ import {
 } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusBadge, StatusText } from '@/components/features/status-ui';
+import { LabeledSlider } from '@/components/labeled-slider';
+import { PageSection } from '@/components/page-section';
+import { PageStatus } from '@/components/page-status';
 import {
   ambientSyncStatus,
   applyDxLight,
@@ -59,10 +61,6 @@ function lightTitle(l: Light) {
     case 'dxlight':
       return 'DX Light strip';
   }
-}
-
-function sliderValue(value: number | readonly number[], fallback: number) {
-  return typeof value === 'number' ? value : (value[0] ?? fallback);
 }
 
 function lightSubtitle(l: Light) {
@@ -280,19 +278,15 @@ function LightRow({
               </ColorPicker.Content>
             </ColorPicker>
             <div className="min-w-40 flex-1">
-              <YStack gap={1}>
-                <Text tone="muted">Brightness {brightness}%</Text>
-                <Slider
-                  disabled={disabled}
-                  max={100}
-                  min={0}
-                  step={1}
-                  value={[brightness]}
-                  onValueChange={(value) =>
-                    setBrightness(sliderValue(value, brightness))
-                  }
-                />
-              </YStack>
+              <LabeledSlider
+                label="Brightness"
+                min={0}
+                max={100}
+                step={1}
+                value={brightness}
+                disabled={disabled}
+                onValueChange={setBrightness}
+              />
             </div>
             <Button
               disabled={busy || disabled}
@@ -485,76 +479,58 @@ function AmbientSyncCard() {
           <div className="mt-3">
             <XStack align="end" gap={3} wrap="wrap">
               <div className="min-w-40 flex-1">
-                <YStack gap={1}>
-                  <Text tone="muted">Brightness {brightness}%</Text>
-                  <Slider
-                    max={100}
-                    min={0}
-                    step={1}
-                    value={[brightness]}
-                    onValueChange={(value) =>
-                      onBrightnessChange(sliderValue(value, brightness))
-                    }
-                  />
-                </YStack>
+                <LabeledSlider
+                  label="Brightness"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={brightness}
+                  onValueChange={(value) => onBrightnessChange(value)}
+                />
               </div>
               <div className="min-w-40 flex-1">
-                <YStack gap={1}>
-                  <Text tone="muted">Saturation {saturation}%</Text>
-                  <Slider
-                    max={300}
-                    min={100}
-                    step={5}
-                    value={[saturation]}
-                    onValueChange={(value) =>
-                      onSaturationChange(sliderValue(value, saturation))
-                    }
-                  />
-                </YStack>
+                <LabeledSlider
+                  label="Saturation"
+                  min={100}
+                  max={300}
+                  step={5}
+                  value={saturation}
+                  onValueChange={(value) => onSaturationChange(value)}
+                />
               </div>
               <div className="min-w-40 flex-1">
-                <YStack gap={1}>
-                  <Text tone="muted">Warmth {warmth}%</Text>
-                  <Slider
-                    max={200}
-                    min={0}
-                    step={1}
-                    value={[warmth]}
-                    onValueChange={(value) =>
-                      onWarmthChange(sliderValue(value, warmth))
-                    }
-                  />
-                </YStack>
+                <LabeledSlider
+                  label="Warmth"
+                  min={0}
+                  max={200}
+                  step={1}
+                  value={warmth}
+                  onValueChange={(value) => onWarmthChange(value)}
+                />
               </div>
               <div className="min-w-40 flex-1">
-                <YStack gap={1}>
-                  <Text tone="muted">
-                    Zones {zones === 1 ? '1 (single color)' : zones}
-                  </Text>
-                  <Slider
-                    max={10}
-                    min={1}
-                    step={1}
-                    value={[zones]}
-                    onValueChange={(value) =>
-                      onZonesChange(sliderValue(value, zones))
-                    }
-                  />
-                </YStack>
+                <LabeledSlider
+                  label="Zones"
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={zones}
+                  formatValue={(n) =>
+                    n === 1 ? '1 (single color)' : String(n)
+                  }
+                  onValueChange={(value) => onZonesChange(value)}
+                />
               </div>
               <div className="min-w-40 flex-1">
-                <YStack gap={1}>
-                  <Text tone="muted">Frame rate {fps} fps</Text>
-                  <Slider
-                    max={60}
-                    min={5}
-                    step={1}
-                    value={[fps]}
-                    onValueChange={(value) =>
-                      onFpsChange(sliderValue(value, fps))
-                    }
-                  />
-                </YStack>
+                <LabeledSlider
+                  label="Frame rate"
+                  min={5}
+                  max={60}
+                  step={1}
+                  value={fps}
+                  formatValue={(n) => `${n} fps`}
+                  onValueChange={(value) => onFpsChange(value)}
+                />
               </div>
             </XStack>
           </div>
@@ -722,28 +698,29 @@ function LightsPage() {
         onSave={() => void onSavePreset()}
       />
 
+      <PageStatus status={displayScan.status}>{displayScan.message}</PageStatus>
+
       {keyedLights.some(({ light }) => light.kind === 'dxlight') ? (
-        <AmbientSyncCard />
+        <PageSection title="Ambient">
+          <AmbientSyncCard />
+        </PageSection>
       ) : null}
 
-      <YStack gap={3}>
-        {keyedLights.map(({ key, light }) => (
-          <LightRow
-            key={key}
-            light={light}
-            initialState={savedStates[key]}
-            disabledReason={
-              light.kind === 'dynamic' ? dynamicDisabledReason : undefined
-            }
-            onApplied={(state) => patchSavedState(key, state)}
-          />
-        ))}
-      </YStack>
-      {displayScan.message ? (
-        <StatusText status={displayScan.status}>
-          {displayScan.message}
-        </StatusText>
-      ) : null}
+      <PageSection title="Devices">
+        <YStack gap={3}>
+          {keyedLights.map(({ key, light }) => (
+            <LightRow
+              key={key}
+              light={light}
+              initialState={savedStates[key]}
+              disabledReason={
+                light.kind === 'dynamic' ? dynamicDisabledReason : undefined
+              }
+              onApplied={(state) => patchSavedState(key, state)}
+            />
+          ))}
+        </YStack>
+      </PageSection>
     </YStack>
   );
 }
@@ -785,7 +762,7 @@ function PresetBar({
           <Button
             aria-label={`Update ${preset.name} preset`}
             disabled={busy || !hasLights}
-            variant="secondary"
+            variant="ghost"
             onClick={() => onUpdate(preset.name)}
           >
             <RotateCcwIcon aria-hidden size={12} />
@@ -793,7 +770,7 @@ function PresetBar({
           <Button
             aria-label={`Delete ${preset.name} preset`}
             disabled={busy}
-            variant="secondary"
+            variant="ghost"
             onClick={() => onDelete(preset.name)}
           >
             <Trash2Icon aria-hidden size={12} />

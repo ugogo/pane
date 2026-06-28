@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import {
+  CheckIcon,
   MicIcon,
   MicOffIcon,
   StarIcon,
   Volume2Icon,
   VolumeXIcon,
 } from 'lucide-react';
-import { Button, Card, Slider, Text, XStack, YStack } from 'pickle-ui';
+import { Badge, Button, Card, Text, XStack, YStack } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
-import { StatusText } from '@/components/features/status-ui';
+import { LabeledSlider } from '@/components/labeled-slider';
+import { PageStatus } from '@/components/page-status';
 import {
   setDefaultOutputDevice,
   setDefaultInputDevice,
@@ -171,9 +173,7 @@ function SoundPage() {
         </Button>
       </div>
 
-      {scanMessage ? (
-        <StatusText status={scanStatus}>{scanMessage}</StatusText>
-      ) : null}
+      <PageStatus status={scanStatus}>{scanMessage}</PageStatus>
 
       <YStack gap={3}>
         <Section
@@ -264,6 +264,7 @@ function Section({
                 aria-label={
                   kind === 'output' ? 'Toggle output mute' : 'Toggle input mute'
                 }
+                aria-pressed={muted}
                 variant="secondary"
                 onClick={() => onToggleMute(kind)}
               >
@@ -280,24 +281,16 @@ function Section({
                 )}
               </Button>
               <div className="min-w-0 flex-1">
-                <Slider
-                  max={100}
+                <LabeledSlider
+                  label="Volume"
                   min={0}
+                  max={100}
                   step={1}
-                  value={[vpct(vol.volume)]}
-                  onValueChange={(value) =>
-                    onVolume(
-                      kind,
-                      typeof value === 'number'
-                        ? value
-                        : (value[0] ?? vpct(vol.volume)),
-                    )
-                  }
+                  value={vpct(vol.volume)}
+                  formatValue={(n) => (muted ? 'Muted' : `${n}%`)}
+                  onValueChange={(value) => onVolume(kind, value)}
                 />
               </div>
-              <output className="w-11 shrink-0 text-right text-xs text-muted-foreground">
-                {muted ? 'Muted' : `${vpct(vol.volume)}%`}
-              </output>
             </XStack>
           </div>
         ) : (
@@ -340,8 +333,20 @@ function AudioDeviceRow({
         type="button"
         onClick={onSelect}
       >
-        <span className="mr-2 inline-block size-1.5 shrink-0 rounded-full bg-current" />
+        {device.isDefault ? (
+          <CheckIcon
+            aria-hidden
+            className="mr-2 size-3.5 shrink-0 text-primary"
+          />
+        ) : (
+          <span className="mr-2 inline-block size-1.5 shrink-0 rounded-full bg-current opacity-40" />
+        )}
         {device.name}
+        {device.isDefault ? (
+          <Badge variant="outline" className="ml-2 shrink-0">
+            Default
+          </Badge>
+        ) : null}
       </Button>
       <Button
         aria-label={isFavorite ? 'Remove favorite' : 'Add favorite'}

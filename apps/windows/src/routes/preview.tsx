@@ -7,7 +7,7 @@ import {
   PenIcon,
   XIcon,
 } from 'lucide-react';
-import { Button, Text } from 'pickle-ui';
+import { Badge, Button } from 'pickle-ui';
 import { useEffectEvent } from '@/lib/use-effect-event';
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -362,14 +362,12 @@ function PreviewPage() {
         />
 
         {capture && (
-          <Text
-            as="span"
-            variant="small"
-            tone="muted"
-            className="pointer-events-none absolute bottom-1.5 left-1.5 rounded-md border border-border bg-secondary px-1.5 py-0.5 font-mono opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          <Badge
+            variant="outline"
+            className="pointer-events-none absolute bottom-1.5 left-1.5 font-mono opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
           >
             {capture.width} x {capture.height}
-          </Text>
+          </Badge>
         )}
       </div>
     </div>

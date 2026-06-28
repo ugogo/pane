@@ -83,7 +83,7 @@ function CaptureZoomPage() {
 
         <Button
           aria-label="Close preview"
-          variant="secondary"
+          variant="outline"
           className="absolute right-2 top-2"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => void hideCaptureZoom()}

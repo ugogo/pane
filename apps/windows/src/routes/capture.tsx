@@ -5,7 +5,7 @@ import { EyeIcon } from 'lucide-react';
 import { Button, Card, Grid, Text, YStack } from 'pickle-ui';
 import { ShortcutInput } from '@/components/ShortcutInput';
 import { PageSpinner } from '@/components/features/page-spinner';
-import { StatusText } from '@/components/features/status-ui';
+import { PageStatus } from '@/components/page-status';
 import {
   captureFullscreen,
   clearCaptureHotkey,
@@ -112,6 +112,9 @@ function CapturePage() {
 
   return (
     <YStack gap={4}>
+      <PageStatus status={status.status}>{status.message}</PageStatus>
+      <PageStatus status="warn">{hotkeysError}</PageStatus>
+
       <Grid
         className="grid-cols-[repeat(auto-fit,minmax(17.5rem,1fr))]"
         gap={3}
@@ -138,21 +141,30 @@ function CapturePage() {
         />
       </Grid>
 
-      <YStack gap={2}>
-        <Button
-          aria-pressed={previewVisible ?? undefined}
-          variant="secondary"
-          onClick={() => preview.mutate()}
-        >
-          <EyeIcon aria-hidden size={14} />
-          {previewVisible ? 'Hide floating preview' : 'Show floating preview'}
-        </Button>
-        {status.message ? (
-          <StatusText status={status.status}>{status.message}</StatusText>
-        ) : hotkeysError ? (
-          <StatusText status="warn">{hotkeysError}</StatusText>
-        ) : null}
-      </YStack>
+      <Card>
+        <Card.Content>
+          <YStack gap={2}>
+            <Text as="h2" weight="bold">
+              Floating preview
+            </Text>
+            <Text tone="muted">
+              Show or hide the capture preview window after taking a screenshot.
+            </Text>
+            <div className="grid">
+              <Button
+                aria-pressed={previewVisible ?? undefined}
+                variant="secondary"
+                onClick={() => preview.mutate()}
+              >
+                <EyeIcon aria-hidden size={14} />
+                {previewVisible
+                  ? 'Hide floating preview'
+                  : 'Show floating preview'}
+              </Button>
+            </div>
+          </YStack>
+        </Card.Content>
+      </Card>
     </YStack>
   );
 }

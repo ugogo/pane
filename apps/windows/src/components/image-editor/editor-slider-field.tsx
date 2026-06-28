@@ -1,4 +1,4 @@
-import { Slider, Text } from 'pickle-ui';
+import { LabeledSlider } from '@/components/labeled-slider';
 
 export function EditorSliderField({
   label,
@@ -20,29 +20,16 @@ export function EditorSliderField({
   unit?: string;
 }) {
   return (
-    <Slider
-      aria-label={label}
+    <LabeledSlider
+      label={label}
+      value={value}
       min={min}
       max={max}
       step={step}
-      value={[value]}
       disabled={disabled}
-      onValueChange={(next) =>
-        onValueChange(typeof next === 'number' ? next : (next[0] ?? value))
-      }
+      onValueChange={onValueChange}
+      formatValue={(n) => `${n}${unit}`}
       className="mb-1.5"
-    >
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <Slider.Label>{label}</Slider.Label>
-        <Slider.Value>
-          {(_, values) => (
-            <Text as="span" variant="small" tone="muted">
-              {values[0]}
-              {unit}
-            </Text>
-          )}
-        </Slider.Value>
-      </div>
-    </Slider>
+    />
   );
 }
