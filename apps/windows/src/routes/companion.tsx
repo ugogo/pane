@@ -4,7 +4,7 @@ import { CopyIcon, QrCodeIcon, WifiIcon, XIcon } from 'lucide-react';
 import { Button, Card, Switch, Text, XStack, YStack } from 'pickle-ui';
 import { WebQRCode } from '@/components/WebQRCode';
 import { PageSpinner } from '@/components/features/page-spinner';
-import { StatusBadge, StatusText } from '@/components/features/status-ui';
+import { StatusText } from '@/components/features/status-ui';
 import {
   cancelCompanionPairing,
   getCompanionStatus,
@@ -66,12 +66,9 @@ function CompanionPage() {
           <XStack align="center" gap={4} justify="between">
             <div className="min-w-0 flex-1">
               <YStack gap={1}>
-                <XStack align="center" gap={2}>
-                  <Text as="h2" weight="bold">
-                    Local companion
-                  </Text>
-                  <StatusBadge status={status?.enabled ? 'pass' : 'disabled'} />
-                </XStack>
+                <Text as="h2" weight="bold">
+                  Local companion
+                </Text>
                 <Text tone="muted" truncate>
                   {status
                     ? `${status.serviceName} · ${status.serviceType}`

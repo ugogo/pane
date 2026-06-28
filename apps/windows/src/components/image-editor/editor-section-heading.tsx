@@ -1,11 +1,13 @@
+import { Text } from 'pickle-ui';
+
 export function EditorSectionHeading({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <h2 className="pt-1 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+    <Text as="h2" variant="small" weight="bold" tone="muted">
       {children}
-    </h2>
+    </Text>
   );
 }

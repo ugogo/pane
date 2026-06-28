@@ -20,6 +20,8 @@ if (!root) {
   throw new Error('Pane root element is missing.');
 }
 
+document.documentElement.classList.add('dark');
+
 createRoot(root).render(
   <StrictMode>
     <RouterProvider router={router} />

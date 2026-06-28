@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { createFileRoute } from '@tanstack/react-router';
 import { XIcon } from 'lucide-react';
+import { Button } from 'pickle-ui';
 import { hideCaptureZoom, takeLatestCaptureFull } from '@/lib/commands';
 import { useEffectEvent } from '@/lib/use-effect-event';
 
@@ -80,15 +81,15 @@ function CaptureZoomPage() {
           />
         ) : null}
 
-        <button
-          type="button"
+        <Button
+          aria-label="Close preview"
+          variant="secondary"
+          className="absolute right-2 top-2"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => void hideCaptureZoom()}
-          className="absolute right-2 top-2 flex size-7 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--app-preview-control)] text-foreground shadow-[0_4px_12px_var(--app-shadow)] transition-colors duration-120 hover:bg-accent"
-          aria-label="Close preview"
         >
           <XIcon aria-hidden size={16} />
-        </button>
+        </Button>
       </div>
     </div>
   );

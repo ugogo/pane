@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { createFileRoute } from '@tanstack/react-router';
+import { Badge } from 'pickle-ui';
 import {
   areaSelectorOrigin,
   commitRegionCapture,
@@ -132,42 +133,36 @@ function AreaSelectorPage() {
             height: rect.h,
           }}
         >
-          <span
-            className="absolute left-0 font-mono text-xs bg-[var(--app-area-pill)] border border-border rounded-md text-foreground px-3 py-1.5 shadow-[0_4px_12px_var(--app-shadow)] pointer-events-none"
+          <Badge
+            variant="outline"
+            className="pointer-events-none absolute left-0"
             style={{
               top: sizeLabelInside ? 6 : -24,
             }}
           >
             {Math.round(rect.w)} x {Math.round(rect.h)}
-          </span>
+          </Badge>
         </div>
       ) : null}
 
-      <div
-        className="pointer-events-none bg-[var(--app-area-pill)] border border-border rounded-md text-xs text-foreground px-3 py-1.5 shadow-[0_4px_12px_var(--app-shadow)]"
+      <Badge
+        variant="outline"
+        className="pointer-events-none absolute left-1/2 -translate-x-1/2"
         style={{
-          position: 'absolute',
-          left: '50%',
-          transform: 'translateX(-50%)',
           top: helperAtBottom ? undefined : 12,
           bottom: helperAtBottom ? 12 : undefined,
         }}
       >
         Drag to select - Esc to cancel
-      </div>
+      </Badge>
 
       {error ? (
-        <div
-          className="pointer-events-none bg-destructive border border-[var(--app-border-faint)] rounded-md text-xs text-foreground px-3 py-1.5 shadow-[0_4px_12px_var(--app-shadow)]"
-          style={{
-            position: 'absolute',
-            bottom: 12,
-            left: '50%',
-            transform: 'translateX(-50%)',
-          }}
+        <Badge
+          variant="destructive"
+          className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2"
         >
           {error}
-        </div>
+        </Badge>
       ) : null}
     </div>
   );

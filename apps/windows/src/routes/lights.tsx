@@ -10,7 +10,16 @@ import {
   RotateCcwIcon,
   Trash2Icon,
 } from 'lucide-react';
-import { Button, Card, Slider, Switch, Text, XStack, YStack } from 'pickle-ui';
+import {
+  Button,
+  Card,
+  ColorPicker,
+  Slider,
+  Switch,
+  Text,
+  XStack,
+  YStack,
+} from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusBadge, StatusText } from '@/components/features/status-ui';
 import {
@@ -248,14 +257,28 @@ function LightRow({
 
         <div className="mt-3">
           <XStack align="center" gap={3} wrap="wrap">
-            <input
-              type="color"
-              aria-label={`Color for ${lightTitle(light)}`}
-              className="h-9 w-12 rounded-lg border border-[var(--app-border-strong)] bg-card p-1 disabled:opacity-50"
+            <ColorPicker
               disabled={disabled}
               value={color}
-              onChange={(e) => setColor(e.target.value)}
-            />
+              onValueChange={setColor}
+            >
+              <ColorPicker.Trigger
+                aria-label={`Color for ${lightTitle(light)}`}
+                variant="outline"
+                size="sm"
+                className="size-8 p-0"
+              >
+                <ColorPicker.Swatch className="size-full rounded-[calc(var(--radius)-2px)]" />
+              </ColorPicker.Trigger>
+              <ColorPicker.Content>
+                <ColorPicker.Area />
+                <ColorPicker.HueSlider />
+                <div className="flex items-center gap-2">
+                  <ColorPicker.EyeDropper />
+                  <ColorPicker.Input />
+                </div>
+              </ColorPicker.Content>
+            </ColorPicker>
             <div className="min-w-40 flex-1">
               <YStack gap={1}>
                 <Text tone="muted">Brightness {brightness}%</Text>

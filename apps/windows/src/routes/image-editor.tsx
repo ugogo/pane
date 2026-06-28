@@ -17,6 +17,7 @@ import {
   Undo2Icon,
   XIcon,
 } from 'lucide-react';
+import { Button, Input, InputGroup, Text } from 'pickle-ui';
 import {
   commitLatestCaptureEdit,
   hideImageEditor,
@@ -24,8 +25,8 @@ import {
   takeLatestCaptureEdit,
 } from '@/lib/commands';
 import { useEffectEvent } from '@/lib/use-effect-event';
-import { EditorRangeField } from '@/components/image-editor/editor-range-field';
 import { EditorSectionHeading } from '@/components/image-editor/editor-section-heading';
+import { EditorSliderField } from '@/components/image-editor/editor-slider-field';
 import { EditorToggleButton } from '@/components/image-editor/editor-toggle-button';
 import { ChildWindowTitlebar } from '@/components/shell/child-window-titlebar';
 import '@/styles/image-editor.css';
@@ -1559,6 +1560,8 @@ function EditorPanel({
         </EditorToggleButton>
       </div>
 
+      <SidebarSeparator />
+
       <EditorSectionHeading>Style</EditorSectionHeading>
       <div className="-mt-1 flex flex-wrap gap-1.5">
         {SWATCHES.map((swatch) => (
@@ -1573,20 +1576,17 @@ function EditorPanel({
           />
         ))}
       </div>
-      <EditorRangeField label="Stroke">
-        <input
-          type="range"
-          aria-label="Stroke width"
-          min={2}
-          max={18}
-          step={1}
-          value={strokeWidth}
-          disabled={strokeDisabled}
-          onChange={(e) => onWidth(e.currentTarget.valueAsNumber)}
-          className="image-editor-range"
-        />
-        <output>{strokeWidth}px</output>
-      </EditorRangeField>
+      <EditorSliderField
+        label="Stroke"
+        min={2}
+        max={18}
+        step={1}
+        value={strokeWidth}
+        disabled={strokeDisabled}
+        onValueChange={onWidth}
+      />
+
+      <SidebarSeparator />
 
       <BackgroundControls
         padding={padding}
@@ -1594,6 +1594,8 @@ function EditorPanel({
         onPadding={onPadding}
         onBackground={onBackground}
       />
+
+      <SidebarSeparator />
 
       <EditorSectionHeading>Crop</EditorSectionHeading>
       <div className="-mt-1 grid grid-cols-2 gap-x-3 gap-y-2.5">
@@ -1626,22 +1628,24 @@ function EditorPanel({
       <div className="flex-1" />
 
       <div className="flex gap-2">
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          className="flex-1"
           onClick={onReset}
           disabled={!base || unchanged}
-          className="flex h-9 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary text-[13px] font-semibold transition-colors duration-120 hover:enabled:bg-accent disabled:cursor-default disabled:opacity-50"
         >
           <RotateCcwIcon aria-hidden size={14} />
           Reset
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="primary"
+          className="flex-1"
           onClick={onSave}
           disabled={
             !base || !crop || crop.w < 1 || crop.h < 1 || save === 'busy'
           }
-          className="flex h-9 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-transparent bg-primary text-[13px] font-semibold text-primary-foreground transition-colors duration-120 disabled:cursor-default disabled:opacity-50 [&_svg]:text-current [&_svg_*]:stroke-current"
         >
           {save === 'success' ? (
             <CheckIcon aria-hidden size={14} />
@@ -1653,10 +1657,14 @@ function EditorPanel({
             : save === 'busy'
               ? 'Saving...'
               : 'Save'}
-        </button>
+        </Button>
       </div>
     </div>
   );
+}
+
+function SidebarSeparator() {
+  return <hr className="border-[var(--app-border-medium)]" />;
 }
 
 function BackgroundControls({
@@ -1673,19 +1681,14 @@ function BackgroundControls({
   return (
     <>
       <EditorSectionHeading>Background</EditorSectionHeading>
-      <EditorRangeField label="Padding">
-        <input
-          type="range"
-          aria-label="Background padding"
-          min={0}
-          max={MAX_PADDING}
-          step={2}
-          value={padding}
-          onChange={(e) => onPadding(e.currentTarget.valueAsNumber)}
-          className="image-editor-range"
-        />
-        <output>{padding}px</output>
-      </EditorRangeField>
+      <EditorSliderField
+        label="Padding"
+        min={0}
+        max={MAX_PADDING}
+        step={2}
+        value={padding}
+        onValueChange={onPadding}
+      />
       <div className="-mt-1 flex flex-wrap gap-1.5">
         {GRADIENTS.map((gradient) => (
           <EditorToggleButton
@@ -1715,19 +1718,20 @@ function CropField({
   onChange: (value: number) => void;
 }) {
   return (
-    <label className="flex min-w-0 flex-col items-stretch gap-1 [&>span]:text-[11px] [&>span]:font-semibold [&>span]:text-muted-foreground">
-      <span>{label}</span>
-      <div className="flex w-full items-center gap-1 rounded-lg border border-[var(--app-border-strong)] bg-secondary px-2 focus-within:border-ring">
-        <input
+    <label className="flex min-w-0 flex-col items-stretch gap-1">
+      <Text as="span" variant="small" weight="bold" tone="muted">
+        {label}
+      </Text>
+      <InputGroup>
+        <Input
           type="number"
           min={label === 'X' || label === 'Y' ? 0 : 1}
           value={Number.isFinite(value) ? value : ''}
           disabled={disabled}
           onChange={(e) => onChange(e.currentTarget.valueAsNumber)}
-          className="h-[30px] w-full min-w-0 border-0 bg-transparent text-left text-[13px] text-foreground outline-none"
         />
-        <span className="text-[11px] text-muted-foreground">px</span>
-      </div>
+        <InputGroup.Addon className="bg-background">px</InputGroup.Addon>
+      </InputGroup>
     </label>
   );
 }
@@ -2748,16 +2752,17 @@ function EditorStageView({
       ) : null}
       {src && zoom !== 1 ? (
         <div className="absolute right-3 top-3 z-[6] flex gap-1.5">
-          <button
+          <Button
             type="button"
-            className="flex h-[30px] cursor-pointer items-center gap-[5px] rounded-lg border border-border bg-[color-mix(in_srgb,var(--muted)_88%,transparent)] px-[9px] text-[11px] font-semibold tabular-nums text-foreground shadow-[0_8px_22px_var(--app-shadow-strong)] transition-[background-color,border-color] duration-120 hover:border-[var(--app-border-strong)] hover:bg-accent aria-pressed:border-ring aria-pressed:text-primary"
+            variant="secondary"
+            size="sm"
             title="Fit to window"
             aria-label="Fit to window"
             onClick={onFitZoom}
           >
             <ScanIcon aria-hidden size={15} />
             <span>{Math.round(zoom * 100)}%</span>
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

@@ -333,20 +333,16 @@ function AudioDeviceRow({
         device.isDefault && 'bg-accent',
       )}
     >
-      <button
-        className={cn(
-          'focus-ring min-w-0 flex-1 truncate rounded-sm text-left text-sm',
-          device.isDefault
-            ? 'font-semibold text-foreground'
-            : 'text-muted-foreground',
-        )}
+      <Button
+        variant="ghost"
+        className="min-w-0 flex-1 justify-start truncate"
         disabled={busy}
         type="button"
         onClick={onSelect}
       >
-        <span className="mr-2 inline-block size-1.5 rounded-full bg-current" />
+        <span className="mr-2 inline-block size-1.5 shrink-0 rounded-full bg-current" />
         {device.name}
-      </button>
+      </Button>
       <Button
         aria-label={isFavorite ? 'Remove favorite' : 'Add favorite'}
         disabled={busy}

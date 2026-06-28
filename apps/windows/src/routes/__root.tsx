@@ -22,7 +22,7 @@ function RootLayout() {
   });
 
   return (
-    <div className="dark contents">
+    <div className="contents">
       <AppErrorBoundary>
         <PaneQueryProvider>
           {isMainShellPath(pathname) ? (

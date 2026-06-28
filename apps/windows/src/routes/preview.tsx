@@ -7,6 +7,7 @@ import {
   PenIcon,
   XIcon,
 } from 'lucide-react';
+import { Button, Text } from 'pickle-ui';
 import { useEffectEvent } from '@/lib/use-effect-event';
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -297,7 +298,7 @@ function PreviewPage() {
     >
       <style>{CAPTURE_KEYFRAMES}</style>
       <div
-        className="group absolute bottom-0 left-0 h-[200px] w-[250px] overflow-hidden rounded-lg border border-border bg-muted text-foreground shadow-[0_8px_24px_var(--app-shadow-strong)] [&_img]:-outline-offset-1 [&_img]:outline [&_img]:outline-white/10"
+        className="group absolute bottom-0 left-0 h-[200px] w-[250px] overflow-hidden rounded-lg border border-border bg-card text-foreground shadow-[0_8px_24px_var(--app-shadow-strong)] [&_img]:-outline-offset-1 [&_img]:outline [&_img]:outline-white/10"
         data-tauri-drag-region
         onAnimationEnd={onCardAnimationEnd}
         style={{
@@ -361,9 +362,14 @@ function PreviewPage() {
         />
 
         {capture && (
-          <span className="pointer-events-none absolute bottom-1.5 left-1.5 rounded px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100 bg-[var(--app-preview-control)]">
+          <Text
+            as="span"
+            variant="small"
+            tone="muted"
+            className="pointer-events-none absolute bottom-1.5 left-1.5 rounded-md border border-border bg-secondary px-1.5 py-0.5 font-mono opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          >
             {capture.width} x {capture.height}
-          </span>
+          </Text>
         )}
       </div>
     </div>
@@ -382,18 +388,19 @@ function PreviewChromeButton({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={onClick}
+    <Button
+      aria-label={label}
+      size="sm"
+      variant="outline"
       className={cn(
-        'absolute top-1.5 z-[2] flex size-[30px] cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--app-preview-control)] text-foreground opacity-0 transition-[background-color,opacity] duration-150 hover:bg-muted group-hover:opacity-100 group-focus-within:opacity-100 [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:text-current',
+        'absolute top-1.5 z-[2] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100',
         side === 'left' ? 'left-1.5' : 'right-1.5',
       )}
-      aria-label={label}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={onClick}
     >
       <Icon aria-hidden size={14} />
-    </button>
+    </Button>
   );
 }
 
@@ -409,15 +416,14 @@ function ActionButton({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <Button
       disabled={busy}
+      variant="outline"
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onClick}
-      className="flex h-8 min-w-[76px] cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-[var(--app-preview-control)] text-xs font-semibold text-foreground shadow-[0_4px_12px_var(--app-shadow)] disabled:cursor-wait [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:text-muted-foreground"
     >
       <Icon aria-hidden size={14} />
       {label}
-    </button>
+    </Button>
   );
 }

@@ -50,8 +50,9 @@
   --app-black-20: color-mix(in srgb, var(--shadow-color) 20%, transparent);
   --app-shadow: color-mix(in srgb, var(--shadow-color) 30%, transparent);
   --app-shadow-strong: color-mix(in srgb, var(--shadow-color) 35%, transparent);
-  --app-preview-overlay: color-mix(in srgb, var(--secondary) 70%, transparent);
-  --app-preview-control: color-mix(in srgb, var(--muted) 85%, transparent);
+  /* Popup windows (capture preview/zoom) have a transparent webview — avoid
+     color-mix(..., transparent) here or controls wash out over the desktop. */
+  --app-preview-overlay: rgb(24 23 19 / 0.72);
   --app-selection-dim: rgb(24 23 19 / 0.58);
   --app-selection-outline: rgb(255 254 250 / 0.55);
   --app-area-pill: color-mix(in srgb, var(--muted) 90%, transparent);
