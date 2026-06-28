@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { Button, Grid, Switch, Text, XStack, YStack } from 'pickle-ui';
+import { Button, Grid, Switch, Text, YStack } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusText } from '@/components/features/status-ui';
 import { getProcessMetrics } from '@/lib/commands';
@@ -48,24 +48,19 @@ function DiagnosticsPage() {
         </Grid>
       ) : null}
 
-      <XStack align="center" gap={3}>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => void metricsQuery.refetch()}
-        >
-          Refresh
-        </Button>
-        <XStack align="center" gap={2}>
-          <Switch
-            checked={autoRefresh}
-            label="Auto-refresh process metrics"
-            labelClassName="sr-only"
-            onCheckedChange={setAutoRefresh}
-          />
-          <span className="text-sm text-muted-foreground">Auto-refresh</span>
-        </XStack>
-      </XStack>
+      <Button
+        variant="outline"
+        className="self-start"
+        onClick={() => void metricsQuery.refetch()}
+      >
+        Refresh
+      </Button>
+
+      <Switch
+        checked={autoRefresh}
+        label="Auto-refresh process metrics"
+        onCheckedChange={setAutoRefresh}
+      />
     </YStack>
   );
 }
@@ -74,9 +69,11 @@ function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-36 flex-1 rounded-lg border border-border bg-muted p-3">
       <Text tone="muted">{label}</Text>
-      <Text className="mt-1 font-mono tabular-nums" weight="bold">
-        {value}
-      </Text>
+      <div className="mt-1">
+        <Text variant="code" weight="bold">
+          {value}
+        </Text>
+      </div>
     </div>
   );
 }

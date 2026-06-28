@@ -61,27 +61,28 @@ function CompanionPage() {
 
   return (
     <YStack gap={4}>
-      <Card className="gap-3 py-3">
-        <Card.Content className="px-3">
+      <Card>
+        <Card.Content>
           <XStack align="center" gap={4} justify="between">
-            <YStack className="min-w-0 flex-1" gap={1}>
-              <XStack align="center" gap={2}>
-                <Text as="h2" weight="bold">
-                  Local companion
+            <div className="min-w-0 flex-1">
+              <YStack gap={1}>
+                <XStack align="center" gap={2}>
+                  <Text as="h2" weight="bold">
+                    Local companion
+                  </Text>
+                  <StatusBadge status={status?.enabled ? 'pass' : 'disabled'} />
+                </XStack>
+                <Text tone="muted" truncate>
+                  {status
+                    ? `${status.serviceName} · ${status.serviceType}`
+                    : 'Loading companion state'}
                 </Text>
-                <StatusBadge status={status?.enabled ? 'pass' : 'disabled'} />
-              </XStack>
-              <Text className="truncate" tone="muted">
-                {status
-                  ? `${status.serviceName} · ${status.serviceType}`
-                  : 'Loading companion state'}
-              </Text>
-            </YStack>
+              </YStack>
+            </div>
             <Switch
               checked={status?.enabled ?? false}
               disabled={!status || busy}
-              label="Enable mobile companion"
-              labelClassName="sr-only"
+              label=""
               onCheckedChange={(checked) =>
                 void update(() => setCompanionEnabled(checked))
               }
@@ -90,41 +91,43 @@ function CompanionPage() {
         </Card.Content>
       </Card>
 
-      <Card className="gap-3 py-3">
-        <Card.Content className="px-3">
+      <Card>
+        <Card.Content>
           <XStack align="center" gap={4} justify="between">
-            <YStack className="min-w-0 flex-1" gap={1}>
-              <Text as="h2" weight="bold">
-                Pairing session
-              </Text>
-              <Text tone="muted">
-                {pairing
-                  ? `Expires at ${formatExpiry(pairing.expiresAt)}`
-                  : 'No active pairing window'}
-              </Text>
-            </YStack>
-            <XStack className="shrink-0" gap={2}>
-              {pairing ? (
+            <div className="min-w-0 flex-1">
+              <YStack gap={1}>
+                <Text as="h2" weight="bold">
+                  Pairing session
+                </Text>
+                <Text tone="muted">
+                  {pairing
+                    ? `Expires at ${formatExpiry(pairing.expiresAt)}`
+                    : 'No active pairing window'}
+                </Text>
+              </YStack>
+            </div>
+            <div className="shrink-0">
+              <XStack gap={2}>
+                {pairing ? (
+                  <Button
+                    aria-label="Cancel pairing"
+                    disabled={busy}
+                    variant="outline"
+                    onClick={() => void update(cancelCompanionPairing)}
+                  >
+                    <XIcon aria-hidden size={16} />
+                  </Button>
+                ) : null}
                 <Button
-                  aria-label="Cancel pairing"
                   disabled={busy}
-                  size="sm"
                   variant="outline"
-                  onClick={() => void update(cancelCompanionPairing)}
+                  onClick={() => void update(startCompanionPairing)}
                 >
-                  <XIcon aria-hidden size={16} />
+                  <QrCodeIcon aria-hidden size={16} />
+                  Pair
                 </Button>
-              ) : null}
-              <Button
-                disabled={busy}
-                size="sm"
-                variant="outline"
-                onClick={() => void update(startCompanionPairing)}
-              >
-                <QrCodeIcon aria-hidden size={16} />
-                Pair
-              </Button>
-            </XStack>
+              </XStack>
+            </div>
           </XStack>
 
           {pairing ? (
@@ -134,7 +137,6 @@ function CompanionPage() {
                   Scan to pair
                 </Text>
                 <Button
-                  size="sm"
                   variant="outline"
                   onClick={() =>
                     void navigator.clipboard.writeText(pairing.pairingUri)
@@ -144,24 +146,28 @@ function CompanionPage() {
                   Copy URI
                 </Button>
               </XStack>
-              <XStack className="mt-3" justify="center">
-                <WebQRCode
-                  level="M"
-                  quietZone={0}
-                  size={176}
-                  value={pairing.pairingUri}
-                />
-              </XStack>
-              <Text className="mt-2 text-center" tone="muted">
-                Open Pane Companion on your iPhone and scan this code.
-              </Text>
+              <div className="mt-3">
+                <XStack justify="center">
+                  <WebQRCode
+                    level="M"
+                    quietZone={0}
+                    size={176}
+                    value={pairing.pairingUri}
+                  />
+                </XStack>
+              </div>
+              <div className="mt-2 text-center">
+                <Text tone="muted">
+                  Open Pane Companion on your iPhone and scan this code.
+                </Text>
+              </div>
             </div>
           ) : null}
         </Card.Content>
       </Card>
 
-      <Card className="gap-3 py-3">
-        <Card.Content className="px-3">
+      <Card>
+        <Card.Content>
           <XStack align="center" gap={2}>
             <WifiIcon aria-hidden className="text-muted-foreground" size={14} />
             <Text as="h2" weight="bold">
@@ -170,32 +176,33 @@ function CompanionPage() {
           </XStack>
 
           {devices.length === 0 ? (
-            <Text className="mt-3" tone="muted">
-              No iPhones paired yet.
-            </Text>
+            <div className="mt-3">
+              <Text tone="muted">No iPhones paired yet.</Text>
+            </div>
           ) : (
-            <YStack className="mt-3" gap={2}>
-              {devices.map((device) => (
-                <XStack key={device.id} align="center" gap={2}>
-                  <div className="min-w-0 flex-1">
-                    <Text className="truncate" weight="bold">
-                      {device.name}
-                    </Text>
-                    <Text tone="muted">{device.role}</Text>
-                  </div>
-                  <Button
-                    disabled={busy}
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      void update(() => revokeCompanionDevice(device.id))
-                    }
-                  >
-                    Revoke
-                  </Button>
-                </XStack>
-              ))}
-            </YStack>
+            <div className="mt-3">
+              <YStack gap={2}>
+                {devices.map((device) => (
+                  <XStack key={device.id} align="center" gap={2}>
+                    <div className="min-w-0 flex-1">
+                      <Text weight="bold" truncate>
+                        {device.name}
+                      </Text>
+                      <Text tone="muted">{device.role}</Text>
+                    </div>
+                    <Button
+                      disabled={busy}
+                      variant="outline"
+                      onClick={() =>
+                        void update(() => revokeCompanionDevice(device.id))
+                      }
+                    >
+                      Revoke
+                    </Button>
+                  </XStack>
+                ))}
+              </YStack>
+            </div>
           )}
         </Card.Content>
       </Card>

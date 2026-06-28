@@ -184,7 +184,7 @@ function AppShell({
                   }
                 >
                   <Icon aria-hidden size={16} />
-                  <span>{label}</span>
+                  <Text as="span">{label}</Text>
                 </Link>
               );
             })}
@@ -203,9 +203,11 @@ function AppShell({
                 </Text>
                 <Text tone="muted">{activeModule.description}</Text>
               </div>
-              <code className="shrink-0 rounded-md border border-border bg-muted px-2 py-1 text-xs text-muted-foreground">
-                {appVersion ?? 'version unavailable'}
-              </code>
+              <div className="shrink-0">
+                <Text variant="code">
+                  {appVersion ?? 'version unavailable'}
+                </Text>
+              </div>
             </div>
           </header>
 
@@ -244,7 +246,9 @@ function AppTitlebar() {
           <CameraIcon aria-hidden size={12} />
         </span>
         <span className="app-titlebar-title" data-tauri-drag-region>
-          {APP_DISPLAY_NAME}
+          <Text as="span" variant="small">
+            {APP_DISPLAY_NAME}
+          </Text>
         </span>
       </div>
       <div className="app-titlebar-controls">
@@ -294,18 +298,16 @@ function UpdateNotice({
 
   if (state.status === 'error') {
     return (
-      <Card className="gap-2 border-destructive/40 bg-destructive/10 py-3">
-        <Card.Content className="flex items-start gap-2 px-3">
-          <AlertTriangleIcon
-            aria-hidden
-            className="shrink-0 text-destructive"
-            size={16}
-          />
-          <div className="min-w-0 flex-1">
-            <Text className="text-destructive" weight="bold">
-              Update failed
-            </Text>
-            <Text className="text-destructive">{state.message}</Text>
+      <Card>
+        <Card.Content>
+          <div className="flex items-start gap-2 text-destructive">
+            <AlertTriangleIcon aria-hidden className="shrink-0" size={16} />
+            <div className="min-w-0 flex-1">
+              <Text tone="destructive" weight="bold">
+                Update failed
+              </Text>
+              <Text tone="destructive">{state.message}</Text>
+            </div>
           </div>
         </Card.Content>
       </Card>
@@ -319,7 +321,7 @@ function UpdateNotice({
         title={`Pane ${state.version} is installed`}
         description="Restart when ready."
       >
-        <Button size="sm" onClick={onRestart}>
+        <Button onClick={onRestart}>
           <RotateCcwIcon aria-hidden size={16} />
           Restart
         </Button>
@@ -342,8 +344,8 @@ function UpdateNotice({
     : null;
 
   return (
-    <Card className="gap-3 py-3">
-      <Card.Content className="px-3">
+    <Card>
+      <Card.Content>
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-start gap-2">
             {isInstalling ? (
@@ -358,7 +360,7 @@ function UpdateNotice({
               </Text>
             </div>
           </div>
-          <Button disabled={isInstalling} size="sm" onClick={onInstall}>
+          <Button disabled={isInstalling} onClick={onInstall}>
             {isInstalling ? (
               <Loader2Icon aria-hidden className="animate-spin" size={16} />
             ) : (
@@ -375,9 +377,11 @@ function UpdateNotice({
                 style={{ width: `${progress ?? 10}%` }}
               />
             </div>
-            <span className="w-12 text-right text-xs text-muted-foreground">
-              {progressLabel}
-            </span>
+            <div className="w-12 text-right">
+              <Text as="span" tone="muted" variant="small">
+                {progressLabel}
+              </Text>
+            </div>
           </div>
         ) : null}
       </Card.Content>
@@ -397,16 +401,18 @@ function NoticeCard({
   children: ReactNode;
 }) {
   return (
-    <Card className="py-3">
-      <Card.Content className="flex items-center justify-between gap-3 px-3">
-        <div className="flex min-w-0 items-start gap-2">
-          {icon}
-          <div className="min-w-0">
-            <Text weight="bold">{title}</Text>
-            <Text tone="muted">{description}</Text>
+    <Card>
+      <Card.Content>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2">
+            {icon}
+            <div className="min-w-0">
+              <Text weight="bold">{title}</Text>
+              <Text tone="muted">{description}</Text>
+            </div>
           </div>
+          {children}
         </div>
-        {children}
       </Card.Content>
     </Card>
   );

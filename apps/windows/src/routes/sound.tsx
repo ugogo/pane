@@ -163,7 +163,6 @@ function SoundPage() {
       <div>
         <Button
           disabled={busy}
-          size="sm"
           variant="outline"
           onClick={() => void soundQuery.refetch()}
         >
@@ -231,16 +230,16 @@ function Section({
   const muted = vol?.muted ?? false;
   const ordered = orderDevices(devices, favs);
   return (
-    <Card className="gap-3 py-3">
-      <Card.Content className="px-3">
+    <Card>
+      <Card.Content>
         <Text as="h2" weight="bold">
           {label}
         </Text>
 
         {ordered.length === 0 ? (
-          <Text className="mt-3" tone="muted">
-            No devices.
-          </Text>
+          <div className="mt-3">
+            <Text tone="muted">No devices.</Text>
+          </div>
         ) : (
           <div className="mt-3 max-h-40 overflow-y-auto rounded-lg border border-border">
             {ordered.map((d, index) => {
@@ -261,9 +260,7 @@ function Section({
                   </button>
                   <Button
                     aria-label={isFav ? 'Remove favorite' : 'Add favorite'}
-                    className={isFav ? 'text-amber-400' : ''}
                     disabled={busy}
-                    size="sm"
                     variant="ghost"
                     onClick={() => onToggleFavorite(kind, d.id)}
                   >
@@ -280,50 +277,52 @@ function Section({
         )}
 
         {vol ? (
-          <XStack className="mt-3" align="center" gap={2.5}>
-            <Button
-              aria-label={
-                kind === 'output' ? 'Toggle output mute' : 'Toggle input mute'
-              }
-              size="sm"
-              variant="secondary"
-              onClick={() => onToggleMute(kind)}
-            >
-              {kind === 'output' ? (
-                muted ? (
-                  <VolumeXIcon aria-hidden size={14} />
+          <div className="mt-3">
+            <XStack align="center" gap={2.5}>
+              <Button
+                aria-label={
+                  kind === 'output' ? 'Toggle output mute' : 'Toggle input mute'
+                }
+                variant="secondary"
+                onClick={() => onToggleMute(kind)}
+              >
+                {kind === 'output' ? (
+                  muted ? (
+                    <VolumeXIcon aria-hidden size={14} />
+                  ) : (
+                    <Volume2Icon aria-hidden size={14} />
+                  )
+                ) : muted ? (
+                  <MicOffIcon aria-hidden size={14} />
                 ) : (
-                  <Volume2Icon aria-hidden size={14} />
-                )
-              ) : muted ? (
-                <MicOffIcon aria-hidden size={14} />
-              ) : (
-                <MicIcon aria-hidden size={14} />
-              )}
-            </Button>
-            <Slider
-              className="min-w-0 flex-1"
-              max={100}
-              min={0}
-              step={1}
-              value={[vpct(vol.volume)]}
-              onValueChange={(value) =>
-                onVolume(
-                  kind,
-                  typeof value === 'number'
-                    ? value
-                    : (value[0] ?? vpct(vol.volume)),
-                )
-              }
-            />
-            <output className="w-11 shrink-0 text-right text-xs text-muted-foreground">
-              {muted ? 'Muted' : `${vpct(vol.volume)}%`}
-            </output>
-          </XStack>
+                  <MicIcon aria-hidden size={14} />
+                )}
+              </Button>
+              <div className="min-w-0 flex-1">
+                <Slider
+                  max={100}
+                  min={0}
+                  step={1}
+                  value={[vpct(vol.volume)]}
+                  onValueChange={(value) =>
+                    onVolume(
+                      kind,
+                      typeof value === 'number'
+                        ? value
+                        : (value[0] ?? vpct(vol.volume)),
+                    )
+                  }
+                />
+              </div>
+              <output className="w-11 shrink-0 text-right text-xs text-muted-foreground">
+                {muted ? 'Muted' : `${vpct(vol.volume)}%`}
+              </output>
+            </XStack>
+          </div>
         ) : (
-          <Text className="mt-2" tone="muted">
-            No volume control available.
-          </Text>
+          <div className="mt-2">
+            <Text tone="muted">No volume control available.</Text>
+          </div>
         )}
       </Card.Content>
     </Card>

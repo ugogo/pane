@@ -118,24 +118,25 @@ function StartupPage() {
 
   return (
     <YStack gap={4}>
-      <Card className="gap-3 py-3">
-        <Card.Content className="px-3">
+      <Card>
+        <Card.Content>
           <XStack align="center" gap={4} justify="between">
-            <YStack className="min-w-0 flex-1" gap={1}>
-              <Text as="h2" weight="bold">
-                Start with Windows
-              </Text>
-              <Text tone="muted">
-                {__DEV__
-                  ? 'Disabled in dev so the debug binary is not registered.'
-                  : 'Keep capture and accents available after sign-in.'}
-              </Text>
-            </YStack>
+            <div className="min-w-0 flex-1">
+              <YStack gap={1}>
+                <Text as="h2" weight="bold">
+                  Start with Windows
+                </Text>
+                <Text tone="muted">
+                  {__DEV__
+                    ? 'Disabled in dev so the debug binary is not registered.'
+                    : 'Keep capture and accents available after sign-in.'}
+                </Text>
+              </YStack>
+            </div>
             <Switch
               checked={runAtStartup ?? false}
               disabled={runAtStartup === null || __DEV__}
-              label="Run at startup"
-              labelClassName="sr-only"
+              label=""
               onCheckedChange={(enabled) => startupToggle.mutate(enabled)}
             />
           </XStack>
@@ -149,24 +150,25 @@ function StartupPage() {
         <StatusText status="fail">{startupError}</StatusText>
       ) : null}
 
-      <Card className="gap-3 py-3">
-        <Card.Content className="px-3">
+      <Card>
+        <Card.Content>
           <YStack gap={2}>
             <XStack align="center" gap={4} justify="between">
-              <YStack className="min-w-0 flex-1" gap={1}>
-                <Text as="h2" weight="bold">
-                  Software updates
-                </Text>
-                <Text tone="muted">
-                  Check GitHub Releases for a newer signed version of Pane.
-                </Text>
-              </YStack>
+              <div className="min-w-0 flex-1">
+                <YStack gap={1}>
+                  <Text as="h2" weight="bold">
+                    Software updates
+                  </Text>
+                  <Text tone="muted">
+                    Check GitHub Releases for a newer signed version of Pane.
+                  </Text>
+                </YStack>
+              </div>
               <Button
                 aria-label="Check for updates"
                 disabled={
                   isChecking || updateBusy || checkState.status === 'skipped'
                 }
-                size="sm"
                 variant="secondary"
                 onClick={() => void checkNow()}
               >
@@ -183,21 +185,18 @@ function StartupPage() {
         </Card.Content>
       </Card>
 
-      <Card className="gap-3 py-3">
-        <Card.Content className="px-3">
+      <Card>
+        <Card.Content>
           <XStack align="center" gap={4} justify="between">
-            <YStack className="min-w-0 flex-1" gap={1}>
-              <Text as="h2" weight="bold">
-                Sleep computer
-              </Text>
-              <Text tone="muted">Put Windows into sleep mode now.</Text>
-            </YStack>
-            <Button
-              aria-label="Sleep computer"
-              size="sm"
-              variant="secondary"
-              onClick={() => sleep.mutate()}
-            >
+            <div className="min-w-0 flex-1">
+              <YStack gap={1}>
+                <Text as="h2" weight="bold">
+                  Sleep computer
+                </Text>
+                <Text tone="muted">Put Windows into sleep mode now.</Text>
+              </YStack>
+            </div>
+            <Button variant="secondary" onClick={() => sleep.mutate()}>
               <MoonIcon aria-hidden size={16} />
               Sleep
             </Button>

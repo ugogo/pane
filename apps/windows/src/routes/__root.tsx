@@ -22,7 +22,7 @@ function RootLayout() {
   });
 
   return (
-    <div className="pane-pickle-theme dark contents">
+    <div className="dark contents">
       <AppErrorBoundary>
         <PaneQueryProvider>
           {isMainShellPath(pathname) ? (

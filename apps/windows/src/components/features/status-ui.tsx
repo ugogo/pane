@@ -33,16 +33,8 @@ export function StatusText({
 }) {
   return (
     <Text
-      className={
-        status === 'fail'
-          ? 'text-destructive'
-          : status === 'pass'
-            ? 'text-emerald-400'
-            : status === 'warn'
-              ? 'text-amber-400'
-              : undefined
-      }
       role={status === 'fail' ? 'alert' : 'status'}
+      tone={status === 'fail' ? 'destructive' : 'muted'}
     >
       {children}
     </Text>
