@@ -25,6 +25,7 @@ import {
   takeLatestCaptureEdit,
 } from '@/lib/commands';
 import { useEffectEvent } from '@/lib/use-effect-event';
+import '@/styles/image-editor.css';
 
 const EDITOR_TOOL_BTN =
   'flex cursor-pointer items-center justify-center border border-border bg-secondary text-muted-foreground transition-[background-color,border-color,color] duration-120 ease-in-out hover:enabled:bg-accent hover:enabled:text-foreground aria-pressed:border-ring aria-pressed:bg-accent aria-pressed:text-foreground disabled:cursor-default disabled:opacity-45';

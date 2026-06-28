@@ -5,9 +5,9 @@ import { APP_DISPLAY_NAME } from '@/lib/app-name';
 import { revealMainWindow } from '@/lib/reveal-main-window';
 
 /**
- * Last-resort failure UI. Rendered with plain DOM + shell.css/global.css classes
- * only — never framework components — so it still renders correctly when the
- * generated UI stylesheet is missing or invalid.
+ * Last-resort failure UI. Rendered with plain DOM + shell.css (boot failure
+ * only) and global.css — never framework components — so it still renders
+ * correctly when the generated Tailwind/Pickle stylesheet is missing or invalid.
  */
 export function AppBootFailure({
   title = "Couldn't start Pane",

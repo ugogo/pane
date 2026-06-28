@@ -31,6 +31,11 @@ import { restartToApplyUpdate } from '@/lib/updater';
 const SHELL_SURFACE =
   'relative isolate overflow-hidden bg-[var(--app-shell-nav)] backdrop-blur-[34px] backdrop-saturate-[1.35] backdrop-brightness-[0.68]';
 
+const TITLEBAR = `${SHELL_SURFACE} relative z-10 flex h-9 select-none items-center border-b border-border shadow-[inset_0_1px_0_var(--app-white-08),inset_0_-1px_0_var(--app-black-20)]`;
+
+const WINDOW_CONTROL =
+  'grid h-9 w-[46px] cursor-pointer place-items-center border-0 bg-transparent p-0 text-[var(--app-foreground-control)] transition-[color,background-color] duration-120 hover:bg-[var(--app-white-09)] hover:text-[var(--app-foreground-control-hover)]';
+
 const NAV_LINK_BASE =
   'flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm no-underline transition-[background-color,color] duration-120 ease-in-out max-md:min-w-max md:min-w-0';
 
@@ -242,7 +247,7 @@ function AppShell({
 function AppTitlebar() {
   return (
     <div
-      className="app-titlebar"
+      className={TITLEBAR}
       data-tauri-drag-region
       role="presentation"
       onMouseDown={(event) => {
@@ -252,20 +257,29 @@ function AppTitlebar() {
         void getCurrentWindow().startDragging().catch(console.error);
       }}
     >
-      <div className="app-titlebar-left" data-tauri-drag-region>
-        <span className="app-titlebar-icon" data-tauri-drag-region>
+      <div
+        className="flex min-w-0 items-center gap-2 px-3"
+        data-tauri-drag-region
+      >
+        <span
+          className="flex size-4 items-center justify-center rounded bg-primary text-primary-foreground"
+          data-tauri-drag-region
+        >
           <CameraIcon aria-hidden size={12} />
         </span>
-        <span className="app-titlebar-title" data-tauri-drag-region>
+        <span
+          className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[var(--app-foreground-soft)]"
+          data-tauri-drag-region
+        >
           <Text as="span" variant="small">
             {APP_DISPLAY_NAME}
           </Text>
         </span>
       </div>
-      <div className="app-titlebar-controls">
+      <div className="ml-auto flex h-full">
         <button
           aria-label="Minimize"
-          className="app-window-control"
+          className={WINDOW_CONTROL}
           type="button"
           onClick={() =>
             void getCurrentWindow().minimize().catch(console.error)
@@ -275,7 +289,7 @@ function AppTitlebar() {
         </button>
         <button
           aria-label="Maximize or restore"
-          className="app-window-control"
+          className={WINDOW_CONTROL}
           type="button"
           onClick={() =>
             void getCurrentWindow().toggleMaximize().catch(console.error)
@@ -285,7 +299,7 @@ function AppTitlebar() {
         </button>
         <button
           aria-label="Close to tray"
-          className="app-window-control app-window-control-close"
+          className={`${WINDOW_CONTROL} hover:bg-[var(--app-close-hover)] hover:text-foreground`}
           type="button"
           onClick={() => void getCurrentWindow().hide().catch(console.error)}
         >
