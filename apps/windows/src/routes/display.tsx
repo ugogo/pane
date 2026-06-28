@@ -363,19 +363,14 @@ function PresetBar({
 }) {
   return (
     <XStack align="center" gap={2} wrap="wrap">
-      <Button disabled={busy} size="sm" variant="outline" onClick={onRefresh}>
+      <Button disabled={busy} variant="outline" onClick={onRefresh}>
         Refresh
       </Button>
 
       {presets.map((p) => (
-        <XStack
-          key={p.name}
-          className="overflow-hidden rounded-md border border-border"
-        >
+        <XStack key={p.name} gap={0.5}>
           <Button
-            className="rounded-none border-0"
             disabled={busy}
-            size="sm"
             variant="secondary"
             onClick={() => onApply(p.name)}
           >
@@ -383,9 +378,7 @@ function PresetBar({
           </Button>
           <Button
             aria-label={`Update ${p.name} preset`}
-            className="rounded-none border-0 border-l border-border"
             disabled={busy || !hasMonitors}
-            size="sm"
             variant="secondary"
             onClick={() => onUpdate(p.name)}
           >
@@ -393,9 +386,7 @@ function PresetBar({
           </Button>
           <Button
             aria-label={`Delete ${p.name} preset`}
-            className="rounded-none border-0 border-l border-border"
             disabled={busy}
-            size="sm"
             variant="secondary"
             onClick={() => onDelete(p.name)}
           >
@@ -404,13 +395,7 @@ function PresetBar({
         </XStack>
       ))}
 
-      <Button
-        className="border-dashed"
-        disabled={busy || !hasMonitors}
-        size="sm"
-        variant="ghost"
-        onClick={onSave}
-      >
+      <Button disabled={busy || !hasMonitors} variant="ghost" onClick={onSave}>
         + Save preset
       </Button>
     </XStack>
@@ -425,14 +410,16 @@ function PresetBar({
 function MonitorPending({ monitor }: { monitor: MonitorInfo }) {
   const name = monitor.name || `Monitor ${monitor.id}`;
   return (
-    <Card className="gap-3 py-3">
-      <Card.Content className="px-3">
-        <Text className="truncate" weight="bold">
+    <Card>
+      <Card.Content>
+        <Text weight="bold" truncate>
           {name}
         </Text>
-        <Text className="mt-2" tone="muted">
-          Reading settings over DDC/CI… Press Refresh if this persists.
-        </Text>
+        <div className="mt-2">
+          <Text tone="muted">
+            Reading settings over DDC/CI… Press Refresh if this persists.
+          </Text>
+        </div>
       </Card.Content>
     </Card>
   );
@@ -449,78 +436,90 @@ function MonitorRow({
 }) {
   const name = m.name || `Monitor ${m.id}`;
   return (
-    <Card className="gap-3 py-3">
-      <Card.Content className="px-3">
-        <Text className="truncate" weight="bold">
+    <Card>
+      <Card.Content>
+        <Text weight="bold" truncate>
           {name}
         </Text>
 
         {sliderMeta.map(({ key, icon: Icon, label }) => {
           const f = m[key];
           return (
-            <XStack key={key} className="mt-2" align="center" gap={2.5}>
-              <XStack className="w-23 shrink-0" align="center" gap={1}>
-                <Icon aria-hidden size={12} />
-                <Text tone="muted">{label}</Text>
+            <div key={key} className="mt-2">
+              <XStack align="center" gap={2.5}>
+                <div className="w-23 shrink-0">
+                  <XStack align="center" gap={1}>
+                    <Icon aria-hidden size={12} />
+                    <Text tone="muted">{label}</Text>
+                  </XStack>
+                </div>
+                {f.supported ? (
+                  <>
+                    <div className="min-w-0 flex-1">
+                      <Slider
+                        max={f.max}
+                        min={0}
+                        step={1}
+                        value={[f.value]}
+                        onValueChange={(value) =>
+                          onSlide(
+                            m.id,
+                            key,
+                            typeof value === 'number'
+                              ? value
+                              : (value[0] ?? f.value),
+                          )
+                        }
+                      />
+                    </div>
+                    <output className="w-11 shrink-0 text-right text-xs text-muted-foreground">
+                      {pct(f.value, f.max)}%
+                    </output>
+                  </>
+                ) : (
+                  <div className="flex-1">
+                    <Text tone="muted">
+                      {label} not supported by this monitor
+                    </Text>
+                  </div>
+                )}
               </XStack>
-              {f.supported ? (
-                <>
-                  <Slider
-                    className="min-w-0 flex-1"
-                    max={f.max}
-                    min={0}
-                    step={1}
-                    value={[f.value]}
-                    onValueChange={(value) =>
-                      onSlide(
-                        m.id,
-                        key,
-                        typeof value === 'number'
-                          ? value
-                          : (value[0] ?? f.value),
-                      )
-                    }
-                  />
-                  <output className="w-11 shrink-0 text-right text-xs text-muted-foreground">
-                    {pct(f.value, f.max)}%
-                  </output>
-                </>
-              ) : (
-                <Text className="flex-1" tone="muted">
-                  {label} not supported by this monitor
-                </Text>
-              )}
-            </XStack>
+            </div>
           );
         })}
 
         {m.redGain.supported &&
         m.greenGain.supported &&
         m.blueGain.supported ? (
-          <XStack className="mt-2" align="center" gap={2.5}>
-            <XStack className="w-23 shrink-0" align="center" gap={1}>
-              <SunsetIcon aria-hidden size={12} />
-              <Text tone="muted">Warmth</Text>
+          <div className="mt-2">
+            <XStack align="center" gap={2.5}>
+              <div className="w-23 shrink-0">
+                <XStack align="center" gap={1}>
+                  <SunsetIcon aria-hidden size={12} />
+                  <Text tone="muted">Warmth</Text>
+                </XStack>
+              </div>
+              <div className="min-w-0 flex-1">
+                <Slider
+                  max={100}
+                  min={0}
+                  step={1}
+                  value={[gainsToWarmth(m)]}
+                  onValueChange={(value) =>
+                    onWarmth(
+                      m.id,
+                      typeof value === 'number'
+                        ? value
+                        : (value[0] ?? gainsToWarmth(m)),
+                    )
+                  }
+                />
+              </div>
+              <output className="w-11 shrink-0 text-right text-xs text-muted-foreground">
+                {gainsToWarmth(m) === 0 ? 'Default' : `${gainsToWarmth(m)}%`}
+              </output>
             </XStack>
-            <Slider
-              className="min-w-0 flex-1"
-              max={100}
-              min={0}
-              step={1}
-              value={[gainsToWarmth(m)]}
-              onValueChange={(value) =>
-                onWarmth(
-                  m.id,
-                  typeof value === 'number'
-                    ? value
-                    : (value[0] ?? gainsToWarmth(m)),
-                )
-              }
-            />
-            <output className="w-11 shrink-0 text-right text-xs text-muted-foreground">
-              {gainsToWarmth(m) === 0 ? 'Default' : `${gainsToWarmth(m)}%`}
-            </output>
-          </XStack>
+          </div>
         ) : null}
 
         {!m.brightness.supported &&
@@ -528,13 +527,12 @@ function MonitorRow({
         !m.redGain.supported &&
         !m.greenGain.supported &&
         !m.blueGain.supported ? (
-          <Text
-            className="mt-2 rounded-lg border border-border bg-muted p-3"
-            tone="muted"
-          >
-            DDC/CI unavailable. Enable DDC/CI in this monitor&apos;s on-screen
-            menu.
-          </Text>
+          <div className="mt-2 rounded-lg border border-border bg-muted p-3">
+            <Text tone="muted">
+              DDC/CI unavailable. Enable DDC/CI in this monitor&apos;s on-screen
+              menu.
+            </Text>
+          </div>
         ) : null}
       </Card.Content>
     </Card>

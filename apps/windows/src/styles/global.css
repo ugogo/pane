@@ -9,7 +9,7 @@
   }
 }
 
-.pane-pickle-theme {
+:root {
   --app-shell-nav: color-mix(in srgb, var(--sidebar) 90%, transparent);
   --app-card: var(--card);
   --app-panel: var(--secondary);
@@ -55,5 +55,4 @@
   --app-selection-dim: rgb(24 23 19 / 0.58);
   --app-selection-outline: rgb(255 254 250 / 0.55);
   --app-area-pill: color-mix(in srgb, var(--muted) 90%, transparent);
-  color: var(--foreground);
 }

@@ -229,70 +229,69 @@ function LightRow({
   }
 
   return (
-    <Card className="gap-3 py-3">
-      <Card.Content className="px-3">
+    <Card>
+      <Card.Content>
         <XStack align="center" gap={3} wrap="wrap">
           <div className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted">
             <LightIcon light={light} />
           </div>
           <div className="min-w-0 flex-1">
-            <Text className="truncate" weight="bold">
+            <Text weight="bold" truncate>
               {lightTitle(light)}
             </Text>
-            <Text className="truncate" tone="muted">
+            <Text tone="muted" truncate>
               {lightSubtitle(light)}
             </Text>
           </div>
           <StatusBadge status={visibleStatus} />
         </XStack>
 
-        <XStack className="mt-3" align="center" gap={3} wrap="wrap">
-          <input
-            type="color"
-            aria-label={`Color for ${lightTitle(light)}`}
-            className="color-input"
-            disabled={disabled}
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-          />
-          <YStack className="min-w-40 flex-1" gap={1}>
-            <Text tone="muted">Brightness {brightness}%</Text>
-            <Slider
+        <div className="mt-3">
+          <XStack align="center" gap={3} wrap="wrap">
+            <input
+              type="color"
+              aria-label={`Color for ${lightTitle(light)}`}
+              className="color-input"
               disabled={disabled}
-              max={100}
-              min={0}
-              step={1}
-              value={[brightness]}
-              onValueChange={(value) =>
-                setBrightness(sliderValue(value, brightness))
-              }
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
             />
-          </YStack>
-          <Button
-            disabled={busy || disabled}
-            size="sm"
-            variant="outline"
-            onClick={() => void apply()}
-          >
-            Apply
-          </Button>
-          <Button
-            disabled={busy || disabled}
-            size="sm"
-            variant="ghost"
-            onClick={() => void turnOff()}
-          >
-            Off
-          </Button>
-        </XStack>
+            <div className="min-w-40 flex-1">
+              <YStack gap={1}>
+                <Text tone="muted">Brightness {brightness}%</Text>
+                <Slider
+                  disabled={disabled}
+                  max={100}
+                  min={0}
+                  step={1}
+                  value={[brightness]}
+                  onValueChange={(value) =>
+                    setBrightness(sliderValue(value, brightness))
+                  }
+                />
+              </YStack>
+            </div>
+            <Button
+              disabled={busy || disabled}
+              variant="outline"
+              onClick={() => void apply()}
+            >
+              Apply
+            </Button>
+            <Button
+              disabled={busy || disabled}
+              variant="ghost"
+              onClick={() => void turnOff()}
+            >
+              Off
+            </Button>
+          </XStack>
+        </div>
 
         {disabledReason ? (
-          <Text
-            className="mt-3 rounded-lg border border-border bg-muted p-3"
-            tone="muted"
-          >
-            {disabledReason}
-          </Text>
+          <div className="mt-3 rounded-lg border border-border bg-muted p-3">
+            <Text tone="muted">{disabledReason}</Text>
+          </div>
         ) : null}
 
         {result.message ? (
@@ -426,106 +425,116 @@ function AmbientSyncCard() {
   }
 
   return (
-    <Card className="gap-3 py-3">
-      <Card.Content className="px-3">
+    <Card>
+      <Card.Content>
         <XStack align="center" gap={3}>
           <div className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted">
             <MonitorIcon size={16} aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
-            <Text className="truncate" weight="bold">
+            <Text weight="bold" truncate>
               Screen sync
             </Text>
-            <Text className="truncate" tone="muted">
+            <Text tone="muted" truncate>
               DX Light strip follows your screen's color
             </Text>
           </div>
           <Switch
             checked={running}
             disabled={busy}
-            label="Enable screen sync"
-            labelClassName="sr-only"
+            label=""
             onCheckedChange={() => void toggle()}
           />
         </XStack>
 
-        <Button
-          className="mt-2"
-          size="sm"
-          variant="ghost"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {expanded ? (
-            <ChevronDownIcon aria-hidden size={14} />
-          ) : (
-            <ChevronRightIcon aria-hidden size={14} />
-          )}
-          Adjust
-        </Button>
+        <div className="mt-2">
+          <Button variant="ghost" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? (
+              <ChevronDownIcon aria-hidden size={14} />
+            ) : (
+              <ChevronRightIcon aria-hidden size={14} />
+            )}
+            Adjust
+          </Button>
+        </div>
 
         {expanded ? (
-          <XStack className="mt-3" align="end" gap={3} wrap="wrap">
-            <YStack className="min-w-40 flex-1" gap={1}>
-              <Text tone="muted">Brightness {brightness}%</Text>
-              <Slider
-                max={100}
-                min={0}
-                step={1}
-                value={[brightness]}
-                onValueChange={(value) =>
-                  onBrightnessChange(sliderValue(value, brightness))
-                }
-              />
-            </YStack>
-            <YStack className="min-w-40 flex-1" gap={1}>
-              <Text tone="muted">Saturation {saturation}%</Text>
-              <Slider
-                max={300}
-                min={100}
-                step={5}
-                value={[saturation]}
-                onValueChange={(value) =>
-                  onSaturationChange(sliderValue(value, saturation))
-                }
-              />
-            </YStack>
-            <YStack className="min-w-40 flex-1" gap={1}>
-              <Text tone="muted">Warmth {warmth}%</Text>
-              <Slider
-                max={200}
-                min={0}
-                step={1}
-                value={[warmth]}
-                onValueChange={(value) =>
-                  onWarmthChange(sliderValue(value, warmth))
-                }
-              />
-            </YStack>
-            <YStack className="min-w-40 flex-1" gap={1}>
-              <Text tone="muted">
-                Zones {zones === 1 ? '1 (single color)' : zones}
-              </Text>
-              <Slider
-                max={10}
-                min={1}
-                step={1}
-                value={[zones]}
-                onValueChange={(value) =>
-                  onZonesChange(sliderValue(value, zones))
-                }
-              />
-            </YStack>
-            <YStack className="min-w-40 flex-1" gap={1}>
-              <Text tone="muted">Frame rate {fps} fps</Text>
-              <Slider
-                max={60}
-                min={5}
-                step={1}
-                value={[fps]}
-                onValueChange={(value) => onFpsChange(sliderValue(value, fps))}
-              />
-            </YStack>
-          </XStack>
+          <div className="mt-3">
+            <XStack align="end" gap={3} wrap="wrap">
+              <div className="min-w-40 flex-1">
+                <YStack gap={1}>
+                  <Text tone="muted">Brightness {brightness}%</Text>
+                  <Slider
+                    max={100}
+                    min={0}
+                    step={1}
+                    value={[brightness]}
+                    onValueChange={(value) =>
+                      onBrightnessChange(sliderValue(value, brightness))
+                    }
+                  />
+                </YStack>
+              </div>
+              <div className="min-w-40 flex-1">
+                <YStack gap={1}>
+                  <Text tone="muted">Saturation {saturation}%</Text>
+                  <Slider
+                    max={300}
+                    min={100}
+                    step={5}
+                    value={[saturation]}
+                    onValueChange={(value) =>
+                      onSaturationChange(sliderValue(value, saturation))
+                    }
+                  />
+                </YStack>
+              </div>
+              <div className="min-w-40 flex-1">
+                <YStack gap={1}>
+                  <Text tone="muted">Warmth {warmth}%</Text>
+                  <Slider
+                    max={200}
+                    min={0}
+                    step={1}
+                    value={[warmth]}
+                    onValueChange={(value) =>
+                      onWarmthChange(sliderValue(value, warmth))
+                    }
+                  />
+                </YStack>
+              </div>
+              <div className="min-w-40 flex-1">
+                <YStack gap={1}>
+                  <Text tone="muted">
+                    Zones {zones === 1 ? '1 (single color)' : zones}
+                  </Text>
+                  <Slider
+                    max={10}
+                    min={1}
+                    step={1}
+                    value={[zones]}
+                    onValueChange={(value) =>
+                      onZonesChange(sliderValue(value, zones))
+                    }
+                  />
+                </YStack>
+              </div>
+              <div className="min-w-40 flex-1">
+                <YStack gap={1}>
+                  <Text tone="muted">Frame rate {fps} fps</Text>
+                  <Slider
+                    max={60}
+                    min={5}
+                    step={1}
+                    value={[fps]}
+                    onValueChange={(value) =>
+                      onFpsChange(sliderValue(value, fps))
+                    }
+                  />
+                </YStack>
+              </div>
+            </XStack>
+          </div>
         ) : null}
 
         {result.message ? (
@@ -737,19 +746,14 @@ function PresetBar({
 }) {
   return (
     <XStack align="center" gap={2} wrap="wrap">
-      <Button disabled={busy} size="sm" variant="outline" onClick={onRefresh}>
+      <Button disabled={busy} variant="outline" onClick={onRefresh}>
         Refresh
       </Button>
 
       {presets.map((preset) => (
-        <XStack
-          key={preset.name}
-          className="overflow-hidden rounded-md border border-border"
-        >
+        <XStack key={preset.name} gap={0.5}>
           <Button
-            className="rounded-none border-0"
             disabled={busy || !hasLights}
-            size="sm"
             variant="secondary"
             onClick={() => onApply(preset.name)}
           >
@@ -757,9 +761,7 @@ function PresetBar({
           </Button>
           <Button
             aria-label={`Update ${preset.name} preset`}
-            className="rounded-none border-0 border-l border-border"
             disabled={busy || !hasLights}
-            size="sm"
             variant="secondary"
             onClick={() => onUpdate(preset.name)}
           >
@@ -767,9 +769,7 @@ function PresetBar({
           </Button>
           <Button
             aria-label={`Delete ${preset.name} preset`}
-            className="rounded-none border-0 border-l border-border"
             disabled={busy}
-            size="sm"
             variant="secondary"
             onClick={() => onDelete(preset.name)}
           >
@@ -778,13 +778,7 @@ function PresetBar({
         </XStack>
       ))}
 
-      <Button
-        className="border-dashed"
-        disabled={busy || !hasLights}
-        size="sm"
-        variant="ghost"
-        onClick={onSave}
-      >
+      <Button disabled={busy || !hasLights} variant="ghost" onClick={onSave}>
         + Save preset
       </Button>
     </XStack>

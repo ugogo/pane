@@ -1,20 +1,16 @@
 import { Loader2Icon } from 'lucide-react';
-import { Flex } from 'pickle-ui';
 
 export function PageSpinner() {
   return (
-    <Flex
-      as="output"
-      align="center"
+    <output
       aria-label="Loading"
-      className="min-h-70"
-      justify="center"
+      className="flex min-h-70 items-center justify-center"
     >
       <Loader2Icon
         aria-hidden
         className="animate-spin text-muted-foreground"
         size={20}
       />
-    </Flex>
+    </output>
   );
 }

@@ -177,26 +177,30 @@ function CaptureRow({
   busy: boolean;
 }) {
   return (
-    <Card className="gap-3 py-3">
-      <Card.Content className="px-3">
+    <Card>
+      <Card.Content>
         <YStack gap={2}>
           <Text as="h2" weight="bold">
             {label}
           </Text>
-          <Button className="w-full" disabled={busy} onClick={onTrigger}>
-            {actionLabel}
-          </Button>
+          <div className="grid">
+            <Button disabled={busy} onClick={onTrigger}>
+              {actionLabel}
+            </Button>
+          </div>
         </YStack>
-        <YStack className="mt-3" gap={1}>
-          <Text tone="muted">Shortcut</Text>
-          <ShortcutInput
-            value={hotkey}
-            onCommit={onCommit}
-            onClear={onClear}
-            ariaLabel={shortcutLabel}
-            placeholder="Click and press a chord"
-          />
-        </YStack>
+        <div className="mt-3">
+          <YStack gap={1}>
+            <Text tone="muted">Shortcut</Text>
+            <ShortcutInput
+              value={hotkey}
+              onCommit={onCommit}
+              onClear={onClear}
+              ariaLabel={shortcutLabel}
+              placeholder="Click and press a chord"
+            />
+          </YStack>
+        </div>
       </Card.Content>
     </Card>
   );

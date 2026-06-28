@@ -169,11 +169,11 @@ export function ShortcutInput({
       }
     >
       {value || capturing ? (
-        <Text className="font-mono" variant="small">
+        <Text as="span" variant="small">
           {display}
         </Text>
       ) : (
-        <Text className="font-mono" tone="muted" variant="small">
+        <Text as="span" variant="small">
           {display}
         </Text>
       )}

@@ -43,22 +43,23 @@ function AccentPage() {
 
   return (
     <YStack gap={4}>
-      <Card className="gap-3 py-3">
-        <Card.Content className="px-3">
+      <Card>
+        <Card.Content>
           <XStack align="center" gap={4} justify="between">
-            <YStack className="min-w-0 flex-1" gap={1}>
-              <Text as="h2" weight="bold">
-                Enabled
-              </Text>
-              <Text tone="muted">
-                Choose variants with click, number keys, or Esc to dismiss.
-              </Text>
-            </YStack>
+            <div className="min-w-0 flex-1">
+              <YStack gap={1}>
+                <Text as="h2" weight="bold">
+                  Enabled
+                </Text>
+                <Text tone="muted">
+                  Choose variants with click, number keys, or Esc to dismiss.
+                </Text>
+              </YStack>
+            </div>
             <Switch
               checked={enabled ?? false}
               disabled={enabled === null}
-              label="Enable long-press accents"
-              labelClassName="sr-only"
+              label=""
               onCheckedChange={(next) => toggle.mutate(next)}
             />
           </XStack>

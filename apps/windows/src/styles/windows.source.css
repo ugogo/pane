@@ -5,9 +5,3 @@
 
 @source '..';
 @source '../../index.html';
-
-@theme {
-  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-sans);
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-}
