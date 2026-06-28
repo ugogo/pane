@@ -3,7 +3,7 @@
     Build Pane's release-only artifacts for release-it.
 
 .DESCRIPTION
-    release-it owns version selection, npm versioning, git commit/tag/push, and
+    release-it owns version selection, package versioning, git commit/tag/push, and
     GitHub release upload. This hook keeps the Pane-specific pieces explicit:
     Dynamic Lighting identity package signing, Tauri NSIS/updater build, and
     latest.json generation.
@@ -57,13 +57,13 @@ if ($LASTEXITCODE -ne 0) { Fail "identity package build failed." }
 
 Step "building + signing installer"
 # Run from the Windows app dir so Tauri resolves apps/windows/tauri/tauri.conf.json
-# and runs beforeBuildCommand (npm run build) against apps/windows. Merge the
+# and runs beforeBuildCommand (pnpm run build) against apps/windows. Merge the
 # prod overlay explicitly so the released build's identity (pane.prod) is never
 # an implicit default — it mirrors the dev overlay used by scripts/dev.ps1.
 $prodConfig = Join-Path $root "apps/windows/tauri/tauri.conf.prod.json"
 Push-Location (Join-Path $root "apps/windows")
 try {
-    npx tauri build --ci --config $prodConfig
+    pnpm exec tauri build --ci --config $prodConfig
 } finally {
     Pop-Location
 }

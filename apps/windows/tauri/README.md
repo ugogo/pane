@@ -1,7 +1,7 @@
 # Pane (Tauri shell)
 
 Tauri 2 desktop wrapper for the Pane Windows app. The frontend is built by Vite
-(`npm run build` → `../dist`) and bundled here.
+(`pnpm run build` -> `../dist`) and bundled here.
 
 ## ⚠️ Do not remove `dangerousDisableAssetCspModification` from `tauri.conf.json`
 
@@ -34,6 +34,6 @@ that safe.
 > The browser is **not** a faithful proxy for this: a plain browser honors the
 > `<meta>` CSP in `index.html` (which has `unsafe-inline`, no nonce) and looks fine,
 > while the shipped exe enforces a *header* CSP *with* a nonce. To verify WebView2
-> styling for real, build a debug exe (`npx tauri build --debug`), launch it with
+> styling for real, build a debug exe (`pnpm exec tauri build --debug`), launch it with
 > `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222`, and inspect
 > via CDP — check that injected `<style>` tags have a non-null `.sheet`.

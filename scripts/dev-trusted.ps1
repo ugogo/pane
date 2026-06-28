@@ -19,9 +19,9 @@
          so Windows AppX deployment trusts the cert in the machine root store.
       4. Optionally launch the freshly registered exe (-Run).
 
-    This is a DEV loop. The shipping path is `npm run release` (per-machine
+    This is a DEV loop. The shipping path is `pnpm run release` (per-machine
     NSIS installer, via scripts/prepare-release-artifacts.ps1). Identity-gated
-    features will NOT work under `npm run dev` (unpackaged).
+    features will NOT work under `pnpm run dev` (unpackaged).
 
 .PARAMETER SkipBuild
     Skip the tauri build; just (re)register the existing target/release/pane.exe.
@@ -61,7 +61,7 @@ if (-not $SkipBuild) {
     $prodConfig = Join-Path $root "apps/windows/tauri/tauri.conf.prod.json"
     Push-Location (Join-Path $root "apps/windows")
     try {
-        & npx tauri build --no-bundle --config $prodConfig
+        & pnpm exec tauri build --no-bundle --config $prodConfig
     } finally {
         Pop-Location
     }

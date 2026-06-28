@@ -86,16 +86,16 @@ Do not migrate the companion app as part of this work.
 Run:
 
 ```powershell
-npm install
-npm run lint
-npm run typecheck
-npm run format:check
-npm run build -w @pane/windows
-npm run rust:fmt:check
-npm run tauri:gen:check
+pnpm install
+pnpm run lint
+pnpm run typecheck
+pnpm run format:check
+pnpm --filter @pane/windows build
+pnpm run rust:fmt:check
+pnpm run tauri:gen:check
 ```
 
-Manual smoke test with `npm run dev`:
+Manual smoke test with `pnpm run dev`:
 
 - Main window boots and reveals correctly.
 - Sidebar navigation works for all dashboard modules.

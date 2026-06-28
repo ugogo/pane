@@ -125,10 +125,10 @@ Candidate commands:
 
 ## Test Plan
 
-- `npm run lint`
-- `npm run typecheck`
-- `npm run rust:fmt:check`
-- `npm run rust:clippy`
+- `pnpm run lint`
+- `pnpm run typecheck`
+- `pnpm run rust:fmt:check`
+- `pnpm run rust:clippy`
 - Rust unit tests for persistence and apply target matching.
 - Manual smoke:
   - save a preset from current light states

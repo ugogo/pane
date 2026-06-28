@@ -157,8 +157,8 @@ only allow the `image-editor` window unless the main window also needs it.
 
 ## Test Plan
 
-- `npm run lint`
-- `npm run typecheck`
+- `pnpm run lint`
+- `pnpm run typecheck`
 - Manual smoke:
   - crop only, save
   - draw arrow and rectangle, save

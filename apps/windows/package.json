@@ -13,8 +13,8 @@
   "dependencies": {
     "@fontsource/geist": "^5.2.9",
     "@fontsource/jetbrains-mono": "^5.2.8",
-    "@pane/protocol": "*",
-    "@pane/query": "^0.0.0",
+    "@pane/protocol": "workspace:*",
+    "@pane/query": "workspace:*",
     "@tanstack/react-query": "^5.101.0",
     "@tanstack/react-router": "^1.170.16",
     "@tauri-apps/api": "^2",

@@ -10,6 +10,7 @@ apps/windows/tauri/
 
 # Generated / vendored
 package-lock.json
+pnpm-lock.yaml
 apps/mobile/**/package-lock.json
 apps/windows/src/routeTree.gen.ts
 assets/

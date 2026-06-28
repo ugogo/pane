@@ -7,7 +7,7 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 // variant its own slug keeps their pairings in separate keychains, so running
 // the dev script can't overwrite a phone already paired via the prod script.
 //
-// APP_VARIANT is set by the npm scripts (see package.json). It defaults to dev
+// APP_VARIANT is set by the package scripts (see package.json). It defaults to dev
 // so a bare `expo start` stays on the isolated dev identity. Both variants are
 // symmetric: a `pane-companion-{env}` slug and a `pane.companion.{env}` bundle
 // id, mirroring the desktop's `pane.dev` / `pane.prod` identifier split.

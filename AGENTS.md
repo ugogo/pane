@@ -12,20 +12,20 @@
 ## Running the app
 
 ```powershell
-npm run dev          # stop any existing dev session, then start fresh (Tauri + Vite)
-npm run stop         # kill dev without restarting
+pnpm run dev          # stop any existing dev session, then start fresh (Tauri + Vite)
+pnpm run stop         # kill dev without restarting
 ```
 
-`npm run dev` always restarts: it stops leftover `pane.exe`, `cargo`, and Vite
+`pnpm run dev` always restarts: it stops leftover `pane.exe`, `cargo`, and Vite
 processes for this repo before launching. Concurrent calls serialize via a
-repo-scoped lock — the later call wins. Prefer `npm run dev` over raw
+repo-scoped lock — the later call wins. Prefer `pnpm run dev` over raw
 `tauri dev` or `vite`.
 
 For CDP-driven testing, set the env var before starting:
 
 ```powershell
 $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222"
-npm run dev
+pnpm run dev
 ```
 
 WebView2 then exposes Chrome DevTools Protocol on port 9222.
@@ -53,12 +53,12 @@ Formatting and linting are enforced; don't hand-format.
   in `CapturePreview`).
 
 ```powershell
-npm run lint           # eslint . --max-warnings 0
-npm run lint:fix       # eslint . --fix --max-warnings 0
-npm run format         # prettier --write .
-npm run format:check   # prettier --check .
-npm run rust:fmt       # cargo fmt
-npm run rust:clippy    # cargo clippy --all-targets -- -D warnings
+pnpm run lint           # eslint . --max-warnings 0
+pnpm run lint:fix       # eslint . --fix --max-warnings 0
+pnpm run format         # prettier --write .
+pnpm run format:check   # prettier --check .
+pnpm run rust:fmt       # cargo fmt
+pnpm run rust:clippy    # cargo clippy --all-targets -- -D warnings
 ```
 
 - **Format on save**: `.vscode/settings.json` enables format-on-save (Prettier
@@ -88,7 +88,7 @@ npm run rust:clippy    # cargo clippy --all-targets -- -D warnings
 - Windows-only chrome: `apps/windows/src/styles/shell.css` for titlebar/sidebar glass and `data-tauri-drag-region` — not in `@pane/ui`.
 - Optimize the main window for the default 800–900 px width.
 - Icons: `lucide-react` in the Windows app with the `Icon` suffix (`PenIcon`, not `Pen`). Do not add other icon libraries.
-- Companion dev requires a **dev client** build (`npm run companion` → `expo run:ios --device`); Expo Go is not supported for native sliders/Tamagui controls.
+- Companion dev requires a **dev client** build (`pnpm run companion` -> `expo run:ios --device`); Expo Go is not supported for native sliders/Tamagui controls.
 
 ## Rust / Tauri guidelines
 
@@ -125,11 +125,11 @@ Edit permissions in `apps/windows/tauri/capabilities/*.json` (source of truth), 
 After changing any capability manifest, regenerate and **commit** the tracked output:
 
 ```powershell
-npm run tauri:gen
+pnpm run tauri:gen
 git add apps/windows/tauri/gen/schemas/
 ```
 
-`npm run tauri:gen` runs `cargo build`, which invokes `tauri_build` and refreshes `capabilities.json`, `acl-manifests.json`, and the desktop/windows schema JSON under `apps/windows/tauri/gen/schemas/`. Pre-commit runs this automatically when a staged diff touches `apps/windows/tauri/capabilities/`; CI enforces a clean tree via `npm run tauri:gen:check`.
+`pnpm run tauri:gen` runs `cargo build`, which invokes `tauri_build` and refreshes `capabilities.json`, `acl-manifests.json`, and the desktop/windows schema JSON under `apps/windows/tauri/gen/schemas/`. Pre-commit runs this automatically when a staged diff touches `apps/windows/tauri/capabilities/`; CI enforces a clean tree via `pnpm run tauri:gen:check`.
 
 ### Common dev signals
 

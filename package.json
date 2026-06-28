@@ -3,6 +3,7 @@
   "version": "1.4.9",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.9.0",
   "description": "Pane — Windows desktop utility suite (Tauri 2 + React + Rust)",
   "workspaces": [
     "apps/*",
@@ -11,8 +12,8 @@
   "scripts": {
     "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev.ps1",
     "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/stop.ps1",
-    "build": "npm run build -w @pane/windows",
-    "typecheck": "npm run typecheck -w @pane/ui && npm run typecheck -w @pane/windows && npm run typecheck -w @pane/companion",
+    "build": "pnpm --filter @pane/windows build",
+    "typecheck": "pnpm --filter @pane/ui typecheck && pnpm --filter @pane/windows typecheck && pnpm --filter @pane/companion typecheck",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix --max-warnings 0",
     "format": "prettier --write .",
@@ -24,13 +25,13 @@
     "tauri:gen:check": "node scripts/sync-tauri-gen.ts --check",
     "release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release-it.ps1",
     "dev:trusted": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-trusted.ps1",
-    "companion": "npm run start -w @pane/companion",
-    "companion:prod": "npm run start:prod -w @pane/companion",
-    "companion:clear": "npm run clear -w @pane/companion",
-    "companion:clear:prod": "npm run clear:prod -w @pane/companion",
-    "companion:install": "npm install -w @pane/companion",
-    "companion:typecheck": "npm run typecheck -w @pane/companion",
-    "tauri": "npm run tauri -w @pane/windows --",
+    "companion": "pnpm --filter @pane/companion start",
+    "companion:prod": "pnpm --filter @pane/companion start:prod",
+    "companion:clear": "pnpm --filter @pane/companion clear",
+    "companion:clear:prod": "pnpm --filter @pane/companion clear:prod",
+    "companion:install": "pnpm install --filter @pane/companion",
+    "companion:typecheck": "pnpm --filter @pane/companion typecheck",
+    "tauri": "pnpm --filter @pane/windows tauri --",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -44,10 +45,6 @@
     "apps/windows/tauri/**/*.rs": [
       "rustfmt --edition 2021"
     ]
-  },
-  "overrides": {
-    "@types/react": "~19.2.16",
-    "@types/react-dom": "~19.2.3"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
