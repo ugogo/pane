@@ -16,7 +16,6 @@
   "dependencies": {
     "@react-native-community/slider": "5.0.1",
     "@tamagui/config": "^1.135.0",
-    "@tamagui/lucide-icons": "^1.135.0",
     "react-native-qrcode-svg": "^6.3.15",
     "react-native-svg": "15.12.1",
     "tamagui": "^1.135.0"
