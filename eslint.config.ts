@@ -7,9 +7,8 @@ import reactDoctor from 'eslint-plugin-react-doctor';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
-/** Desktop (Metro web) and Expo companion React sources. */
+/** Desktop (Vite web) and Expo companion React sources. */
 const reactSourceFiles = [
-  'apps/windows/app/**/*.{ts,tsx}',
   'apps/windows/src/**/*.{ts,tsx}',
   'apps/mobile/**/*.{ts,tsx}',
 ];
@@ -28,7 +27,6 @@ export default tseslint.config(
       '*.config.{js,ts}',
       'packages/ui/**/*.cjs',
       'apps/windows/.tamagui/',
-      'apps/windows/app/tamagui.generated.css',
     ],
   },
 
@@ -38,7 +36,7 @@ export default tseslint.config(
 
   // Desktop app: React + browser globals + fast refresh.
   {
-    files: ['apps/windows/app/**/*.{ts,tsx}', 'apps/windows/src/**/*.{ts,tsx}'],
+    files: ['apps/windows/src/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2021,
       globals: globals.browser,
@@ -90,7 +88,18 @@ export default tseslint.config(
   // React Doctor — desktop (includes React Compiler heuristics).
   {
     ...reactDoctor.configs.recommended,
-    files: ['apps/windows/app/**/*.{ts,tsx}', 'apps/windows/src/**/*.{ts,tsx}'],
+    files: ['apps/windows/src/**/*.{ts,tsx}'],
+  },
+
+  // TanStack Router file routes must export `Route` and often keep route-local
+  // helper components in the same module.
+  {
+    files: ['apps/windows/src/routes/**/*.{ts,tsx}'],
+    rules: {
+      'react-doctor/no-multi-comp': 'off',
+      'react-doctor/only-export-components': 'off',
+      'react-refresh/only-export-components': 'off',
+    },
   },
 
   // React Doctor — Expo companion (recommended + react-native preset).

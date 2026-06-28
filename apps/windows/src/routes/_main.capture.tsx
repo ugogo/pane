@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
 import { EyeIcon } from 'lucide-react';
 import { Button, Card, Label, MutedText, XStack, YStack } from '@pane/ui';
 import { ShortcutInput } from '@/components/ShortcutInput';
@@ -24,7 +25,11 @@ const actionLabels: Record<CaptureAction, string> = {
   area: 'area',
 };
 
-export default function CapturePage() {
+export const Route = createFileRoute('/_main/capture')({
+  component: CapturePage,
+});
+
+function CapturePage() {
   const queryClient = useQueryClient();
   const hotkeysQuery = useQuery({
     queryKey: queryKeys.captureHotkeys,

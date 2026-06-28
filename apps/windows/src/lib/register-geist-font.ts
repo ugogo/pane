@@ -7,7 +7,7 @@ function geistFontUrl() {
   return String(geistWoff2);
 }
 
-/** Inject Geist via CSS instead of expo-font's FontObserver (unreliable in WebView2). */
+/** Inject Geist via CSS so WebView2 gets the font before the first app paint. */
 export function registerGeistFont() {
   if (typeof document === 'undefined') return;
   if (document.getElementById(STYLE_ID)) return;

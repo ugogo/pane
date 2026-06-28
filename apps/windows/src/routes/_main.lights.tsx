@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -524,7 +525,11 @@ function AmbientSyncCard() {
   );
 }
 
-export default function LightsPage() {
+export const Route = createFileRoute('/_main/lights')({
+  component: LightsPage,
+});
+
+function LightsPage() {
   const queryClient = useQueryClient();
   const lightsQuery = useQuery({
     queryKey: queryKeys.lights,

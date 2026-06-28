@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
 import { Card, Label, MutedText, Switch, XStack, YStack } from '@pane/ui';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusText } from '@/components/features/status-ui';
@@ -6,7 +7,11 @@ import { getAccentPopupEnabled, setAccentPopupEnabled } from '@/lib/commands';
 import { queryKeys } from '@/lib/query-keys';
 import { useActionStatus } from '@/lib/use-action-status';
 
-export default function AccentPage() {
+export const Route = createFileRoute('/_main/accent')({
+  component: AccentPage,
+});
+
+function AccentPage() {
   const queryClient = useQueryClient();
   const enabledQuery = useQuery({
     queryKey: queryKeys.accentEnabled,

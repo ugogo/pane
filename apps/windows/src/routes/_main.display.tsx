@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
 import {
   ContrastIcon,
   RotateCcwIcon,
@@ -108,7 +109,11 @@ const emptyMonitors: MonitorInfo[] = [];
 const MONITOR_READ_INTERVAL_MS = 700;
 const MONITOR_READ_ATTEMPTS = 8;
 
-export default function DisplayPage() {
+export const Route = createFileRoute('/_main/display')({
+  component: DisplayPage,
+});
+
+function DisplayPage() {
   const queryClient = useQueryClient();
   const monitorsQuery = useQuery({
     queryKey: queryKeys.displayMonitors,

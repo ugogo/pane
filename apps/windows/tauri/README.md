@@ -1,6 +1,6 @@
 # Pane (Tauri shell)
 
-Tauri 2 desktop wrapper for the Pane Windows app. The frontend is built by Expo
+Tauri 2 desktop wrapper for the Pane Windows app. The frontend is built by Vite
 (`npm run build` → `../dist`) and bundled here.
 
 ## ⚠️ Do not remove `dangerousDisableAssetCspModification` from `tauri.conf.json`
@@ -15,9 +15,8 @@ Tauri 2 desktop wrapper for the Pane Windows app. The frontend is built by Expo
 Tauri's config schema forbids inline comments (`additionalProperties: false` on
 `security`), so the reasoning lives here:
 
-- Tamagui injects all of its CSS into `<style>` tags **at runtime**
-  (`disableExtraction: true` — compile-time extraction crashes under React 19;
-  see `apps/windows/tamagui.build.ts`).
+- Tamagui currently injects its component and theme CSS into `<style>` tags
+  **at runtime** in the Windows Vite app.
 - By default Tauri stamps a **nonce** onto `style-src` when it post-processes the
   bundled `index.html`. Per the CSP spec, once a nonce is present `'unsafe-inline'`
   is **ignored** — so every runtime-injected `<style>` (which has no nonce) is
@@ -32,7 +31,7 @@ Tauri's config schema forbids inline comments (`additionalProperties: false` on
   assets over `'self'`.
 
 **Remove this flag only** once Tamagui compile-time extraction works under React 19
-and the CSS ships as a static `<link>` (like `app/shell.css` already does). At that
+and the CSS ships as a static `<link>` (like `src/styles/shell.css` already does). At that
 point there's no runtime injection, `'unsafe-inline'` is no longer needed, and the
 flag can be dropped in favor of the default nonce hardening.
 

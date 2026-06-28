@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
 import { Button, MutedText, Stat, Switch, XStack, YStack } from '@pane/ui';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusText } from '@/components/features/status-ui';
@@ -14,7 +15,11 @@ function fmtMs(ms: number) {
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(2)} s`;
 }
 
-export default function DiagnosticsPage() {
+export const Route = createFileRoute('/_main/diagnostics')({
+  component: DiagnosticsPage,
+});
+
+function DiagnosticsPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const metricsQuery = useQuery({
     queryKey: queryKeys.metrics,

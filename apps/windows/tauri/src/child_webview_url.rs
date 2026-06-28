@@ -1,16 +1,16 @@
 //! URLs for secondary Tauri webviews (capture overlay, accent popup, etc.).
 //!
-//! Child windows must load **direct expo-router paths** (`/area-selector`, …)
+//! Child windows must load **direct frontend route paths** (`/area-selector`, …)
 //! built from the main window's origin (dev server or `tauri://localhost`).
 //! Do not append `?view=` to whatever path the main window is on: the main app
-//! boots to `/capture`, while legacy `?view=` redirects in `app/index.tsx` only
-//! run on `/`. Inheriting `/capture` + `?view=…` opens the dashboard shell in
-//! the child window.
+//! boots to `/capture`, while legacy `?view=` redirects in the frontend index
+//! route only run on `/`. Inheriting `/capture` + `?view=…` opens the dashboard
+//! shell in the child window.
 
 use tauri::{AppHandle, Manager, WebviewUrl};
 
-/// Expo-router paths for `app/(views)/*` child windows. Keep in sync with the
-/// frontend route files when adding a new popup webview.
+/// Frontend paths for secondary child windows. Keep in sync with the route files
+/// when adding a new popup webview.
 pub mod routes {
     pub const AREA_SELECTOR: &str = "/area-selector";
     pub const CAPTURE_PREVIEW: &str = "/preview";

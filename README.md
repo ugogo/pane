@@ -15,23 +15,23 @@ with more modules intended to fit into the same dashboard over time.
 
 ## Stack
 
-- **Frontend**: TypeScript + React + Expo Router + Tamagui (`@pane/ui`) on Metro (Windows web + companion native)
+- **Frontend**: TypeScript + React + Vite + TanStack Router + Tamagui (`@pane/ui`) for Windows, Expo + React Native for the companion
 - **Backend**: Rust + Tauri 2
-- **Entry point**: `apps/windows/app/` -> `apps/windows/tauri/src/lib.rs`
+- **Entry point**: `apps/windows/src/main.tsx` -> `apps/windows/tauri/src/lib.rs`
 
 ## Commands
 
 ```powershell
-npm run dev          # stop any existing dev session, then start fresh (Tauri + Metro)
+npm run dev          # stop any existing dev session, then start fresh (Tauri + Vite)
 npm run build        # production build
 npm run typecheck    # TypeScript check
 npm run stop         # kill dev without restarting
 ```
 
-`npm run dev` always restarts: it stops leftover `pane.exe`, `cargo`, and Metro
+`npm run dev` always restarts: it stops leftover `pane.exe`, `cargo`, and Vite
 processes for this repo before launching. Concurrent calls serialize via a
 repo-scoped lock — the later call wins. Prefer `npm run dev` over raw
-`tauri dev` or `npx expo start --web`.
+`tauri dev` or `vite`.
 
 For CDP-driven WebView2 testing:
 
@@ -52,10 +52,9 @@ shared `@pane/protocol` contract, never on each other.
 
 ```
 apps/
-  windows/                       # Windows Tauri app (Expo Router + Metro web + Rust)
-  |-- app/                       # Expo Router routes + shell.css
-  |-- src/                       # Feature components, lib/, commands
-  |-- metro.config.js, babel.config.js, tsconfig.json, package.json
+  windows/                       # Windows Tauri app (Vite + TanStack Router + Rust)
+  |-- src/                       # Routes, feature components, lib/, commands, styles
+  |-- vite.config.ts, tsconfig.json, package.json
   `-- tauri/                     # Rust backend
       |-- tauri.conf.json
       `-- src/

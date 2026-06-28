@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
 import { Loader2Icon, MoonIcon, RefreshCwIcon } from 'lucide-react';
 import {
   Button,
@@ -72,7 +73,11 @@ function UpdateCheckMessage({
   );
 }
 
-export default function StartupPage() {
+export const Route = createFileRoute('/_main/startup')({
+  component: StartupPage,
+});
+
+function StartupPage() {
   const queryClient = useQueryClient();
   const {
     checkState,

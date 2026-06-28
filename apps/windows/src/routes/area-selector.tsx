@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
+import { createFileRoute } from '@tanstack/react-router';
 import {
   areaSelectorOrigin,
   commitRegionCapture,
@@ -12,6 +13,10 @@ interface Rect {
   w: number;
   h: number;
 }
+
+export const Route = createFileRoute('/area-selector')({
+  component: AreaSelectorPage,
+});
 
 function rectFrom(
   a: { x: number; y: number },
@@ -28,7 +33,7 @@ function pt(e: React.MouseEvent) {
   return { x: e.clientX, y: e.clientY };
 }
 
-export default function AreaSelectorPage() {
+function AreaSelectorPage() {
   const [drag, setDrag] = useState<{
     start: { x: number; y: number };
     end: { x: number; y: number };

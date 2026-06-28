@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
+import { createFileRoute } from '@tanstack/react-router';
 import { XIcon } from 'lucide-react';
 import { hideCaptureZoom, takeLatestCaptureFull } from '@/lib/commands';
 import { useEffectEvent } from '@/lib/use-effect-event';
 
-export default function CaptureZoomPage() {
+export const Route = createFileRoute('/capture-zoom')({
+  component: CaptureZoomPage,
+});
+
+function CaptureZoomPage() {
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState<string>();
 

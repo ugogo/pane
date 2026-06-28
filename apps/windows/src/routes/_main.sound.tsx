@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
 import {
   MicIcon,
   MicOffIcon,
@@ -76,7 +77,11 @@ const emptyDevices = {
 };
 const emptyVolumes = { output: null, input: null };
 
-export default function SoundPage() {
+export const Route = createFileRoute('/_main/sound')({
+  component: SoundPage,
+});
+
+function SoundPage() {
   const queryClient = useQueryClient();
   const soundQuery = useQuery({
     queryKey: queryKeys.sound,

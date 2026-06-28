@@ -1,5 +1,10 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
-import { Link, Slot, usePathname } from 'expo-router';
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useRouterState,
+} from '@tanstack/react-router';
 import {
   ActivityIcon,
   AlertTriangleIcon,
@@ -99,12 +104,16 @@ const modules = [
   },
 ] as const;
 
+export const Route = createFileRoute('/_main')({
+  component: MainLayout,
+});
+
 function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function MainLayout() {
+function MainLayout() {
   const { isBooting, appVersion, bootError } = useAppBoot();
   const updateCheck = useUpdateCheck();
 
@@ -163,7 +172,9 @@ function AppShell({
   onInstallUpdate: () => void;
 }) {
   const contentScrollRef = useRef<ScrollView>(null);
-  const pathname = usePathname();
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
   const matchedModule = modules.find((m) => m.path === pathname);
   const activeModule = matchedModule ?? modules[0];
 
@@ -183,7 +194,7 @@ function AppShell({
               return (
                 <Link
                   key={path}
-                  href={path}
+                  to={path}
                   className={
                     isActive
                       ? 'app-nav-link app-nav-link-active'
@@ -255,7 +266,7 @@ function AppShell({
               onInstall={onInstallUpdate}
               onRestart={() => void restartToApplyUpdate()}
             />
-            <Slot />
+            <Outlet />
           </PageTransition>
         </ScrollView>
       </div>

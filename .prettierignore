@@ -11,6 +11,8 @@ apps/windows/tauri/
 # Generated / vendored
 package-lock.json
 apps/mobile/**/package-lock.json
+apps/windows/app/windows.generated.css
+apps/windows/src/routeTree.gen.ts
 assets/
 *.min.js
 *.min.css
