@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
 import { CopyIcon, QrCodeIcon, WifiIcon, XIcon } from 'lucide-react';
 import {
   Button,
@@ -6,12 +7,12 @@ import {
   Label,
   MutedPanel,
   MutedText,
-  QRCode,
   Switch,
   Text,
   XStack,
   YStack,
 } from '@pane/ui';
+import { WebQRCode } from '@/components/WebQRCode';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusBadge, StatusText } from '@/components/features/status-ui';
 import {
@@ -32,7 +33,11 @@ function formatExpiry(expiresAt: number) {
   });
 }
 
-export default function CompanionPage() {
+export const Route = createFileRoute('/companion')({
+  component: CompanionPage,
+});
+
+function CompanionPage() {
   const queryClient = useQueryClient();
   const statusQuery = useQuery({
     queryKey: queryKeys.companionStatus,
@@ -139,7 +144,7 @@ export default function CompanionPage() {
               </Button>
             </XStack>
             <YStack alignItems="center" marginTop="$3">
-              <QRCode
+              <WebQRCode
                 level="M"
                 quietZone={0}
                 size={176}

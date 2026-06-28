@@ -13,11 +13,11 @@
     "jsx": "react-jsx",
     "strict": true,
     "ignoreDeprecations": "6.0",
+    "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "app"],
-  "extends": "expo/tsconfig.base"
+  "include": ["src", "vite.config.ts"]
 }

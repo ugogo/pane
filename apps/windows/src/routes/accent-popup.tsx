@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { useLocalSearchParams } from 'expo-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { PopupTransition } from '@pane/ui';
 import { accentSelect } from '@/lib/commands';
 
@@ -8,8 +8,19 @@ interface AccentPayload {
   accents: string[];
 }
 
-export default function AccentPopupPage() {
-  const { chars } = useLocalSearchParams<{ chars?: string }>();
+interface AccentPopupSearch {
+  chars?: string;
+}
+
+export const Route = createFileRoute('/accent-popup')({
+  validateSearch: (search): AccentPopupSearch => ({
+    chars: typeof search.chars === 'string' ? search.chars : undefined,
+  }),
+  component: AccentPopupPage,
+});
+
+function AccentPopupPage() {
+  const { chars } = Route.useSearch();
   const [accents, setAccents] = useState<string[]>(() =>
     chars ? chars.split(',').filter(Boolean) : [],
   );

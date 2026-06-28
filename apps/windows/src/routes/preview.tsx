@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createFileRoute } from '@tanstack/react-router';
 import {
   CheckIcon,
   ClipboardIcon,
@@ -18,6 +19,10 @@ import {
   toggleCaptureZoom,
   type CaptureResult,
 } from '@/lib/commands';
+
+export const Route = createFileRoute('/preview')({
+  component: PreviewPage,
+});
 
 type Phase =
   | 'hidden'
@@ -87,7 +92,7 @@ interface View {
   revision: number;
 }
 
-export default function PreviewPage() {
+function PreviewPage() {
   const [view, setView] = useState<View>({
     capture: null,
     phase: 'hidden',

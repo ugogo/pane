@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
-import { Link, Slot, usePathname } from 'expo-router';
+import { Link, useRouterState } from '@tanstack/react-router';
 import {
   ActivityIcon,
   AlertTriangleIcon,
@@ -104,7 +104,7 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function MainLayout() {
+export function MainShell({ children }: { children: ReactNode }) {
   const { isBooting, appVersion, bootError } = useAppBoot();
   const updateCheck = useUpdateCheck();
 
@@ -135,7 +135,9 @@ export default function MainLayout() {
           appVersion={appVersion}
           updateNotice={updateCheck.notice}
           onInstallUpdate={updateCheck.install}
-        />
+        >
+          {children}
+        </AppShell>
       </UpdateCheckContext.Provider>
     </MainShellErrorBoundary>
   );
@@ -157,13 +159,17 @@ function AppShell({
   appVersion,
   updateNotice,
   onInstallUpdate,
+  children,
 }: {
   appVersion: string | null;
   updateNotice: UpdateNoticeState;
   onInstallUpdate: () => void;
+  children: ReactNode;
 }) {
   const contentScrollRef = useRef<ScrollView>(null);
-  const pathname = usePathname();
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
   const matchedModule = modules.find((m) => m.path === pathname);
   const activeModule = matchedModule ?? modules[0];
 
@@ -183,7 +189,7 @@ function AppShell({
               return (
                 <Link
                   key={path}
-                  href={path}
+                  to={path}
                   className={
                     isActive
                       ? 'app-nav-link app-nav-link-active'
@@ -255,7 +261,7 @@ function AppShell({
               onInstall={onInstallUpdate}
               onRestart={() => void restartToApplyUpdate()}
             />
-            <Slot />
+            {children}
           </PageTransition>
         </ScrollView>
       </div>

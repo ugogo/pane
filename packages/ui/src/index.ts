@@ -25,7 +25,6 @@ export {
 } from './components/card';
 export { Badge, type BadgeProps, type BadgeVariant } from './components/badge';
 export { Label, MutedText, Text, type TextProps } from './components/text';
-export { QRCode, type QRCodeProps } from './components/qrcode';
 export {
   PageTransition,
   PopupTransition,

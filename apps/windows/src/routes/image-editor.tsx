@@ -2,6 +2,7 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { createFileRoute } from '@tanstack/react-router';
 import {
   ArrowUpRightIcon,
   CheckIcon,
@@ -24,6 +25,10 @@ import {
   takeLatestCaptureEdit,
 } from '@/lib/commands';
 import { useEffectEvent } from '@/lib/use-effect-event';
+
+export const Route = createFileRoute('/image-editor')({
+  component: ImageEditorPage,
+});
 
 type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
@@ -1201,7 +1206,7 @@ async function rasterizeEdit(
   return dataUrl;
 }
 
-export default function ImageEditorPage() {
+function ImageEditorPage() {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState);
   const {
     src,

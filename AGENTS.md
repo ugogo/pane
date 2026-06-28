@@ -5,21 +5,21 @@
 **Pane** is a Windows desktop utility suite: **Light Controls** and
 **CleanShot** in one modular hub, with more modules expected over time.
 
-- **Frontend**: TypeScript + React + Expo Router + Tamagui (`@pane/ui`) on Windows web (Metro) and companion (React Native)
+- **Frontend**: TypeScript + React + Vite + TanStack Router + Tamagui (`@pane/ui`) on Windows web, Expo + React Native for the companion
 - **Backend**: Rust + Tauri 2
-- **Entry point**: `apps/windows/app/` (Expo Router) -> `apps/windows/tauri/src/lib.rs`
+- **Entry point**: `apps/windows/src/main.tsx` -> `apps/windows/tauri/src/lib.rs`
 
 ## Running the app
 
 ```powershell
-npm run dev          # stop any existing dev session, then start fresh (Tauri + Metro)
+npm run dev          # stop any existing dev session, then start fresh (Tauri + Vite)
 npm run stop         # kill dev without restarting
 ```
 
-`npm run dev` always restarts: it stops leftover `pane.exe`, `cargo`, and Metro
+`npm run dev` always restarts: it stops leftover `pane.exe`, `cargo`, and Vite
 processes for this repo before launching. Concurrent calls serialize via a
 repo-scoped lock — the later call wins. Prefer `npm run dev` over raw
-`tauri dev` or `npx expo start`.
+`tauri dev` or `vite`.
 
 For CDP-driven testing, set the env var before starting:
 
@@ -45,7 +45,7 @@ Formatting and linting are enforced; don't hand-format.
   react-you-might-not-need-an-effect, and react-doctor (`recommended`).
 - **Rust**: rustfmt (`apps/windows/tauri/rustfmt.toml`) + clippy (`-D warnings`).
 - **No `.js` config files**: ESLint config is TypeScript (`eslint.config.ts`);
-  app bundling uses Metro (`apps/windows/metro.config.js`, `apps/mobile/metro.config.js`).
+  Windows app bundling uses Vite (`apps/windows/vite.config.ts`); the companion still uses Metro (`apps/mobile/metro.config.js`).
 - **Warnings are errors**: lint runs with `--max-warnings 0`, so a warning
   fails the build/commit. Suppress a genuine false positive with a narrow
   `// eslint-disable-next-line <rule>` plus a one-line reason (current ones:
@@ -80,9 +80,9 @@ npm run rust:clippy    # cargo clippy --all-targets -- -D warnings
 
 - Shared design system: [`packages/ui`](packages/ui) (`@pane/ui`) — Tamagui theme **`dark`** with Pane tokens (token values mirror desktop `global.css` / `shell.css`).
 - Use `Button`, `Card`, `Switch` (`native` on mobile), `Slider` (native range / `@react-native-community/slider`), `QRCode`, layout stacks from `@pane/ui` before adding one-off primitives.
-- Wrap app roots with `UIProvider`. Both apps use `@tamagui/babel-plugin` pointing at `packages/ui/tamagui.config.cjs`.
+- Wrap app roots with `UIProvider`. The companion uses `@tamagui/babel-plugin` pointing at `packages/ui/tamagui.config.cjs`; Windows keeps Tamagui runtime styling through Vite.
 - Reusable motion belongs in `@pane/ui`: use Tamagui animations and shared wrappers such as `PageTransition` / `PopupTransition` for page, modal, popup, preview, and cross-platform component motion. Keep CSS animations for Windows-only chrome, DOM-specific hover polish, and specialized webview flows that are tightly coupled to Tauri window readiness.
-- Windows-only chrome: `apps/windows/app/shell.css` for titlebar/sidebar glass and `data-tauri-drag-region` — not in `@pane/ui`.
+- Windows-only chrome: `apps/windows/src/styles/shell.css` for titlebar/sidebar glass and `data-tauri-drag-region` — not in `@pane/ui`.
 - Optimize the main window for the default 800–900 px width.
 - Icons: `@tamagui/lucide-icons-2` (re-export from `@pane/ui` when needed). Do not add other icon libraries.
 - Companion dev requires a **dev client** build (`npm run companion` → `expo run:ios --device`); Expo Go is not supported for native sliders/Tamagui controls.
@@ -95,7 +95,7 @@ npm run rust:clippy    # cargo clippy --all-targets -- -D warnings
 
 ### Child window URLs
 
-`WebviewUrl::App("index.html?view=preview".into())` drops the query string silently. Use `child_webview_url` (`apps/windows/tauri/src/child_webview_url.rs`) so every secondary webview gets a **direct expo-router path** from the main window's origin — never `?view=` on the main pathname (`/capture`):
+`WebviewUrl::App("index.html?view=preview".into())` drops the query string silently. Use `child_webview_url` (`apps/windows/tauri/src/child_webview_url.rs`) so every secondary webview gets a **direct frontend route path** from the main window's origin — never `?view=` on the main pathname (`/capture`):
 
 ```rust
 use crate::child_webview_url::{self, routes};
@@ -105,7 +105,7 @@ let url = child_webview_url::webview_url(app, routes::CAPTURE_PREVIEW)?;
 let url = child_webview_url::route_url_with_query(app, routes::ACCENT_POPUP, &[("chars", "à,â,ä")])?;
 ```
 
-Add new popup routes to `child_webview_url::routes` and `app/(views)/` together. `app/index.tsx` `?view=` redirects are legacy only.
+Add new popup routes to `child_webview_url::routes` and `apps/windows/src/routes/` together. The root index route's `?view=` redirects are legacy only.
 
 ### Multi-step flows that destroy windows
 
@@ -130,7 +130,7 @@ git add apps/windows/tauri/gen/schemas/
 
 ### Common dev signals
 
-- Metro web frontend: `http://localhost:8081` (Expo default; see `tauri.conf.json`)
+- Vite web frontend: `http://localhost:8081` (see `tauri.conf.json`)
 - CDP target list: `http://localhost:9222/json/version`
 - `pane.exe` exit code `0xffffffff` = Rust panic. Re-run with `$env:RUST_BACKTRACE=1`.
 - Port 8081 already in use: `Get-NetTCPConnection -LocalPort 8081 -State Listen` to find the owner.

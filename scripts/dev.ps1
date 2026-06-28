@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Start Pane dev (Tauri + Metro) as a single instance.
+    Start Pane dev (Tauri + Vite) as a single instance.
 
 .DESCRIPTION
     Ensures only one dev session runs at a time for this repo:
@@ -13,7 +13,7 @@
          starting fresh.
       4. Run the local Tauri CLI (blocking).
 
-    Prefer this over raw `tauri dev` or `npx expo start --web`.
+    Prefer this over raw `tauri dev` or `vite`.
 
 .EXAMPLE
     .\scripts\dev.ps1
@@ -86,18 +86,6 @@ function Add-WebView2BrowserArgument {
     }
 }
 
-function Should-SuppressDevLogLine {
-    param([string]$Line)
-
-    return (
-        $Line -like "Web  INFO  *Download the React DevTools*" -or
-        $Line -like "Web  LOG  Running application `"main`" with appParams:*" -or
-        ($Line -like "*`"hydrate`": undefined*" -and $Line -like "*`"rootTag`": `"#root`"*") -or
-        $Line -eq "Development-level warnings: ON." -or
-        $Line -eq "Performance optimizations: OFF."
-    )
-}
-
 function Invoke-TauriDev {
     # The Tauri CLI is hoisted to the workspace-root node_modules, but it must
     # run from the Windows app dir so it finds apps/windows/tauri/tauri.conf.json
@@ -121,7 +109,7 @@ function Invoke-TauriDev {
     $command = 'cd /d "' + $appDir + '" && "' + $node.Source + '" "' + $tauriCli + '" dev --config "' + $devConfig + '" 2>&1'
     & cmd.exe /d /s /c $command | ForEach-Object {
         $line = $_.ToString()
-        if ($line -notlike "*STATUS_CONTROL_C_EXIT*" -and -not (Should-SuppressDevLogLine $line)) {
+        if ($line -notlike "*STATUS_CONTROL_C_EXIT*") {
             [Console]::Out.WriteLine($line)
         }
     }
@@ -156,10 +144,6 @@ try {
     Invoke-StopDev
     Assert-DevPortAvailable
     Add-WebView2BrowserArgument "--disable-logging"
-
-    # The Tauri webview is the real frontend; suppress Expo's `--web` auto-open
-    # so `expo start` serves Metro on :8081 without also launching a browser tab.
-    $env:BROWSER = "none"
 
     $exitCode = Invoke-TauriDev
     exit $exitCode
