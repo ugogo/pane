@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
-import { Link, useRouterState } from '@tanstack/react-router';
+import { useRouterState } from '@tanstack/react-router';
 import {
   ActivityIcon,
   AlertTriangleIcon,
@@ -9,35 +9,22 @@ import {
   LanguagesIcon,
   LightbulbIcon,
   Loader2Icon,
-  MinusIcon,
   MonitorIcon,
   PowerIcon,
   RotateCcwIcon,
   SmartphoneIcon,
-  SquareIcon,
   Volume2Icon,
-  XIcon,
 } from 'lucide-react';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Button, Card, Text } from 'pickle-ui';
 import { AppBootFailure } from '@/components/app-boot-failure';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
-import { APP_DISPLAY_NAME } from '@/lib/app-name';
+import { AppNavLink } from '@/components/shell/app-nav-link';
+import { AppSidebar } from '@/components/shell/app-sidebar';
+import { AppTitlebar } from '@/components/shell/app-titlebar';
 import { useAppBoot } from '@/lib/use-app-boot';
 import { UpdateCheckContext } from '@/lib/update-check-context';
 import { useUpdateCheck, type UpdateNoticeState } from '@/lib/use-update-check';
 import { restartToApplyUpdate } from '@/lib/updater';
-
-const SHELL_SURFACE =
-  'relative isolate overflow-hidden bg-[var(--app-shell-nav)] backdrop-blur-[34px] backdrop-saturate-[1.35] backdrop-brightness-[0.68]';
-
-const TITLEBAR = `${SHELL_SURFACE} relative z-10 flex h-9 select-none items-center border-b border-border shadow-[inset_0_1px_0_var(--app-white-08),inset_0_-1px_0_var(--app-black-20)]`;
-
-const WINDOW_CONTROL =
-  'grid h-9 w-[46px] cursor-pointer place-items-center border-0 bg-transparent p-0 text-[var(--app-foreground-control)] transition-[color,background-color] duration-120 hover:bg-[var(--app-white-09)] hover:text-[var(--app-foreground-control-hover)]';
-
-const NAV_LINK_BASE =
-  'flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm no-underline transition-[background-color,color] duration-120 ease-in-out max-md:min-w-max md:min-w-0';
 
 const modules = [
   {
@@ -179,33 +166,17 @@ function AppShell({
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <AppTitlebar />
       <div className="flex min-h-0 min-w-0 flex-1 flex-row max-md:flex-col">
-        <div
-          className={`${SHELL_SURFACE} w-[200px] shrink-0 border-r border-[var(--app-border-medium)] px-4 py-5 shadow-[inset_-1px_0_0_var(--app-black-16),inset_1px_0_0_var(--app-white-12)] max-md:w-full max-md:border-r-0 max-md:border-b max-md:border-b-[var(--app-white-09)] max-md:px-3 max-md:py-2.5 [&>*]:relative [&>*]:z-[1]`}
-        >
-          <nav
-            aria-label="Pane modules"
-            className="flex flex-col gap-1 max-md:flex-row max-md:overflow-x-auto max-md:pb-0.5"
-          >
-            {modules.map(({ path, label, icon: Icon }) => {
-              const isActive = pathname === path;
-              return (
-                <Link
-                  key={path}
-                  to={path}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={
-                    isActive
-                      ? `${NAV_LINK_BASE} bg-[var(--app-white-10)] text-foreground`
-                      : `${NAV_LINK_BASE} text-[var(--app-foreground-subtle)] hover:bg-[var(--app-white-08)] hover:text-foreground`
-                  }
-                >
-                  <Icon aria-hidden size={16} />
-                  <Text as="span">{label}</Text>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+        <AppSidebar>
+          {modules.map(({ path, label, icon }) => (
+            <AppNavLink
+              key={path}
+              active={pathname === path}
+              icon={icon}
+              label={label}
+              to={path}
+            />
+          ))}
+        </AppSidebar>
 
         <div
           ref={contentScrollRef}
@@ -239,72 +210,6 @@ function AppShell({
             {children}
           </main>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function AppTitlebar() {
-  return (
-    <div
-      className={TITLEBAR}
-      data-tauri-drag-region
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.button !== 0) return;
-        const target = event.target as HTMLElement;
-        if (target.closest('button')) return;
-        void getCurrentWindow().startDragging().catch(console.error);
-      }}
-    >
-      <div
-        className="flex min-w-0 items-center gap-2 px-3"
-        data-tauri-drag-region
-      >
-        <span
-          className="flex size-4 items-center justify-center rounded bg-primary text-primary-foreground"
-          data-tauri-drag-region
-        >
-          <CameraIcon aria-hidden size={12} />
-        </span>
-        <span
-          className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[var(--app-foreground-soft)]"
-          data-tauri-drag-region
-        >
-          <Text as="span" variant="small">
-            {APP_DISPLAY_NAME}
-          </Text>
-        </span>
-      </div>
-      <div className="ml-auto flex h-full">
-        <button
-          aria-label="Minimize"
-          className={WINDOW_CONTROL}
-          type="button"
-          onClick={() =>
-            void getCurrentWindow().minimize().catch(console.error)
-          }
-        >
-          <MinusIcon aria-hidden size={14} />
-        </button>
-        <button
-          aria-label="Maximize or restore"
-          className={WINDOW_CONTROL}
-          type="button"
-          onClick={() =>
-            void getCurrentWindow().toggleMaximize().catch(console.error)
-          }
-        >
-          <SquareIcon aria-hidden size={12} />
-        </button>
-        <button
-          aria-label="Close to tray"
-          className={`${WINDOW_CONTROL} hover:bg-[var(--app-close-hover)] hover:text-foreground`}
-          type="button"
-          onClick={() => void getCurrentWindow().hide().catch(console.error)}
-        >
-          <XIcon aria-hidden size={14} />
-        </button>
       </div>
     </div>
   );

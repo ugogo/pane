@@ -19,6 +19,7 @@ import {
   toggleCaptureZoom,
   type CaptureResult,
 } from '@/lib/commands';
+import { cn } from '@/lib/cn';
 
 export const Route = createFileRoute('/preview')({
   component: PreviewPage,
@@ -385,7 +386,10 @@ function PreviewChromeButton({
       type="button"
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onClick}
-      className={`absolute top-1.5 z-[2] flex size-[30px] cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--app-preview-control)] text-foreground opacity-0 transition-[background-color,opacity] duration-150 hover:bg-muted group-hover:opacity-100 group-focus-within:opacity-100 [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:text-current ${side === 'left' ? 'left-1.5' : 'right-1.5'}`}
+      className={cn(
+        'absolute top-1.5 z-[2] flex size-[30px] cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--app-preview-control)] text-foreground opacity-0 transition-[background-color,opacity] duration-150 hover:bg-muted group-hover:opacity-100 group-focus-within:opacity-100 [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:text-current',
+        side === 'left' ? 'left-1.5' : 'right-1.5',
+      )}
       aria-label={label}
     >
       <Icon aria-hidden size={14} />

@@ -1,7 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { createFileRoute } from '@tanstack/react-router';
 import {
   ArrowUpRightIcon,
@@ -25,13 +24,11 @@ import {
   takeLatestCaptureEdit,
 } from '@/lib/commands';
 import { useEffectEvent } from '@/lib/use-effect-event';
+import { EditorRangeField } from '@/components/image-editor/editor-range-field';
+import { EditorSectionHeading } from '@/components/image-editor/editor-section-heading';
+import { EditorToggleButton } from '@/components/image-editor/editor-toggle-button';
+import { ChildWindowTitlebar } from '@/components/shell/child-window-titlebar';
 import '@/styles/image-editor.css';
-
-const EDITOR_TOOL_BTN =
-  'flex cursor-pointer items-center justify-center border border-border bg-secondary text-muted-foreground transition-[background-color,border-color,color] duration-120 ease-in-out hover:enabled:bg-accent hover:enabled:text-foreground aria-pressed:border-ring aria-pressed:bg-accent aria-pressed:text-foreground disabled:cursor-default disabled:opacity-45';
-
-const WINDOW_ACTION_CONTROL =
-  'grid h-9 w-[46px] cursor-pointer place-items-center border-0 bg-transparent p-0 text-[var(--app-foreground-control)] transition-[color,background-color] duration-120 hover:bg-[var(--app-white-09)] hover:text-[var(--app-foreground-control-hover)]';
 
 export const Route = createFileRoute('/image-editor')({
   component: ImageEditorPage,
@@ -1400,29 +1397,12 @@ function ImageEditorPage() {
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-card text-[13px] text-foreground">
-      <div
-        className="flex h-9 shrink-0 items-center border-b border-border pl-3.5"
-        data-tauri-drag-region
-        role="presentation"
-        onMouseDown={(event) => {
-          if (event.button !== 0) return;
-          const target = event.target as HTMLElement;
-          if (target.closest('button')) return;
-          void getCurrentWindow().startDragging().catch(console.error);
-        }}
-      >
-        <span className="text-[13px] font-semibold">Edit capture</span>
-        <div className="ml-auto flex h-full shrink-0">
-          <button
-            type="button"
-            onClick={() => void hideImageEditor()}
-            className={`${WINDOW_ACTION_CONTROL} hover:bg-[var(--app-close-hover)] hover:text-foreground [&_svg]:size-4`}
-            aria-label="Close editor"
-          >
-            <XIcon aria-hidden size={16} />
-          </button>
-        </div>
-      </div>
+      <ChildWindowTitlebar
+        title={<span className="text-[13px] font-semibold">Edit capture</span>}
+        closeLabel="Close editor"
+        onClose={() => void hideImageEditor()}
+        closeIcon={<XIcon aria-hidden size={16} />}
+      />
 
       <div className="flex min-h-0 flex-1">
         <EditorStage
@@ -1542,69 +1522,61 @@ function EditorPanel({
 }) {
   return (
     <div className="flex w-[248px] shrink-0 flex-col gap-3.5 border-l border-border bg-muted p-4">
-      <h2 className="pt-1 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
-        Tools
-      </h2>
+      <EditorSectionHeading>Tools</EditorSectionHeading>
       <div className="-mt-1 grid grid-cols-6 gap-1.5">
         {TOOLS.map(({ id, label, icon: Icon, hint }) => (
-          <button
+          <EditorToggleButton
             key={id}
-            type="button"
+            size="tool"
             title={`${label} (${hint})`}
             aria-label={label}
             aria-pressed={tool === id}
             onClick={() => onTool(id)}
-            className={`${EDITOR_TOOL_BTN} aspect-square w-full rounded-lg`}
           >
             <Icon aria-hidden size={16} />
-          </button>
+          </EditorToggleButton>
         ))}
       </div>
 
       <div className="mb-1.5 flex gap-1.5">
-        <button
-          type="button"
+        <EditorToggleButton
+          size="icon"
           title="Undo"
           aria-label="Undo"
           onClick={onUndo}
           disabled={undo.length === 0}
-          className={`${EDITOR_TOOL_BTN} h-[30px] w-[34px] rounded-lg`}
         >
           <Undo2Icon aria-hidden size={15} />
-        </button>
-        <button
-          type="button"
+        </EditorToggleButton>
+        <EditorToggleButton
+          size="icon"
           title="Redo"
           aria-label="Redo"
           onClick={onRedo}
           disabled={redo.length === 0}
-          className={`${EDITOR_TOOL_BTN} h-[30px] w-[34px] rounded-lg`}
         >
           <Redo2Icon aria-hidden size={15} />
-        </button>
+        </EditorToggleButton>
       </div>
 
-      <h2 className="pt-1 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
-        Style
-      </h2>
+      <EditorSectionHeading>Style</EditorSectionHeading>
       <div className="-mt-1 flex flex-wrap gap-1.5">
         {SWATCHES.map((swatch) => (
-          <button
+          <EditorToggleButton
             key={swatch}
-            type="button"
+            size="swatch"
             title={swatch}
             aria-label={`Use ${swatch}`}
             aria-pressed={color === swatch}
             onClick={() => onColor(swatch)}
-            className={`${EDITOR_TOOL_BTN} size-7 rounded-full shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--secondary)_52%,transparent)] aria-pressed:border-foreground aria-pressed:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--secondary)_52%,transparent),0_0_0_2px_var(--ring)]`}
             style={{ background: swatch }}
           />
         ))}
       </div>
-      <label className="mb-1.5 grid grid-cols-[auto_minmax(0,1fr)_42px] items-center gap-2 text-[11px] font-semibold text-muted-foreground [&_output]:text-right [&_output]:text-xs [&_output]:text-foreground">
-        <span>Stroke</span>
+      <EditorRangeField label="Stroke">
         <input
           type="range"
+          aria-label="Stroke width"
           min={2}
           max={18}
           step={1}
@@ -1614,7 +1586,7 @@ function EditorPanel({
           className="image-editor-range"
         />
         <output>{strokeWidth}px</output>
-      </label>
+      </EditorRangeField>
 
       <BackgroundControls
         padding={padding}
@@ -1623,9 +1595,7 @@ function EditorPanel({
         onBackground={onBackground}
       />
 
-      <h2 className="pt-1 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
-        Crop
-      </h2>
+      <EditorSectionHeading>Crop</EditorSectionHeading>
       <div className="-mt-1 grid grid-cols-2 gap-x-3 gap-y-2.5">
         <CropField
           label="X"
@@ -1702,13 +1672,11 @@ function BackgroundControls({
 }) {
   return (
     <>
-      <h2 className="pt-1 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
-        Background
-      </h2>
-      <label className="mb-1.5 grid grid-cols-[auto_minmax(0,1fr)_42px] items-center gap-2 text-[11px] font-semibold text-muted-foreground [&_output]:text-right [&_output]:text-xs [&_output]:text-foreground">
-        <span>Padding</span>
+      <EditorSectionHeading>Background</EditorSectionHeading>
+      <EditorRangeField label="Padding">
         <input
           type="range"
+          aria-label="Background padding"
           min={0}
           max={MAX_PADDING}
           step={2}
@@ -1717,17 +1685,16 @@ function BackgroundControls({
           className="image-editor-range"
         />
         <output>{padding}px</output>
-      </label>
+      </EditorRangeField>
       <div className="-mt-1 flex flex-wrap gap-1.5">
         {GRADIENTS.map((gradient) => (
-          <button
+          <EditorToggleButton
             key={gradient.id}
-            type="button"
+            size="swatch"
             title={gradient.label}
             aria-label={`Use ${gradient.label} gradient`}
             aria-pressed={background === gradient.id}
             onClick={() => onBackground(gradient.id)}
-            className={`${EDITOR_TOOL_BTN} size-7 rounded-full shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--secondary)_52%,transparent)] aria-pressed:border-foreground aria-pressed:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--secondary)_52%,transparent),0_0_0_2px_var(--ring)]`}
             style={{ backgroundImage: gradientCss(gradient) }}
           />
         ))}

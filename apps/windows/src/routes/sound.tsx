@@ -28,6 +28,7 @@ import {
 } from '@/lib/audio-favorites';
 import { fetchSound, type SoundQueryData } from '@/lib/sound-query';
 import { queryKeys } from '@/lib/query-keys';
+import { cn } from '@/lib/cn';
 import { useActionStatus } from '@/lib/use-action-status';
 import { useDebouncedWrite } from '@/lib/use-debounced-write';
 import { useTauriEvent } from '@/lib/use-tauri-event';
@@ -242,37 +243,17 @@ function Section({
           </div>
         ) : (
           <div className="mt-3 max-h-40 overflow-y-auto rounded-lg border border-border">
-            {ordered.map((d, index) => {
-              const isFav = favs.has(d.id);
-              return (
-                <div
-                  key={d.id}
-                  className={`flex items-center gap-2 px-2 py-2 ${index > 0 ? 'border-t border-border' : ''} ${d.isDefault ? 'bg-accent' : ''}`}
-                >
-                  <button
-                    className={`min-w-0 flex-1 truncate text-left text-sm focus-ring rounded-sm ${d.isDefault ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
-                    disabled={busy}
-                    type="button"
-                    onClick={() => onSelect(kind, d.id)}
-                  >
-                    <span className="mr-2 inline-block size-1.5 rounded-full bg-current" />
-                    {d.name}
-                  </button>
-                  <Button
-                    aria-label={isFav ? 'Remove favorite' : 'Add favorite'}
-                    disabled={busy}
-                    variant="ghost"
-                    onClick={() => onToggleFavorite(kind, d.id)}
-                  >
-                    <StarIcon
-                      aria-hidden
-                      fill={isFav ? 'currentColor' : 'none'}
-                      size={13}
-                    />
-                  </Button>
-                </div>
-              );
-            })}
+            {ordered.map((d, index) => (
+              <AudioDeviceRow
+                key={d.id}
+                busy={busy}
+                device={d}
+                isFavorite={favs.has(d.id)}
+                showTopBorder={index > 0}
+                onSelect={() => onSelect(kind, d.id)}
+                onToggleFavorite={() => onToggleFavorite(kind, d.id)}
+              />
+            ))}
           </div>
         )}
 
@@ -326,5 +307,58 @@ function Section({
         )}
       </Card.Content>
     </Card>
+  );
+}
+
+function AudioDeviceRow({
+  device,
+  busy,
+  isFavorite,
+  showTopBorder,
+  onSelect,
+  onToggleFavorite,
+}: {
+  device: AudioDevice;
+  busy: boolean;
+  isFavorite: boolean;
+  showTopBorder: boolean;
+  onSelect: () => void;
+  onToggleFavorite: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 px-2 py-2',
+        showTopBorder && 'border-t border-border',
+        device.isDefault && 'bg-accent',
+      )}
+    >
+      <button
+        className={cn(
+          'focus-ring min-w-0 flex-1 truncate rounded-sm text-left text-sm',
+          device.isDefault
+            ? 'font-semibold text-foreground'
+            : 'text-muted-foreground',
+        )}
+        disabled={busy}
+        type="button"
+        onClick={onSelect}
+      >
+        <span className="mr-2 inline-block size-1.5 rounded-full bg-current" />
+        {device.name}
+      </button>
+      <Button
+        aria-label={isFavorite ? 'Remove favorite' : 'Add favorite'}
+        disabled={busy}
+        variant="ghost"
+        onClick={onToggleFavorite}
+      >
+        <StarIcon
+          aria-hidden
+          fill={isFavorite ? 'currentColor' : 'none'}
+          size={13}
+        />
+      </Button>
+    </div>
   );
 }
