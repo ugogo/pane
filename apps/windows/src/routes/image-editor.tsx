@@ -4,19 +4,19 @@ import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { createFileRoute } from '@tanstack/react-router';
 import {
-  ArrowUpRightIcon as ArrowUpRight,
-  CheckIcon as Check,
+  ArrowUpRightIcon,
+  CheckIcon,
   CropIcon,
-  HandIcon as Hand,
-  HighlighterIcon as Highlighter,
-  PenIcon as Pencil,
-  RectangleHorizontalIcon as RectangleHorizontal,
-  Redo2Icon as Redo2,
-  RotateCcwIcon as RotateCcw,
-  SaveIcon as Save,
-  ScanIcon as Scan,
-  Undo2Icon as Undo2,
-  XIcon as X,
+  HandIcon,
+  HighlighterIcon,
+  PenIcon,
+  RectangleHorizontalIcon,
+  Redo2Icon,
+  RotateCcwIcon,
+  SaveIcon,
+  ScanIcon,
+  Undo2Icon,
+  XIcon,
 } from 'lucide-react';
 import {
   commitLatestCaptureEdit,
@@ -256,23 +256,35 @@ const TOOLS: Array<{
   hint: string; // human-readable key shown in the tooltip
 }> = [
   { id: 'crop', label: 'Crop', icon: CropIcon, code: 'KeyC', hint: 'C' },
-  { id: 'pan', label: 'Hand (pan)', icon: Hand, code: 'Space', hint: 'Space' },
-  { id: 'arrow', label: 'Arrow', icon: ArrowUpRight, code: 'KeyA', hint: 'A' },
+  {
+    id: 'pan',
+    label: 'Hand (pan)',
+    icon: HandIcon,
+    code: 'Space',
+    hint: 'Space',
+  },
+  {
+    id: 'arrow',
+    label: 'Arrow',
+    icon: ArrowUpRightIcon,
+    code: 'KeyA',
+    hint: 'A',
+  },
   {
     id: 'rect',
     label: 'Rectangle',
-    icon: RectangleHorizontal,
+    icon: RectangleHorizontalIcon,
     code: 'KeyR',
     hint: 'R',
   },
   {
     id: 'highlight',
     label: 'Highlight',
-    icon: Highlighter,
+    icon: HighlighterIcon,
     code: 'KeyH',
     hint: 'H',
   },
-  { id: 'pen', label: 'Pen', icon: Pencil, code: 'KeyP', hint: 'P' },
+  { id: 'pen', label: 'Pen', icon: PenIcon, code: 'KeyP', hint: 'P' },
 ];
 
 const SWATCHES = ['#f43f5e', '#38bdf8', '#facc15', '#22c55e', '#f8fafc'];
@@ -1400,7 +1412,7 @@ function ImageEditorPage() {
             className="window-action-control window-action-control-close image-editor-action-control"
             aria-label="Close editor"
           >
-            <X aria-hidden size={16} />
+            <XIcon aria-hidden size={16} />
           </button>
         </div>
       </div>
@@ -1549,7 +1561,7 @@ function EditorPanel({
           disabled={undo.length === 0}
           className="image-editor-icon-btn"
         >
-          <Undo2 aria-hidden size={15} />
+          <Undo2Icon aria-hidden size={15} />
         </button>
         <button
           type="button"
@@ -1559,7 +1571,7 @@ function EditorPanel({
           disabled={redo.length === 0}
           className="image-editor-icon-btn"
         >
-          <Redo2 aria-hidden size={15} />
+          <Redo2Icon aria-hidden size={15} />
         </button>
       </div>
 
@@ -1637,7 +1649,7 @@ function EditorPanel({
           disabled={!base || unchanged}
           className="image-editor-btn image-editor-btn-ghost"
         >
-          <RotateCcw aria-hidden size={14} />
+          <RotateCcwIcon aria-hidden size={14} />
           Reset
         </button>
         <button
@@ -1649,9 +1661,9 @@ function EditorPanel({
           className="image-editor-btn image-editor-btn-primary"
         >
           {save === 'success' ? (
-            <Check aria-hidden size={14} />
+            <CheckIcon aria-hidden size={14} />
           ) : (
-            <Save aria-hidden size={14} />
+            <SaveIcon aria-hidden size={14} />
           )}
           {save === 'success'
             ? 'Saved'
@@ -2756,7 +2768,7 @@ function EditorStageView({
             aria-label="Fit to window"
             onClick={onFitZoom}
           >
-            <Scan aria-hidden size={15} />
+            <ScanIcon aria-hidden size={15} />
             <span>{Math.round(zoom * 100)}%</span>
           </button>
         </div>
