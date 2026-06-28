@@ -24,7 +24,6 @@
 .app-sidebar {
   flex-shrink: 0;
   width: 200px;
-  box-sizing: border-box;
   padding: 20px 16px;
   border-right: 1px solid var(--app-border-medium);
   box-shadow:
@@ -170,6 +169,12 @@
   opacity: 1;
 }
 
+.preview-card img,
+.capture-zoom-card img {
+  outline: 1px solid rgb(255 255 255 / 0.1);
+  outline-offset: -1px;
+}
+
 .preview-overlay {
   position: absolute;
   inset: 0;
@@ -231,7 +236,7 @@
   padding: 2px 6px;
   background: var(--app-preview-control);
   color: var(--app-foreground-muted);
-  font-family: monospace;
+  font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
   font-size: 10px;
   opacity: 0;
   transition: opacity 150ms ease;
@@ -272,7 +277,7 @@
   border: 1px solid var(--app-border-strong);
   border-radius: 8px;
   background: var(--app-panel);
-  font-family: monospace;
+  font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
   font-size: 14px;
   text-align: left;
   cursor: text;
@@ -334,7 +339,6 @@
   display: flex;
   gap: 4px;
   padding: 4px;
-  box-sizing: border-box;
   background: var(--app-panel-raised);
   box-shadow: 0 8px 24px var(--app-shadow-strong);
 }
@@ -417,7 +421,7 @@
 .area-selector-size-label {
   position: absolute;
   left: 0;
-  font-family: monospace;
+  font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
   font-size: 12px;
 }
 
@@ -552,7 +556,6 @@
   flex: none;
   max-width: 100%;
   max-height: 100%;
-  box-sizing: border-box;
 }
 
 .image-editor-frame {
@@ -846,7 +849,6 @@
 }
 
 .image-editor-section {
-  margin: 0;
   padding-top: 4px;
   font-size: 11px;
   font-weight: 700;
@@ -1027,7 +1029,6 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  box-sizing: border-box;
   width: 100%;
   padding: 0 8px;
   border: 1px solid var(--app-border-strong);
@@ -1106,7 +1107,6 @@
 }
 
 .image-editor-saved {
-  margin: 0;
   font-size: 12px;
   color: var(--app-foreground-muted);
 }
@@ -1157,8 +1157,8 @@
   stroke: currentcolor;
 }
 
-/* Boot/render failure fallback. Plain-CSS only (no Tamagui tokens) so it still
-   styles correctly when the failure is the Tamagui CSS layer itself. */
+/* Boot/render failure fallback. Plain-CSS only so it still styles correctly
+   when the generated Pickle/Tailwind stylesheet is missing or invalid. */
 .app-boot-failure {
   display: flex;
   flex-direction: column;
@@ -1171,7 +1171,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
   padding: 24px;
 }
 
@@ -1179,7 +1178,6 @@
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  box-sizing: border-box;
   width: 100%;
   max-width: 480px;
   padding: 16px;
@@ -1196,20 +1194,17 @@
 }
 
 .app-boot-failure-title {
-  margin: 0;
   color: var(--app-destructive);
   font-size: 16px;
   font-weight: 600;
 }
 
 .app-boot-failure-message {
-  margin: 0;
   color: var(--app-destructive);
   font-size: 13px;
 }
 
 .app-boot-failure-hint {
-  margin: 0;
   color: var(--app-foreground-muted);
   font-size: 12px;
 }

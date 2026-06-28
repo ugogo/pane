@@ -1,13 +1,12 @@
-import '@/lib/register-geist-font';
-import '@tamagui/web/reset.css';
+import '@/lib/register-pane-fonts';
 import '@/styles/shell.css';
 import '@/styles/global.css';
+import '@/styles/windows.source.css';
 import {
   createRootRoute,
   Outlet,
   useRouterState,
 } from '@tanstack/react-router';
-import { UIProvider } from '@pane/ui';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { MainShell } from '@/components/app-shell';
 import { isMainShellPath } from '@/lib/main-shell-routes';
@@ -23,7 +22,7 @@ function RootLayout() {
   });
 
   return (
-    <UIProvider>
+    <div className="pane-pickle-theme dark contents">
       <AppErrorBoundary>
         <PaneQueryProvider>
           {isMainShellPath(pathname) ? (
@@ -35,7 +34,7 @@ function RootLayout() {
           )}
         </PaneQueryProvider>
       </AppErrorBoundary>
-    </UIProvider>
+    </div>
   );
 }
 

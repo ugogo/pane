@@ -10,22 +10,7 @@ import {
   RotateCcwIcon,
   Trash2Icon,
 } from 'lucide-react';
-import {
-  Button,
-  Card,
-  DeviceIcon,
-  MutedPanel,
-  MutedText,
-  PresetGroup,
-  PresetIconButton,
-  PresetNameButton,
-  Slider,
-  Switch,
-  Text,
-  XStack,
-  YStack,
-  colors,
-} from '@pane/ui';
+import { Button, Card, Slider, Switch, Text, XStack, YStack } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusBadge, StatusText } from '@/components/features/status-ui';
 import {
@@ -65,6 +50,10 @@ function lightTitle(l: Light) {
     case 'dxlight':
       return 'DX Light strip';
   }
+}
+
+function sliderValue(value: number | readonly number[], fallback: number) {
+  return typeof value === 'number' ? value : (value[0] ?? fallback);
 }
 
 function lightSubtitle(l: Light) {
@@ -146,7 +135,7 @@ function LightRow({
   const [color, setColor] = useState<string>(() =>
     initialState
       ? rgbToHex(initialState.r, initialState.g, initialState.b)
-      : colors.white,
+      : '#ffffff',
   );
   const [brightness, setBrightness] = useState<number>(() => {
     if (!initialState) return 75;
@@ -240,69 +229,76 @@ function LightRow({
   }
 
   return (
-    <Card gap="$3" padding="$3">
-      <XStack flexWrap="wrap" gap="$3" alignItems="center">
-        <DeviceIcon>
-          <LightIcon light={light} />
-        </DeviceIcon>
-        <YStack flex={1} style={{ minWidth: 0 }}>
-          <Text fontSize="$3" fontWeight="600" numberOfLines={1}>
-            {lightTitle(light)}
-          </Text>
-          <MutedText fontSize="$2" numberOfLines={1}>
-            {lightSubtitle(light)}
-          </MutedText>
-        </YStack>
-        <StatusBadge status={visibleStatus} />
-      </XStack>
+    <Card className="gap-3 py-3">
+      <Card.Content className="px-3">
+        <XStack align="center" gap={3} wrap="wrap">
+          <div className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted">
+            <LightIcon light={light} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <Text className="truncate" weight="bold">
+              {lightTitle(light)}
+            </Text>
+            <Text className="truncate" tone="muted">
+              {lightSubtitle(light)}
+            </Text>
+          </div>
+          <StatusBadge status={visibleStatus} />
+        </XStack>
 
-      <XStack flexWrap="wrap" gap="$3" alignItems="center">
-        <input
-          type="color"
-          aria-label={`Color for ${lightTitle(light)}`}
-          className="color-input"
-          disabled={disabled}
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-        />
-        <YStack flex={1} gap="$1" style={{ minWidth: 160 }}>
-          <MutedText fontSize="$2">Brightness {brightness}%</MutedText>
-          <Slider
+        <XStack className="mt-3" align="center" gap={3} wrap="wrap">
+          <input
+            type="color"
+            aria-label={`Color for ${lightTitle(light)}`}
+            className="color-input"
             disabled={disabled}
-            max={100}
-            min={0}
-            step={1}
-            value={brightness}
-            onChange={setBrightness}
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
           />
-        </YStack>
-        <Button
-          disabled={busy || disabled}
-          btnScale="sm"
-          appearance="outline"
-          onPress={() => void apply()}
-        >
-          Apply
-        </Button>
-        <Button
-          disabled={busy || disabled}
-          btnScale="xs"
-          appearance="ghost"
-          onPress={() => void turnOff()}
-        >
-          Off
-        </Button>
-      </XStack>
+          <YStack className="min-w-40 flex-1" gap={1}>
+            <Text tone="muted">Brightness {brightness}%</Text>
+            <Slider
+              disabled={disabled}
+              max={100}
+              min={0}
+              step={1}
+              value={[brightness]}
+              onValueChange={(value) =>
+                setBrightness(sliderValue(value, brightness))
+              }
+            />
+          </YStack>
+          <Button
+            disabled={busy || disabled}
+            size="sm"
+            variant="outline"
+            onClick={() => void apply()}
+          >
+            Apply
+          </Button>
+          <Button
+            disabled={busy || disabled}
+            size="sm"
+            variant="ghost"
+            onClick={() => void turnOff()}
+          >
+            Off
+          </Button>
+        </XStack>
 
-      {disabledReason ? (
-        <MutedPanel>
-          <MutedText fontSize="$2">{disabledReason}</MutedText>
-        </MutedPanel>
-      ) : null}
+        {disabledReason ? (
+          <Text
+            className="mt-3 rounded-lg border border-border bg-muted p-3"
+            tone="muted"
+          >
+            {disabledReason}
+          </Text>
+        ) : null}
 
-      {result.message ? (
-        <StatusText status={result.status}>{result.message}</StatusText>
-      ) : null}
+        {result.message ? (
+          <StatusText status={result.status}>{result.message}</StatusText>
+        ) : null}
+      </Card.Content>
     </Card>
   );
 }
@@ -430,97 +426,112 @@ function AmbientSyncCard() {
   }
 
   return (
-    <Card gap="$3" padding="$3">
-      <XStack gap="$3" alignItems="center">
-        <DeviceIcon>
-          <MonitorIcon size={16} aria-hidden />
-        </DeviceIcon>
-        <YStack flex={1} style={{ minWidth: 0 }}>
-          <Text fontSize="$3" fontWeight="600" numberOfLines={1}>
-            Screen sync
-          </Text>
-          <MutedText fontSize="$2" numberOfLines={1}>
-            DX Light strip follows your screen's color
-          </MutedText>
-        </YStack>
-        <Switch
-          aria-label="Enable screen sync"
-          checked={running}
-          disabled={busy}
-          onCheckedChange={() => void toggle()}
-        />
-      </XStack>
-
-      <Button
-        alignSelf="flex-start"
-        appearance="ghost"
-        btnScale="xs"
-        icon={expanded ? ChevronDownIcon : ChevronRightIcon}
-        onPress={() => setExpanded((v) => !v)}
-      >
-        Adjust
-      </Button>
-
-      {expanded ? (
-        <XStack flexWrap="wrap" gap="$3" alignItems="flex-end">
-          <YStack flex={1} gap="$1" style={{ minWidth: 160 }}>
-            <MutedText fontSize="$2">Brightness {brightness}%</MutedText>
-            <Slider
-              max={100}
-              min={0}
-              step={1}
-              value={brightness}
-              onChange={onBrightnessChange}
-            />
-          </YStack>
-          <YStack flex={1} gap="$1" style={{ minWidth: 160 }}>
-            <MutedText fontSize="$2">Saturation {saturation}%</MutedText>
-            <Slider
-              max={300}
-              min={100}
-              step={5}
-              value={saturation}
-              onChange={onSaturationChange}
-            />
-          </YStack>
-          <YStack flex={1} gap="$1" style={{ minWidth: 160 }}>
-            <MutedText fontSize="$2">Warmth {warmth}%</MutedText>
-            <Slider
-              max={200}
-              min={0}
-              step={1}
-              value={warmth}
-              onChange={onWarmthChange}
-            />
-          </YStack>
-          <YStack flex={1} gap="$1" style={{ minWidth: 160 }}>
-            <MutedText fontSize="$2">
-              Zones {zones === 1 ? '1 (single color)' : zones}
-            </MutedText>
-            <Slider
-              max={10}
-              min={1}
-              step={1}
-              value={zones}
-              onChange={onZonesChange}
-            />
-          </YStack>
-          <YStack flex={1} gap="$1" style={{ minWidth: 160 }}>
-            <MutedText fontSize="$2">Frame rate {fps} fps</MutedText>
-            <Slider
-              max={60}
-              min={5}
-              step={1}
-              value={fps}
-              onChange={onFpsChange}
-            />
-          </YStack>
+    <Card className="gap-3 py-3">
+      <Card.Content className="px-3">
+        <XStack align="center" gap={3}>
+          <div className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted">
+            <MonitorIcon size={16} aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <Text className="truncate" weight="bold">
+              Screen sync
+            </Text>
+            <Text className="truncate" tone="muted">
+              DX Light strip follows your screen's color
+            </Text>
+          </div>
+          <Switch
+            checked={running}
+            disabled={busy}
+            label="Enable screen sync"
+            labelClassName="sr-only"
+            onCheckedChange={() => void toggle()}
+          />
         </XStack>
-      ) : null}
 
-      {result.message ? (
-        <StatusText status={result.status}>{result.message}</StatusText>
-      ) : null}
+        <Button
+          className="mt-2"
+          size="sm"
+          variant="ghost"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? (
+            <ChevronDownIcon aria-hidden size={14} />
+          ) : (
+            <ChevronRightIcon aria-hidden size={14} />
+          )}
+          Adjust
+        </Button>
+
+        {expanded ? (
+          <XStack className="mt-3" align="end" gap={3} wrap="wrap">
+            <YStack className="min-w-40 flex-1" gap={1}>
+              <Text tone="muted">Brightness {brightness}%</Text>
+              <Slider
+                max={100}
+                min={0}
+                step={1}
+                value={[brightness]}
+                onValueChange={(value) =>
+                  onBrightnessChange(sliderValue(value, brightness))
+                }
+              />
+            </YStack>
+            <YStack className="min-w-40 flex-1" gap={1}>
+              <Text tone="muted">Saturation {saturation}%</Text>
+              <Slider
+                max={300}
+                min={100}
+                step={5}
+                value={[saturation]}
+                onValueChange={(value) =>
+                  onSaturationChange(sliderValue(value, saturation))
+                }
+              />
+            </YStack>
+            <YStack className="min-w-40 flex-1" gap={1}>
+              <Text tone="muted">Warmth {warmth}%</Text>
+              <Slider
+                max={200}
+                min={0}
+                step={1}
+                value={[warmth]}
+                onValueChange={(value) =>
+                  onWarmthChange(sliderValue(value, warmth))
+                }
+              />
+            </YStack>
+            <YStack className="min-w-40 flex-1" gap={1}>
+              <Text tone="muted">
+                Zones {zones === 1 ? '1 (single color)' : zones}
+              </Text>
+              <Slider
+                max={10}
+                min={1}
+                step={1}
+                value={[zones]}
+                onValueChange={(value) =>
+                  onZonesChange(sliderValue(value, zones))
+                }
+              />
+            </YStack>
+            <YStack className="min-w-40 flex-1" gap={1}>
+              <Text tone="muted">Frame rate {fps} fps</Text>
+              <Slider
+                max={60}
+                min={5}
+                step={1}
+                value={[fps]}
+                onValueChange={(value) => onFpsChange(sliderValue(value, fps))}
+              />
+            </YStack>
+          </XStack>
+        ) : null}
+
+        {result.message ? (
+          <StatusText status={result.status}>{result.message}</StatusText>
+        ) : null}
+      </Card.Content>
     </Card>
   );
 }
@@ -664,7 +675,7 @@ function LightsPage() {
   }
 
   return (
-    <YStack gap="$4">
+    <YStack gap={4}>
       <PresetBar
         presets={presets}
         busy={busy || presetsQuery.isFetching}
@@ -683,7 +694,7 @@ function LightsPage() {
         <AmbientSyncCard />
       ) : null}
 
-      <YStack gap="$3">
+      <YStack gap={3}>
         {keyedLights.map(({ key, light }) => (
           <LightRow
             key={key}
@@ -725,49 +736,54 @@ function PresetBar({
   onSave: () => void;
 }) {
   return (
-    <XStack flexWrap="wrap" gap="$2" alignItems="center">
-      <Button
-        disabled={busy}
-        btnScale="sm"
-        appearance="outline"
-        onPress={onRefresh}
-      >
+    <XStack align="center" gap={2} wrap="wrap">
+      <Button disabled={busy} size="sm" variant="outline" onClick={onRefresh}>
         Refresh
       </Button>
 
       {presets.map((preset) => (
-        <PresetGroup key={preset.name}>
-          <PresetNameButton
+        <XStack
+          key={preset.name}
+          className="overflow-hidden rounded-md border border-border"
+        >
+          <Button
+            className="rounded-none border-0"
             disabled={busy || !hasLights}
-            onPress={() => onApply(preset.name)}
+            size="sm"
+            variant="secondary"
+            onClick={() => onApply(preset.name)}
           >
             {preset.name}
-          </PresetNameButton>
-          <PresetIconButton
+          </Button>
+          <Button
             aria-label={`Update ${preset.name} preset`}
+            className="rounded-none border-0 border-l border-border"
             disabled={busy || !hasLights}
-            onPress={() => onUpdate(preset.name)}
+            size="sm"
+            variant="secondary"
+            onClick={() => onUpdate(preset.name)}
           >
             <RotateCcwIcon aria-hidden size={12} />
-          </PresetIconButton>
-          <PresetIconButton
+          </Button>
+          <Button
             aria-label={`Delete ${preset.name} preset`}
+            className="rounded-none border-0 border-l border-border"
             disabled={busy}
-            onPress={() => onDelete(preset.name)}
+            size="sm"
+            variant="secondary"
+            onClick={() => onDelete(preset.name)}
           >
             <Trash2Icon aria-hidden size={12} />
-          </PresetIconButton>
-        </PresetGroup>
+          </Button>
+        </XStack>
       ))}
 
       <Button
-        borderColor="$borderColor"
-        borderStyle="dashed"
-        borderWidth={1}
+        className="border-dashed"
         disabled={busy || !hasLights}
-        btnScale="sm"
-        appearance="ghost"
-        onPress={onSave}
+        size="sm"
+        variant="ghost"
+        onClick={onSave}
       >
         + Save preset
       </Button>

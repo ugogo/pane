@@ -1,0 +1,13 @@
+/* Pane's Tailwind entrypoint. Pickle owns its component sources, theme,
+ * variants, and shared utilities through its exported stylesheet. */
+@import 'tailwindcss';
+@import 'pickle-ui/styles.css';
+
+@source '..';
+@source '../../index.html';
+
+@theme {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}

@@ -4,7 +4,7 @@ import {
   ActivityIcon,
   AlertTriangleIcon,
   CameraIcon,
-  CheckCircle2Icon,
+  CheckIcon,
   DownloadIcon,
   LanguagesIcon,
   LightbulbIcon,
@@ -19,19 +19,7 @@ import {
   XIcon,
 } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import {
-  Button,
-  Card,
-  Label,
-  MutedText,
-  PageTransition,
-  Text,
-  colors,
-  ScrollView,
-  View,
-  XStack,
-  YStack,
-} from '@pane/ui';
+import { Button, Card, Text } from 'pickle-ui';
 import { AppBootFailure } from '@/components/app-boot-failure';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { APP_DISPLAY_NAME } from '@/lib/app-name';
@@ -108,23 +96,23 @@ export function MainShell({ children }: { children: ReactNode }) {
   const { isBooting, appVersion, bootError } = useAppBoot();
   const updateCheck = useUpdateCheck();
 
-  if (bootError) {
-    return <AppBootFailure message={bootError} />;
-  }
+  if (bootError) return <AppBootFailure message={bootError} />;
 
   if (isBooting) {
     return (
-      <YStack height="100vh" overflow="hidden">
+      <div className="flex h-screen flex-col overflow-hidden">
         <AppTitlebar />
-        <YStack
-          flex={1}
-          backgroundColor="$background"
-          alignItems="center"
-          justifyContent="center"
+        <output
+          className="flex flex-1 items-center justify-center bg-background"
+          aria-label="Starting Pane"
         >
-          <Loader2Icon aria-hidden size={16} />
-        </YStack>
-      </YStack>
+          <Loader2Icon
+            aria-hidden
+            className="animate-spin text-muted-foreground"
+            size={16}
+          />
+        </output>
+      </div>
     );
   }
 
@@ -166,21 +154,19 @@ function AppShell({
   onInstallUpdate: () => void;
   children: ReactNode;
 }) {
-  const contentScrollRef = useRef<ScrollView>(null);
+  const contentScrollRef = useRef<HTMLDivElement>(null);
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const matchedModule = modules.find((m) => m.path === pathname);
-  const activeModule = matchedModule ?? modules[0];
+  const activeModule = modules.find((m) => m.path === pathname) ?? modules[0];
 
   useLayoutEffect(() => {
-    contentScrollRef.current?.scrollTo({ y: 0, animated: false });
+    contentScrollRef.current?.scrollTo({ top: 0, behavior: 'instant' });
   }, [pathname]);
 
   return (
-    <YStack height="100vh" overflow="hidden">
+    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <AppTitlebar />
-
       <div className="app-main-frame">
         <div className="app-sidebar">
           <nav aria-label="Pane modules" className="app-nav-list">
@@ -190,6 +176,7 @@ function AppShell({
                 <Link
                   key={path}
                   to={path}
+                  aria-current={isActive ? 'page' : undefined}
                   className={
                     isActive
                       ? 'app-nav-link app-nav-link-active'
@@ -204,57 +191,27 @@ function AppShell({
           </nav>
         </div>
 
-        <ScrollView
+        <div
           ref={contentScrollRef}
-          flex={1}
-          backgroundColor="$background"
+          className="min-w-0 flex-1 overflow-y-auto bg-background"
         >
-          <YStack
-            borderBottomWidth={1}
-            borderColor="$borderColor"
-            gap="$1"
-            padding="$6"
-            paddingHorizontal="$8"
-            backgroundColor="$background"
-            style={{ position: 'sticky', top: 0, zIndex: 10 }}
-          >
-            <XStack
-              gap="$4"
-              alignItems="flex-start"
-              justifyContent="space-between"
-              width="100%"
-              style={{ maxWidth: 760, alignSelf: 'center' }}
-            >
-              <YStack flex={1} gap="$1" style={{ minWidth: 0 }}>
-                <Text fontSize="$8" fontWeight="600">
+          <header className="sticky top-0 z-10 border-b border-border bg-background px-8 py-6">
+            <div className="mx-auto flex w-full max-w-190 items-start justify-between gap-4">
+              <div className="min-w-0 flex-1 space-y-1">
+                <Text as="h1" variant="h2" weight="bold">
                   {activeModule.title}
                 </Text>
-                <MutedText fontSize="$3">{activeModule.description}</MutedText>
-              </YStack>
-              <MutedText
-                backgroundColor="$gray2"
-                borderColor="$borderColor"
-                borderWidth={1}
-                style={{ fontFamily: 'monospace' }}
-                fontSize="$2"
-                paddingHorizontal="$2"
-                paddingVertical="$1"
-                borderRadius="$3"
-              >
+                <Text tone="muted">{activeModule.description}</Text>
+              </div>
+              <code className="shrink-0 rounded-md border border-border bg-muted px-2 py-1 text-xs text-muted-foreground">
                 {appVersion ?? 'version unavailable'}
-              </MutedText>
-            </XStack>
-          </YStack>
+              </code>
+            </div>
+          </header>
 
-          <PageTransition
+          <main
             key={pathname}
-            motionKey={pathname}
-            backgroundColor="$background"
-            gap="$5"
-            padding="$6"
-            paddingHorizontal="$8"
-            width="100%"
-            style={{ maxWidth: 760, alignSelf: 'center' }}
+            className="mx-auto w-full max-w-190 space-y-5 px-8 py-6"
           >
             <UpdateNotice
               state={updateNotice}
@@ -262,10 +219,10 @@ function AppShell({
               onRestart={() => void restartToApplyUpdate()}
             />
             {children}
-          </PageTransition>
-        </ScrollView>
+          </main>
+        </div>
       </div>
-    </YStack>
+    </div>
   );
 }
 
@@ -290,7 +247,6 @@ function AppTitlebar() {
           {APP_DISPLAY_NAME}
         </span>
       </div>
-
       <div className="app-titlebar-controls">
         <button
           aria-label="Minimize"
@@ -338,49 +294,36 @@ function UpdateNotice({
 
   if (state.status === 'error') {
     return (
-      <Card
-        gap="$2"
-        padding="$3"
-        style={{
-          backgroundColor: colors.errorSurface,
-          borderColor: colors.errorBorder,
-        }}
-      >
-        <XStack gap="$2" alignItems="flex-start">
-          <AlertTriangleIcon aria-hidden size={16} />
-          <YStack flex={1} gap="$1">
-            <Text color="$red11" fontWeight="600">
+      <Card className="gap-2 border-destructive/40 bg-destructive/10 py-3">
+        <Card.Content className="flex items-start gap-2 px-3">
+          <AlertTriangleIcon
+            aria-hidden
+            className="shrink-0 text-destructive"
+            size={16}
+          />
+          <div className="min-w-0 flex-1">
+            <Text className="text-destructive" weight="bold">
               Update failed
             </Text>
-            <Text color="$red11" fontSize="$3">
-              {state.message}
-            </Text>
-          </YStack>
-        </XStack>
+            <Text className="text-destructive">{state.message}</Text>
+          </div>
+        </Card.Content>
       </Card>
     );
   }
 
   if (state.status === 'installed') {
     return (
-      <Card padding="$3">
-        <XStack gap="$3" alignItems="center" justifyContent="space-between">
-          <XStack gap="$2" alignItems="flex-start" style={{ minWidth: 0 }}>
-            <CheckCircle2Icon aria-hidden size={16} />
-            <YStack style={{ minWidth: 0 }}>
-              <Label>Pane {state.version} is installed</Label>
-              <MutedText>Restart when ready.</MutedText>
-            </YStack>
-          </XStack>
-          <Button
-            icon={<RotateCcwIcon aria-hidden size={16} />}
-            btnScale="sm"
-            onPress={onRestart}
-          >
-            Restart
-          </Button>
-        </XStack>
-      </Card>
+      <NoticeCard
+        icon={<CheckIcon aria-hidden size={16} />}
+        title={`Pane ${state.version} is installed`}
+        description="Restart when ready."
+      >
+        <Button size="sm" onClick={onRestart}>
+          <RotateCcwIcon aria-hidden size={16} />
+          Restart
+        </Button>
+      </NoticeCard>
     );
   }
 
@@ -399,58 +342,72 @@ function UpdateNotice({
     : null;
 
   return (
-    <Card gap="$3" padding="$3">
-      <XStack gap="$3" alignItems="center" justifyContent="space-between">
-        <XStack gap="$2" alignItems="flex-start" style={{ minWidth: 0 }}>
-          {isInstalling ? (
-            <Loader2Icon aria-hidden size={16} />
-          ) : (
-            <DownloadIcon aria-hidden size={16} />
-          )}
-          <YStack style={{ minWidth: 0 }}>
-            <Label>Pane {state.version} is available</Label>
-            <MutedText>
-              {isInstalling ? 'Installing update...' : 'Update when ready.'}
-            </MutedText>
-          </YStack>
-        </XStack>
-        <Button
-          disabled={isInstalling}
-          icon={
-            isInstalling ? (
-              <Loader2Icon aria-hidden size={16} />
+    <Card className="gap-3 py-3">
+      <Card.Content className="px-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2">
+            {isInstalling ? (
+              <Loader2Icon aria-hidden className="animate-spin" size={16} />
             ) : (
               <DownloadIcon aria-hidden size={16} />
-            )
-          }
-          btnScale="sm"
-          onPress={onInstall}
-        >
-          {isInstalling ? 'Installing' : 'Update'}
-        </Button>
-      </XStack>
+            )}
+            <div className="min-w-0">
+              <Text weight="bold">Pane {state.version} is available</Text>
+              <Text tone="muted">
+                {isInstalling ? 'Installing update...' : 'Update when ready.'}
+              </Text>
+            </div>
+          </div>
+          <Button disabled={isInstalling} size="sm" onClick={onInstall}>
+            {isInstalling ? (
+              <Loader2Icon aria-hidden className="animate-spin" size={16} />
+            ) : (
+              <DownloadIcon aria-hidden size={16} />
+            )}
+            {isInstalling ? 'Installing' : 'Update'}
+          </Button>
+        </div>
+        {isInstalling ? (
+          <div className="mt-3 flex items-center gap-3">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${progress ?? 10}%` }}
+              />
+            </div>
+            <span className="w-12 text-right text-xs text-muted-foreground">
+              {progressLabel}
+            </span>
+          </div>
+        ) : null}
+      </Card.Content>
+    </Card>
+  );
+}
 
-      {isInstalling ? (
-        <XStack gap="$3" alignItems="center">
-          <View
-            backgroundColor="$gray3"
-            flex={1}
-            height={6}
-            overflow="hidden"
-            borderRadius={999}
-          >
-            <View
-              backgroundColor="$gray9"
-              height="100%"
-              borderRadius={999}
-              width={`${progress ?? 10}%`}
-            />
-          </View>
-          <MutedText fontSize="$2" style={{ width: 48, textAlign: 'right' }}>
-            {progressLabel}
-          </MutedText>
-        </XStack>
-      ) : null}
+function NoticeCard({
+  icon,
+  title,
+  description,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <Card className="py-3">
+      <Card.Content className="flex items-center justify-between gap-3 px-3">
+        <div className="flex min-w-0 items-start gap-2">
+          {icon}
+          <div className="min-w-0">
+            <Text weight="bold">{title}</Text>
+            <Text tone="muted">{description}</Text>
+          </div>
+        </div>
+        {children}
+      </Card.Content>
     </Card>
   );
 }

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import {
-  CheckIcon,
-  ClipboardIcon,
-  DownloadIcon,
-  PenIcon,
-  XIcon,
+  CheckIcon as Check,
+  ClipboardIcon as Clipboard,
+  DownloadIcon as Download,
+  PenIcon as Pen,
+  XIcon as X,
 } from 'lucide-react';
 import { useEffectEvent } from '@/lib/use-effect-event';
 import { listen } from '@tauri-apps/api/event';
@@ -324,13 +324,13 @@ function PreviewPage() {
         {capture && (
           <div className="preview-overlay">
             <ActionButton
-              icon={actions.copy === 'success' ? CheckIcon : ClipboardIcon}
+              icon={actions.copy === 'success' ? Check : Clipboard}
               label={actions.copy === 'success' ? 'Copied' : 'Copy'}
               busy={actions.copy === 'busy'}
               onClick={() => void copyCapture()}
             />
             <ActionButton
-              icon={actions.save === 'success' ? CheckIcon : DownloadIcon}
+              icon={actions.save === 'success' ? Check : Download}
               label={actions.save === 'success' ? 'Saved' : 'Save'}
               busy={actions.save === 'busy'}
               onClick={() => void saveCapture()}
@@ -340,7 +340,7 @@ function PreviewPage() {
 
         {capture && (
           <PreviewChromeButton
-            icon={PenIcon}
+            icon={Pen}
             label="Edit capture"
             side="left"
             onClick={editCapture}
@@ -348,7 +348,7 @@ function PreviewPage() {
         )}
 
         <PreviewChromeButton
-          icon={XIcon}
+          icon={X}
           label="Close preview"
           side="right"
           onClick={() => void close()}
@@ -370,7 +370,7 @@ function PreviewChromeButton({
   side,
   onClick,
 }: {
-  icon: typeof PenIcon;
+  icon: typeof Pen;
   label: string;
   side: 'left' | 'right';
   onClick: () => void;
@@ -394,7 +394,7 @@ function ActionButton({
   busy,
   onClick,
 }: {
-  icon: typeof ClipboardIcon;
+  icon: typeof Clipboard;
   label: string;
   busy: boolean;
   onClick: () => void;

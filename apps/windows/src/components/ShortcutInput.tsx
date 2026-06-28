@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { MutedText, Text } from '@pane/ui';
+import { Text } from 'pickle-ui';
 
 const MOD_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta']);
 
@@ -169,13 +169,13 @@ export function ShortcutInput({
       }
     >
       {value || capturing ? (
-        <Text fontSize="$3" style={{ fontFamily: 'monospace' }}>
+        <Text className="font-mono" variant="small">
           {display}
         </Text>
       ) : (
-        <MutedText fontSize="$3" style={{ fontFamily: 'monospace' }}>
+        <Text className="font-mono" tone="muted" variant="small">
           {display}
-        </MutedText>
+        </Text>
       )}
     </button>
   );

@@ -1,57 +1,59 @@
-html,
-body,
-#root {
-  min-height: 100%;
-  height: 100%;
-  background: transparent;
-  color-scheme: dark;
-  margin: 0;
-  font-family: 'Geist Variable', sans-serif;
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    height: 100%;
+    background: transparent;
+    color-scheme: dark;
+  }
 }
 
-:root {
-  --app-shell-nav: rgb(31 24 28 / 0.9);
-  --app-card: #252022;
-  --app-panel: #2e2e32;
-  --app-panel-raised: #3a3a3e;
-  --app-panel-hover: #48484c;
-  --app-foreground: #fafafa;
-  --app-foreground-soft: rgb(255 255 255 / 0.86);
-  --app-foreground-muted: #b8b8b8;
-  --app-foreground-subtle: rgb(255 255 255 / 0.62);
-  --app-foreground-control: rgb(255 255 255 / 0.72);
-  --app-foreground-control-hover: rgb(255 255 255 / 0.96);
-  --app-primary: #ebebeb;
-  --app-primary-foreground: #343434;
-  --app-ring: #6b9e94;
-  --app-destructive: #f87171;
+.pane-pickle-theme {
+  --app-shell-nav: color-mix(in srgb, var(--sidebar) 90%, transparent);
+  --app-card: var(--card);
+  --app-panel: var(--secondary);
+  --app-panel-raised: var(--muted);
+  --app-panel-hover: var(--accent);
+  --app-foreground: var(--foreground);
+  --app-foreground-soft: color-mix(in srgb, var(--foreground) 86%, transparent);
+  --app-foreground-muted: var(--muted-foreground);
+  --app-foreground-subtle: color-mix(
+    in srgb,
+    var(--foreground) 62%,
+    transparent
+  );
+  --app-foreground-control: color-mix(
+    in srgb,
+    var(--foreground) 72%,
+    transparent
+  );
+  --app-foreground-control-hover: color-mix(
+    in srgb,
+    var(--foreground) 96%,
+    transparent
+  );
+  --app-primary: var(--primary);
+  --app-primary-foreground: var(--primary-foreground);
+  --app-ring: var(--ring);
+  --app-destructive: var(--destructive);
   --app-close-hover: rgb(196 43 28 / 0.9);
-  --app-border: rgb(255 255 255 / 0.11);
-  --app-border-soft: rgb(255 255 255 / 0.09);
-  --app-border-medium: rgb(255 255 255 / 0.14);
-  --app-border-strong: rgb(255 255 255 / 0.15);
-  --app-border-faint: rgb(255 255 255 / 0.1);
-  --app-white-08: rgb(255 255 255 / 0.08);
-  --app-white-09: rgb(255 255 255 / 0.09);
-  --app-white-10: rgb(255 255 255 / 0.1);
-  --app-white-12: rgb(255 255 255 / 0.12);
-  --app-black-16: rgb(0 0 0 / 0.16);
-  --app-black-20: rgb(0 0 0 / 0.2);
-  --app-shadow: rgb(0 0 0 / 0.3);
-  --app-shadow-strong: rgb(0 0 0 / 0.35);
-  --app-preview-overlay: rgb(46 46 50 / 0.7);
-  --app-preview-control: rgb(46 46 50 / 0.85);
+  --app-border: var(--border);
+  --app-border-medium: color-mix(in srgb, var(--foreground) 14%, transparent);
+  --app-border-strong: color-mix(in srgb, var(--foreground) 15%, transparent);
+  --app-border-faint: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --app-white-08: color-mix(in srgb, var(--foreground) 8%, transparent);
+  --app-white-09: color-mix(in srgb, var(--foreground) 9%, transparent);
+  --app-white-10: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --app-white-12: color-mix(in srgb, var(--foreground) 12%, transparent);
+  --app-black-16: color-mix(in srgb, var(--shadow-color) 16%, transparent);
+  --app-black-20: color-mix(in srgb, var(--shadow-color) 20%, transparent);
+  --app-shadow: color-mix(in srgb, var(--shadow-color) 30%, transparent);
+  --app-shadow-strong: color-mix(in srgb, var(--shadow-color) 35%, transparent);
+  --app-preview-overlay: color-mix(in srgb, var(--secondary) 70%, transparent);
+  --app-preview-control: color-mix(in srgb, var(--muted) 85%, transparent);
   --app-selection-dim: rgb(24 23 19 / 0.58);
   --app-selection-outline: rgb(255 254 250 / 0.55);
-  --app-area-pill: rgb(58 58 62 / 0.9);
-}
-
-body {
-  color: var(--app-foreground);
-}
-
-/* Tamagui web: native controls inherit app typography */
-button,
-input[type='range'] {
-  font: inherit;
+  --app-area-pill: color-mix(in srgb, var(--muted) 90%, transparent);
+  color: var(--foreground);
 }

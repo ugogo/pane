@@ -1,5 +1,6 @@
 import { fileURLToPath, URL } from 'node:url';
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite';
+import tailwindcss from '@tailwindcss/vite';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
@@ -18,10 +19,12 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     TanStackRouterVite({
+      autoCodeSplitting: true,
       generatedRouteTree: './src/routeTree.gen.ts',
       routesDirectory: './src/routes',
       target: 'react',
     }),
+    tailwindcss(),
     reactCompilerPreset(),
     react(),
   ],
@@ -30,22 +33,6 @@ export default defineConfig(({ mode }) => ({
       {
         find: '@',
         replacement: fileURLToPath(new URL('./src', import.meta.url)),
-      },
-      {
-        find: /^react-native$/,
-        replacement: 'react-native-web',
-      },
-      {
-        find: /^@react-native-community\/slider$/,
-        replacement: fileURLToPath(
-          new URL('./src/shims/native-slider.tsx', import.meta.url),
-        ),
-      },
-      {
-        find: /^react-native-svg$/,
-        replacement: fileURLToPath(
-          new URL('./src/shims/react-native-svg.tsx', import.meta.url),
-        ),
       },
     ],
   },

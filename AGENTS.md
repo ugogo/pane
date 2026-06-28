@@ -5,7 +5,7 @@
 **Pane** is a Windows desktop utility suite: **Light Controls** and
 **CleanShot** in one modular hub, with more modules expected over time.
 
-- **Frontend**: TypeScript + React + Vite + TanStack Router + Tamagui (`@pane/ui`) on Windows web, Expo + React Native for the companion
+- **Frontend**: TypeScript + React + Vite + TanStack Router + Pickle UI/Tailwind on Windows web; Expo + React Native + Tamagui (`@pane/ui`) for the companion
 - **Backend**: Rust + Tauri 2
 - **Entry point**: `apps/windows/src/main.tsx` -> `apps/windows/tauri/src/lib.rs`
 
@@ -78,13 +78,16 @@ npm run rust:clippy    # cargo clippy --all-targets -- -D warnings
 
 ## UI Guidelines
 
-- Shared design system: [`packages/ui`](packages/ui) (`@pane/ui`) — Tamagui theme **`dark`** with Pane tokens (token values mirror desktop `global.css` / `shell.css`).
-- Use `Button`, `Card`, `Switch` (`native` on mobile), `Slider` (native range / `@react-native-community/slider`), `QRCode`, layout stacks from `@pane/ui` before adding one-off primitives.
-- Wrap app roots with `UIProvider`. The companion uses `@tamagui/babel-plugin` pointing at `packages/ui/tamagui.config.cjs`; Windows keeps Tamagui runtime styling through Vite.
-- Reusable motion belongs in `@pane/ui`: use Tamagui animations and shared wrappers such as `PageTransition` / `PopupTransition` for page, modal, popup, preview, and cross-platform component motion. Keep CSS animations for Windows-only chrome, DOM-specific hover polish, and specialized webview flows that are tightly coupled to Tauri window readiness.
+- Windows uses pinned `pickle-ui` primitives through `pickle-ui/styles.css`, compiled by Vite through `apps/windows/src/styles/windows.source.css` after Tailwind as documented by Pickle.
+- Windows enables TanStack Router `autoCodeSplitting` in `apps/windows/vite.config.ts`
+  so route components ship as lazy chunks without hand-written `.lazy.tsx`
+  route files.
+- The companion continues to use [`packages/ui`](packages/ui) (`@pane/ui`) with Tamagui's `dark` theme, native controls, and `UIProvider`.
+- Keep Windows composites DOM-native; do not recreate Tamagui's prop API in Windows.
+- Reusable companion motion belongs in `@pane/ui`; Windows motion uses CSS and must respect `prefers-reduced-motion`.
 - Windows-only chrome: `apps/windows/src/styles/shell.css` for titlebar/sidebar glass and `data-tauri-drag-region` — not in `@pane/ui`.
 - Optimize the main window for the default 800–900 px width.
-- Icons: `lucide-react` in the Windows app with the `Icon` suffix (`PenIcon`, not `Pen`). The Windows Babel config rewrites these imports to per-icon modules for tree-shaking. Do not add other icon libraries.
+- Icons: `lucide-react` in the Windows app with the `Icon` suffix (`PenIcon`, not `Pen`). Do not add other icon libraries.
 - Companion dev requires a **dev client** build (`npm run companion` → `expo run:ios --device`); Expo Go is not supported for native sliders/Tamagui controls.
 
 ## Rust / Tauri guidelines

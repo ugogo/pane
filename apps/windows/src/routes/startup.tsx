@@ -1,15 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { Loader2Icon, MoonIcon, RefreshCwIcon } from 'lucide-react';
-import {
-  Button,
-  Card,
-  Label,
-  MutedText,
-  Switch,
-  XStack,
-  YStack,
-} from '@pane/ui';
+import { Button, Card, Switch, Text, XStack, YStack } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusText } from '@/components/features/status-ui';
 import {
@@ -125,24 +117,29 @@ function StartupPage() {
   }
 
   return (
-    <YStack gap="$3">
-      <Card padding="$3">
-        <XStack gap="$4" alignItems="center" justifyContent="space-between">
-          <YStack flex={1} gap="$1">
-            <Label fontSize="$3">Start with Windows</Label>
-            <MutedText fontSize="$3">
-              {__DEV__
-                ? 'Disabled in dev so the debug binary is not registered.'
-                : 'Keep capture and accents available after sign-in.'}
-            </MutedText>
-          </YStack>
-          <Switch
-            aria-label="Run at startup"
-            checked={runAtStartup ?? false}
-            disabled={runAtStartup === null || __DEV__}
-            onCheckedChange={(enabled) => startupToggle.mutate(enabled)}
-          />
-        </XStack>
+    <YStack gap={4}>
+      <Card className="gap-3 py-3">
+        <Card.Content className="px-3">
+          <XStack align="center" gap={4} justify="between">
+            <YStack className="min-w-0 flex-1" gap={1}>
+              <Text as="h2" weight="bold">
+                Start with Windows
+              </Text>
+              <Text tone="muted">
+                {__DEV__
+                  ? 'Disabled in dev so the debug binary is not registered.'
+                  : 'Keep capture and accents available after sign-in.'}
+              </Text>
+            </YStack>
+            <Switch
+              checked={runAtStartup ?? false}
+              disabled={runAtStartup === null || __DEV__}
+              label="Run at startup"
+              labelClassName="sr-only"
+              onCheckedChange={(enabled) => startupToggle.mutate(enabled)}
+            />
+          </XStack>
+        </Card.Content>
       </Card>
       {startupStatus.message ? (
         <StatusText status={startupStatus.status}>
@@ -152,54 +149,60 @@ function StartupPage() {
         <StatusText status="fail">{startupError}</StatusText>
       ) : null}
 
-      <Card gap="$2" padding="$3">
-        <XStack gap="$4" alignItems="center" justifyContent="space-between">
-          <YStack flex={1} gap="$1">
-            <Label fontSize="$3">Software updates</Label>
-            <MutedText fontSize="$3">
-              Check GitHub Releases for a newer signed version of Pane.
-            </MutedText>
+      <Card className="gap-3 py-3">
+        <Card.Content className="px-3">
+          <YStack gap={2}>
+            <XStack align="center" gap={4} justify="between">
+              <YStack className="min-w-0 flex-1" gap={1}>
+                <Text as="h2" weight="bold">
+                  Software updates
+                </Text>
+                <Text tone="muted">
+                  Check GitHub Releases for a newer signed version of Pane.
+                </Text>
+              </YStack>
+              <Button
+                aria-label="Check for updates"
+                disabled={
+                  isChecking || updateBusy || checkState.status === 'skipped'
+                }
+                size="sm"
+                variant="secondary"
+                onClick={() => void checkNow()}
+              >
+                {isChecking ? (
+                  <Loader2Icon aria-hidden className="animate-spin" size={16} />
+                ) : (
+                  <RefreshCwIcon aria-hidden size={16} />
+                )}
+                {isChecking ? 'Checking' : 'Check for updates'}
+              </Button>
+            </XStack>
+            <UpdateCheckMessage checkState={checkState} notice={updateNotice} />
           </YStack>
-          <Button
-            aria-label="Check for updates"
-            disabled={
-              isChecking || updateBusy || checkState.status === 'skipped'
-            }
-            icon={
-              isChecking ? (
-                <Loader2Icon aria-hidden size={16} />
-              ) : (
-                <RefreshCwIcon aria-hidden size={16} />
-              )
-            }
-            btnScale="sm"
-            appearance="secondary"
-            onPress={() => void checkNow()}
-          >
-            {isChecking ? 'Checking' : 'Check for updates'}
-          </Button>
-        </XStack>
-        <UpdateCheckMessage checkState={checkState} notice={updateNotice} />
+        </Card.Content>
       </Card>
 
-      <Card padding="$3">
-        <XStack gap="$4" alignItems="center" justifyContent="space-between">
-          <YStack flex={1} gap="$1">
-            <Label fontSize="$3">Sleep computer</Label>
-            <MutedText fontSize="$3">
-              Put Windows into sleep mode now.
-            </MutedText>
-          </YStack>
-          <Button
-            aria-label="Sleep computer"
-            icon={<MoonIcon aria-hidden size={16} />}
-            btnScale="sm"
-            appearance="secondary"
-            onPress={() => sleep.mutate()}
-          >
-            Sleep
-          </Button>
-        </XStack>
+      <Card className="gap-3 py-3">
+        <Card.Content className="px-3">
+          <XStack align="center" gap={4} justify="between">
+            <YStack className="min-w-0 flex-1" gap={1}>
+              <Text as="h2" weight="bold">
+                Sleep computer
+              </Text>
+              <Text tone="muted">Put Windows into sleep mode now.</Text>
+            </YStack>
+            <Button
+              aria-label="Sleep computer"
+              size="sm"
+              variant="secondary"
+              onClick={() => sleep.mutate()}
+            >
+              <MoonIcon aria-hidden size={16} />
+              Sleep
+            </Button>
+          </XStack>
+        </Card.Content>
       </Card>
       {sleepStatus.message ? (
         <StatusText status={sleepStatus.status}>

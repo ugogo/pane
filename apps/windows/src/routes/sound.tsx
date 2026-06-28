@@ -8,21 +8,7 @@ import {
   Volume2Icon,
   VolumeXIcon,
 } from 'lucide-react';
-import {
-  Button,
-  Card,
-  IconButton,
-  ListRow,
-  ListRowContent,
-  Label,
-  MutedText,
-  SectionList,
-  Slider,
-  SliderRow,
-  SliderValue,
-  XStack,
-  YStack,
-} from '@pane/ui';
+import { Button, Card, Slider, Text, XStack, YStack } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusText } from '@/components/features/status-ui';
 import {
@@ -173,23 +159,23 @@ function SoundPage() {
   const scanMessage = status.message || queryError || (data?.message ?? '');
 
   return (
-    <YStack gap="$4">
-      <XStack style={{ alignSelf: 'flex-start' }}>
+    <YStack gap={4}>
+      <div>
         <Button
           disabled={busy}
-          btnScale="sm"
-          appearance="outline"
-          onPress={() => void soundQuery.refetch()}
+          size="sm"
+          variant="outline"
+          onClick={() => void soundQuery.refetch()}
         >
           Refresh
         </Button>
-      </XStack>
+      </div>
 
       {scanMessage ? (
         <StatusText status={scanStatus}>{scanMessage}</StatusText>
       ) : null}
 
-      <YStack gap="$3">
+      <YStack gap={3}>
         <Section
           kind="output"
           label="Output"
@@ -245,75 +231,101 @@ function Section({
   const muted = vol?.muted ?? false;
   const ordered = orderDevices(devices, favs);
   return (
-    <Card gap="$3" padding="$3">
-      <Label fontSize="$3">{label}</Label>
+    <Card className="gap-3 py-3">
+      <Card.Content className="px-3">
+        <Text as="h2" weight="bold">
+          {label}
+        </Text>
 
-      {ordered.length === 0 ? (
-        <MutedText fontSize="$2">No devices.</MutedText>
-      ) : (
-        <SectionList>
-          {ordered.map((d, index) => {
-            const isFav = favs.has(d.id);
-            return (
-              <ListRow key={d.id} active={d.isDefault} first={index === 0}>
-                <ListRowContent
-                  active={d.isDefault}
-                  disabled={busy}
-                  label={d.name}
-                  onPress={() => onSelect(kind, d.id)}
-                />
-                <IconButton
-                  active={isFav}
-                  aria-label={isFav ? 'Remove favorite' : 'Add favorite'}
-                  disabled={busy}
-                  onPress={() => onToggleFavorite(kind, d.id)}
+        {ordered.length === 0 ? (
+          <Text className="mt-3" tone="muted">
+            No devices.
+          </Text>
+        ) : (
+          <div className="mt-3 max-h-40 overflow-y-auto rounded-lg border border-border">
+            {ordered.map((d, index) => {
+              const isFav = favs.has(d.id);
+              return (
+                <div
+                  key={d.id}
+                  className={`flex items-center gap-2 px-2 py-2 ${index > 0 ? 'border-t border-border' : ''} ${d.isDefault ? 'bg-accent' : ''}`}
                 >
-                  <StarIcon
-                    aria-hidden
-                    fill={isFav ? 'currentColor' : 'none'}
-                    size={13}
-                  />
-                </IconButton>
-              </ListRow>
-            );
-          })}
-        </SectionList>
-      )}
+                  <button
+                    className={`min-w-0 flex-1 truncate text-left text-sm focus-ring rounded-sm ${d.isDefault ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
+                    disabled={busy}
+                    type="button"
+                    onClick={() => onSelect(kind, d.id)}
+                  >
+                    <span className="mr-2 inline-block size-1.5 rounded-full bg-current" />
+                    {d.name}
+                  </button>
+                  <Button
+                    aria-label={isFav ? 'Remove favorite' : 'Add favorite'}
+                    className={isFav ? 'text-amber-400' : ''}
+                    disabled={busy}
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onToggleFavorite(kind, d.id)}
+                  >
+                    <StarIcon
+                      aria-hidden
+                      fill={isFav ? 'currentColor' : 'none'}
+                      size={13}
+                    />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-      {vol ? (
-        <SliderRow>
-          <IconButton
-            aria-label={
-              kind === 'output' ? 'Toggle output mute' : 'Toggle input mute'
-            }
-            onPress={() => onToggleMute(kind)}
-          >
-            {kind === 'output' ? (
-              muted ? (
-                <VolumeXIcon aria-hidden size={14} />
+        {vol ? (
+          <XStack className="mt-3" align="center" gap={2.5}>
+            <Button
+              aria-label={
+                kind === 'output' ? 'Toggle output mute' : 'Toggle input mute'
+              }
+              size="sm"
+              variant="secondary"
+              onClick={() => onToggleMute(kind)}
+            >
+              {kind === 'output' ? (
+                muted ? (
+                  <VolumeXIcon aria-hidden size={14} />
+                ) : (
+                  <Volume2Icon aria-hidden size={14} />
+                )
+              ) : muted ? (
+                <MicOffIcon aria-hidden size={14} />
               ) : (
-                <Volume2Icon aria-hidden size={14} />
-              )
-            ) : muted ? (
-              <MicOffIcon aria-hidden size={14} />
-            ) : (
-              <MicIcon aria-hidden size={14} />
-            )}
-          </IconButton>
-          <Slider
-            max={100}
-            min={0}
-            step={1}
-            value={vpct(vol.volume)}
-            onChange={(v) => onVolume(kind, v)}
-          />
-          <SliderValue>{muted ? 'Muted' : `${vpct(vol.volume)}%`}</SliderValue>
-        </SliderRow>
-      ) : (
-        <MutedText fontSize="$2" marginTop="$2">
-          No volume control available.
-        </MutedText>
-      )}
+                <MicIcon aria-hidden size={14} />
+              )}
+            </Button>
+            <Slider
+              className="min-w-0 flex-1"
+              max={100}
+              min={0}
+              step={1}
+              value={[vpct(vol.volume)]}
+              onValueChange={(value) =>
+                onVolume(
+                  kind,
+                  typeof value === 'number'
+                    ? value
+                    : (value[0] ?? vpct(vol.volume)),
+                )
+              }
+            />
+            <output className="w-11 shrink-0 text-right text-xs text-muted-foreground">
+              {muted ? 'Muted' : `${vpct(vol.volume)}%`}
+            </output>
+          </XStack>
+        ) : (
+          <Text className="mt-2" tone="muted">
+            No volume control available.
+          </Text>
+        )}
+      </Card.Content>
     </Card>
   );
 }

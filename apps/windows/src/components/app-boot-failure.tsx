@@ -1,14 +1,18 @@
 import { useEffect } from 'react';
-import { AlertTriangleIcon, CameraIcon, MinusIcon, XIcon } from 'lucide-react';
+import {
+  AlertTriangleIcon as AlertTriangle,
+  CameraIcon as Camera,
+  MinusIcon as Minus,
+  XIcon as X,
+} from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { APP_DISPLAY_NAME } from '@/lib/app-name';
 import { revealMainWindow } from '@/lib/reveal-main-window';
 
 /**
  * Last-resort failure UI. Rendered with plain DOM + shell.css/global.css classes
- * only — never Tamagui components — so it still renders correctly when the
- * failure is the Tamagui style layer itself (e.g. a missing/empty
- * tamagui.generated.css).
+ * only — never framework components — so it still renders correctly when the
+ * generated UI stylesheet is missing or invalid.
  */
 export function AppBootFailure({
   title = "Couldn't start Pane",
@@ -36,7 +40,7 @@ export function AppBootFailure({
       >
         <div className="app-titlebar-left" data-tauri-drag-region>
           <span className="app-titlebar-icon" data-tauri-drag-region>
-            <CameraIcon aria-hidden size={12} />
+            <Camera aria-hidden size={12} />
           </span>
           <span className="app-titlebar-title" data-tauri-drag-region>
             {APP_DISPLAY_NAME}
@@ -52,7 +56,7 @@ export function AppBootFailure({
               void getCurrentWindow().minimize().catch(console.error)
             }
           >
-            <MinusIcon aria-hidden size={14} />
+            <Minus aria-hidden size={14} />
           </button>
           <button
             aria-label="Close to tray"
@@ -60,14 +64,14 @@ export function AppBootFailure({
             type="button"
             onClick={() => void getCurrentWindow().hide().catch(console.error)}
           >
-            <XIcon aria-hidden size={14} />
+            <X aria-hidden size={14} />
           </button>
         </div>
       </div>
 
       <div className="app-boot-failure-body">
         <div className="app-boot-failure-card">
-          <AlertTriangleIcon
+          <AlertTriangle
             aria-hidden
             color="var(--app-destructive)"
             size={18}
