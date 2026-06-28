@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:8081",
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "node ../../scripts/run-vite-dev.mjs",
     "beforeBuildCommand": "npm run build"
   },
   "app": {

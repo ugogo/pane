@@ -1,9 +1,51 @@
-import {
-  colors as rawColors,
-  radius as rawRadius,
-  status as rawStatus,
-} from './tokens.cjs';
+export const colors = {
+  shellNav: 'rgb(31 24 28 / 0.9)',
+  shellContent: 'rgb(20 15 18 / 0.98)',
+  background: '#141012',
+  foreground: '#fafafa',
+  card: '#252022',
+  cardForeground: '#fafafa',
+  popover: '#252022',
+  popoverForeground: '#fafafa',
+  primary: '#ebebeb',
+  primaryForeground: '#343434',
+  secondary: '#342c30',
+  secondaryForeground: '#fafafa',
+  muted: '#342c30',
+  mutedForeground: '#b8b8b8',
+  accent: '#3d524c',
+  accentSubtle: 'rgba(61, 82, 76, 0.22)',
+  accentForeground: '#fafafa',
+  destructive: '#f87171',
+  border: 'rgba(255, 255, 255, 0.11)',
+  input: 'rgba(255, 255, 255, 0.15)',
+  ring: '#6b9e94',
+  white: '#ffffff',
+  black: '#0b0b0c',
+  blackSolid: '#000000',
+  scrim: 'rgba(0, 0, 0, 0.55)',
+  statusPass: '#a8e6c8',
+  statusPassBg: 'rgba(61, 82, 76, 0.35)',
+  statusWarn: '#fbbf24',
+  statusFailBg: 'rgba(248, 113, 113, 0.15)',
+  errorSurface: 'rgba(248, 113, 113, 0.1)',
+  errorBorder: 'rgba(248, 113, 113, 0.25)',
+};
 
-export const colors = rawColors;
-export const radius = rawRadius;
-export const status = rawStatus;
+export const radius = {
+  sm: 6,
+  md: 8,
+  lg: 10,
+  xl: 14,
+};
+
+export const status = {
+  connecting: colors.mutedForeground,
+  offline: colors.destructive,
+  connected: colors.ring,
+  pass: colors.statusPass,
+  passBg: colors.statusPassBg,
+  warn: colors.statusWarn,
+  fail: colors.destructive,
+  failBg: colors.statusFailBg,
+};
