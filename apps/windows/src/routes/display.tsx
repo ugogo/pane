@@ -109,7 +109,7 @@ const emptyMonitors: MonitorInfo[] = [];
 const MONITOR_READ_INTERVAL_MS = 700;
 const MONITOR_READ_ATTEMPTS = 8;
 
-export const Route = createFileRoute('/_main/display')({
+export const Route = createFileRoute('/display')({
   component: DisplayPage,
 });
 

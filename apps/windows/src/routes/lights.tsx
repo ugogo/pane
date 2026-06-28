@@ -525,7 +525,7 @@ function AmbientSyncCard() {
   );
 }
 
-export const Route = createFileRoute('/_main/lights')({
+export const Route = createFileRoute('/lights')({
   component: LightsPage,
 });
 

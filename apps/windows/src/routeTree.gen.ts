@@ -9,25 +9,39 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StartupRouteImport } from './routes/startup'
+import { Route as SoundRouteImport } from './routes/sound'
 import { Route as PreviewRouteImport } from './routes/preview'
+import { Route as LightsRouteImport } from './routes/lights'
 import { Route as ImageEditorRouteImport } from './routes/image-editor'
+import { Route as DisplayRouteImport } from './routes/display'
+import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
+import { Route as CompanionRouteImport } from './routes/companion'
 import { Route as CaptureZoomRouteImport } from './routes/capture-zoom'
+import { Route as CaptureRouteImport } from './routes/capture'
 import { Route as AreaSelectorRouteImport } from './routes/area-selector'
 import { Route as AccentPopupRouteImport } from './routes/accent-popup'
-import { Route as MainRouteImport } from './routes/_main'
+import { Route as AccentRouteImport } from './routes/accent'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as MainStartupRouteImport } from './routes/_main.startup'
-import { Route as MainSoundRouteImport } from './routes/_main.sound'
-import { Route as MainLightsRouteImport } from './routes/_main.lights'
-import { Route as MainDisplayRouteImport } from './routes/_main.display'
-import { Route as MainDiagnosticsRouteImport } from './routes/_main.diagnostics'
-import { Route as MainCompanionRouteImport } from './routes/_main.companion'
-import { Route as MainCaptureRouteImport } from './routes/_main.capture'
-import { Route as MainAccentRouteImport } from './routes/_main.accent'
 
+const StartupRoute = StartupRouteImport.update({
+  id: '/startup',
+  path: '/startup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SoundRoute = SoundRouteImport.update({
+  id: '/sound',
+  path: '/sound',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PreviewRoute = PreviewRouteImport.update({
   id: '/preview',
   path: '/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LightsRoute = LightsRouteImport.update({
+  id: '/lights',
+  path: '/lights',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImageEditorRoute = ImageEditorRouteImport.update({
@@ -35,9 +49,29 @@ const ImageEditorRoute = ImageEditorRouteImport.update({
   path: '/image-editor',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DisplayRoute = DisplayRouteImport.update({
+  id: '/display',
+  path: '/display',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiagnosticsRoute = DiagnosticsRouteImport.update({
+  id: '/diagnostics',
+  path: '/diagnostics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompanionRoute = CompanionRouteImport.update({
+  id: '/companion',
+  path: '/companion',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CaptureZoomRoute = CaptureZoomRouteImport.update({
   id: '/capture-zoom',
   path: '/capture-zoom',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CaptureRoute = CaptureRouteImport.update({
+  id: '/capture',
+  path: '/capture',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AreaSelectorRoute = AreaSelectorRouteImport.update({
@@ -50,8 +84,9 @@ const AccentPopupRoute = AccentPopupRouteImport.update({
   path: '/accent-popup',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MainRoute = MainRouteImport.update({
-  id: '/_main',
+const AccentRoute = AccentRouteImport.update({
+  id: '/accent',
+  path: '/accent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -59,166 +94,152 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MainStartupRoute = MainStartupRouteImport.update({
-  id: '/startup',
-  path: '/startup',
-  getParentRoute: () => MainRoute,
-} as any)
-const MainSoundRoute = MainSoundRouteImport.update({
-  id: '/sound',
-  path: '/sound',
-  getParentRoute: () => MainRoute,
-} as any)
-const MainLightsRoute = MainLightsRouteImport.update({
-  id: '/lights',
-  path: '/lights',
-  getParentRoute: () => MainRoute,
-} as any)
-const MainDisplayRoute = MainDisplayRouteImport.update({
-  id: '/display',
-  path: '/display',
-  getParentRoute: () => MainRoute,
-} as any)
-const MainDiagnosticsRoute = MainDiagnosticsRouteImport.update({
-  id: '/diagnostics',
-  path: '/diagnostics',
-  getParentRoute: () => MainRoute,
-} as any)
-const MainCompanionRoute = MainCompanionRouteImport.update({
-  id: '/companion',
-  path: '/companion',
-  getParentRoute: () => MainRoute,
-} as any)
-const MainCaptureRoute = MainCaptureRouteImport.update({
-  id: '/capture',
-  path: '/capture',
-  getParentRoute: () => MainRoute,
-} as any)
-const MainAccentRoute = MainAccentRouteImport.update({
-  id: '/accent',
-  path: '/accent',
-  getParentRoute: () => MainRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/accent': typeof AccentRoute
   '/accent-popup': typeof AccentPopupRoute
   '/area-selector': typeof AreaSelectorRoute
+  '/capture': typeof CaptureRoute
   '/capture-zoom': typeof CaptureZoomRoute
+  '/companion': typeof CompanionRoute
+  '/diagnostics': typeof DiagnosticsRoute
+  '/display': typeof DisplayRoute
   '/image-editor': typeof ImageEditorRoute
+  '/lights': typeof LightsRoute
   '/preview': typeof PreviewRoute
-  '/accent': typeof MainAccentRoute
-  '/capture': typeof MainCaptureRoute
-  '/companion': typeof MainCompanionRoute
-  '/diagnostics': typeof MainDiagnosticsRoute
-  '/display': typeof MainDisplayRoute
-  '/lights': typeof MainLightsRoute
-  '/sound': typeof MainSoundRoute
-  '/startup': typeof MainStartupRoute
+  '/sound': typeof SoundRoute
+  '/startup': typeof StartupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/accent': typeof AccentRoute
   '/accent-popup': typeof AccentPopupRoute
   '/area-selector': typeof AreaSelectorRoute
+  '/capture': typeof CaptureRoute
   '/capture-zoom': typeof CaptureZoomRoute
+  '/companion': typeof CompanionRoute
+  '/diagnostics': typeof DiagnosticsRoute
+  '/display': typeof DisplayRoute
   '/image-editor': typeof ImageEditorRoute
+  '/lights': typeof LightsRoute
   '/preview': typeof PreviewRoute
-  '/accent': typeof MainAccentRoute
-  '/capture': typeof MainCaptureRoute
-  '/companion': typeof MainCompanionRoute
-  '/diagnostics': typeof MainDiagnosticsRoute
-  '/display': typeof MainDisplayRoute
-  '/lights': typeof MainLightsRoute
-  '/sound': typeof MainSoundRoute
-  '/startup': typeof MainStartupRoute
+  '/sound': typeof SoundRoute
+  '/startup': typeof StartupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/_main': typeof MainRouteWithChildren
+  '/accent': typeof AccentRoute
   '/accent-popup': typeof AccentPopupRoute
   '/area-selector': typeof AreaSelectorRoute
+  '/capture': typeof CaptureRoute
   '/capture-zoom': typeof CaptureZoomRoute
+  '/companion': typeof CompanionRoute
+  '/diagnostics': typeof DiagnosticsRoute
+  '/display': typeof DisplayRoute
   '/image-editor': typeof ImageEditorRoute
+  '/lights': typeof LightsRoute
   '/preview': typeof PreviewRoute
-  '/_main/accent': typeof MainAccentRoute
-  '/_main/capture': typeof MainCaptureRoute
-  '/_main/companion': typeof MainCompanionRoute
-  '/_main/diagnostics': typeof MainDiagnosticsRoute
-  '/_main/display': typeof MainDisplayRoute
-  '/_main/lights': typeof MainLightsRoute
-  '/_main/sound': typeof MainSoundRoute
-  '/_main/startup': typeof MainStartupRoute
+  '/sound': typeof SoundRoute
+  '/startup': typeof StartupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/accent'
     | '/accent-popup'
     | '/area-selector'
-    | '/capture-zoom'
-    | '/image-editor'
-    | '/preview'
-    | '/accent'
     | '/capture'
+    | '/capture-zoom'
     | '/companion'
     | '/diagnostics'
     | '/display'
+    | '/image-editor'
     | '/lights'
+    | '/preview'
     | '/sound'
     | '/startup'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/accent'
     | '/accent-popup'
     | '/area-selector'
-    | '/capture-zoom'
-    | '/image-editor'
-    | '/preview'
-    | '/accent'
     | '/capture'
+    | '/capture-zoom'
     | '/companion'
     | '/diagnostics'
     | '/display'
+    | '/image-editor'
     | '/lights'
+    | '/preview'
     | '/sound'
     | '/startup'
   id:
     | '__root__'
     | '/'
-    | '/_main'
+    | '/accent'
     | '/accent-popup'
     | '/area-selector'
+    | '/capture'
     | '/capture-zoom'
+    | '/companion'
+    | '/diagnostics'
+    | '/display'
     | '/image-editor'
+    | '/lights'
     | '/preview'
-    | '/_main/accent'
-    | '/_main/capture'
-    | '/_main/companion'
-    | '/_main/diagnostics'
-    | '/_main/display'
-    | '/_main/lights'
-    | '/_main/sound'
-    | '/_main/startup'
+    | '/sound'
+    | '/startup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  MainRoute: typeof MainRouteWithChildren
+  AccentRoute: typeof AccentRoute
   AccentPopupRoute: typeof AccentPopupRoute
   AreaSelectorRoute: typeof AreaSelectorRoute
+  CaptureRoute: typeof CaptureRoute
   CaptureZoomRoute: typeof CaptureZoomRoute
+  CompanionRoute: typeof CompanionRoute
+  DiagnosticsRoute: typeof DiagnosticsRoute
+  DisplayRoute: typeof DisplayRoute
   ImageEditorRoute: typeof ImageEditorRoute
+  LightsRoute: typeof LightsRoute
   PreviewRoute: typeof PreviewRoute
+  SoundRoute: typeof SoundRoute
+  StartupRoute: typeof StartupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/startup': {
+      id: '/startup'
+      path: '/startup'
+      fullPath: '/startup'
+      preLoaderRoute: typeof StartupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sound': {
+      id: '/sound'
+      path: '/sound'
+      fullPath: '/sound'
+      preLoaderRoute: typeof SoundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/preview': {
       id: '/preview'
       path: '/preview'
       fullPath: '/preview'
       preLoaderRoute: typeof PreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lights': {
+      id: '/lights'
+      path: '/lights'
+      fullPath: '/lights'
+      preLoaderRoute: typeof LightsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/image-editor': {
@@ -228,11 +249,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ImageEditorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/display': {
+      id: '/display'
+      path: '/display'
+      fullPath: '/display'
+      preLoaderRoute: typeof DisplayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/diagnostics': {
+      id: '/diagnostics'
+      path: '/diagnostics'
+      fullPath: '/diagnostics'
+      preLoaderRoute: typeof DiagnosticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/companion': {
+      id: '/companion'
+      path: '/companion'
+      fullPath: '/companion'
+      preLoaderRoute: typeof CompanionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/capture-zoom': {
       id: '/capture-zoom'
       path: '/capture-zoom'
       fullPath: '/capture-zoom'
       preLoaderRoute: typeof CaptureZoomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/capture': {
+      id: '/capture'
+      path: '/capture'
+      fullPath: '/capture'
+      preLoaderRoute: typeof CaptureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/area-selector': {
@@ -249,11 +298,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccentPopupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_main': {
-      id: '/_main'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof MainRouteImport
+    '/accent': {
+      id: '/accent'
+      path: '/accent'
+      fullPath: '/accent'
+      preLoaderRoute: typeof AccentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -263,97 +312,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_main/startup': {
-      id: '/_main/startup'
-      path: '/startup'
-      fullPath: '/startup'
-      preLoaderRoute: typeof MainStartupRouteImport
-      parentRoute: typeof MainRoute
-    }
-    '/_main/sound': {
-      id: '/_main/sound'
-      path: '/sound'
-      fullPath: '/sound'
-      preLoaderRoute: typeof MainSoundRouteImport
-      parentRoute: typeof MainRoute
-    }
-    '/_main/lights': {
-      id: '/_main/lights'
-      path: '/lights'
-      fullPath: '/lights'
-      preLoaderRoute: typeof MainLightsRouteImport
-      parentRoute: typeof MainRoute
-    }
-    '/_main/display': {
-      id: '/_main/display'
-      path: '/display'
-      fullPath: '/display'
-      preLoaderRoute: typeof MainDisplayRouteImport
-      parentRoute: typeof MainRoute
-    }
-    '/_main/diagnostics': {
-      id: '/_main/diagnostics'
-      path: '/diagnostics'
-      fullPath: '/diagnostics'
-      preLoaderRoute: typeof MainDiagnosticsRouteImport
-      parentRoute: typeof MainRoute
-    }
-    '/_main/companion': {
-      id: '/_main/companion'
-      path: '/companion'
-      fullPath: '/companion'
-      preLoaderRoute: typeof MainCompanionRouteImport
-      parentRoute: typeof MainRoute
-    }
-    '/_main/capture': {
-      id: '/_main/capture'
-      path: '/capture'
-      fullPath: '/capture'
-      preLoaderRoute: typeof MainCaptureRouteImport
-      parentRoute: typeof MainRoute
-    }
-    '/_main/accent': {
-      id: '/_main/accent'
-      path: '/accent'
-      fullPath: '/accent'
-      preLoaderRoute: typeof MainAccentRouteImport
-      parentRoute: typeof MainRoute
-    }
   }
 }
 
-interface MainRouteChildren {
-  MainAccentRoute: typeof MainAccentRoute
-  MainCaptureRoute: typeof MainCaptureRoute
-  MainCompanionRoute: typeof MainCompanionRoute
-  MainDiagnosticsRoute: typeof MainDiagnosticsRoute
-  MainDisplayRoute: typeof MainDisplayRoute
-  MainLightsRoute: typeof MainLightsRoute
-  MainSoundRoute: typeof MainSoundRoute
-  MainStartupRoute: typeof MainStartupRoute
-}
-
-const MainRouteChildren: MainRouteChildren = {
-  MainAccentRoute: MainAccentRoute,
-  MainCaptureRoute: MainCaptureRoute,
-  MainCompanionRoute: MainCompanionRoute,
-  MainDiagnosticsRoute: MainDiagnosticsRoute,
-  MainDisplayRoute: MainDisplayRoute,
-  MainLightsRoute: MainLightsRoute,
-  MainSoundRoute: MainSoundRoute,
-  MainStartupRoute: MainStartupRoute,
-}
-
-const MainRouteWithChildren = MainRoute._addFileChildren(MainRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  MainRoute: MainRouteWithChildren,
+  AccentRoute: AccentRoute,
   AccentPopupRoute: AccentPopupRoute,
   AreaSelectorRoute: AreaSelectorRoute,
+  CaptureRoute: CaptureRoute,
   CaptureZoomRoute: CaptureZoomRoute,
+  CompanionRoute: CompanionRoute,
+  DiagnosticsRoute: DiagnosticsRoute,
+  DisplayRoute: DisplayRoute,
   ImageEditorRoute: ImageEditorRoute,
+  LightsRoute: LightsRoute,
   PreviewRoute: PreviewRoute,
+  SoundRoute: SoundRoute,
+  StartupRoute: StartupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

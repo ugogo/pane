@@ -73,7 +73,7 @@ function UpdateCheckMessage({
   );
 }
 
-export const Route = createFileRoute('/_main/startup')({
+export const Route = createFileRoute('/startup')({
   component: StartupPage,
 });
 

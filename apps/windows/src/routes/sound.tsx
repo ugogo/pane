@@ -77,7 +77,7 @@ const emptyDevices = {
 };
 const emptyVolumes = { output: null, input: null };
 
-export const Route = createFileRoute('/_main/sound')({
+export const Route = createFileRoute('/sound')({
   component: SoundPage,
 });
 

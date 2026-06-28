@@ -15,7 +15,7 @@ function fmtMs(ms: number) {
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(2)} s`;
 }
 
-export const Route = createFileRoute('/_main/diagnostics')({
+export const Route = createFileRoute('/diagnostics')({
   component: DiagnosticsPage,
 });
 

@@ -1,10 +1,5 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
-import {
-  createFileRoute,
-  Link,
-  Outlet,
-  useRouterState,
-} from '@tanstack/react-router';
+import { Link, useRouterState } from '@tanstack/react-router';
 import {
   ActivityIcon,
   AlertTriangleIcon,
@@ -104,16 +99,12 @@ const modules = [
   },
 ] as const;
 
-export const Route = createFileRoute('/_main')({
-  component: MainLayout,
-});
-
 function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function MainLayout() {
+export function MainShell({ children }: { children: ReactNode }) {
   const { isBooting, appVersion, bootError } = useAppBoot();
   const updateCheck = useUpdateCheck();
 
@@ -144,7 +135,9 @@ function MainLayout() {
           appVersion={appVersion}
           updateNotice={updateCheck.notice}
           onInstallUpdate={updateCheck.install}
-        />
+        >
+          {children}
+        </AppShell>
       </UpdateCheckContext.Provider>
     </MainShellErrorBoundary>
   );
@@ -166,10 +159,12 @@ function AppShell({
   appVersion,
   updateNotice,
   onInstallUpdate,
+  children,
 }: {
   appVersion: string | null;
   updateNotice: UpdateNoticeState;
   onInstallUpdate: () => void;
+  children: ReactNode;
 }) {
   const contentScrollRef = useRef<ScrollView>(null);
   const pathname = useRouterState({
@@ -266,7 +261,7 @@ function AppShell({
               onInstall={onInstallUpdate}
               onRestart={() => void restartToApplyUpdate()}
             />
-            <Outlet />
+            {children}
           </PageTransition>
         </ScrollView>
       </div>

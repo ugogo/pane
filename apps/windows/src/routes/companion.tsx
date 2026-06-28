@@ -33,7 +33,7 @@ function formatExpiry(expiresAt: number) {
   });
 }
 
-export const Route = createFileRoute('/_main/companion')({
+export const Route = createFileRoute('/companion')({
   component: CompanionPage,
 });
 

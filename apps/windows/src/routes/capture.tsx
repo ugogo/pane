@@ -25,7 +25,7 @@ const actionLabels: Record<CaptureAction, string> = {
   area: 'area',
 };
 
-export const Route = createFileRoute('/_main/capture')({
+export const Route = createFileRoute('/capture')({
   component: CapturePage,
 });
 

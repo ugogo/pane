@@ -7,7 +7,7 @@ import { getAccentPopupEnabled, setAccentPopupEnabled } from '@/lib/commands';
 import { queryKeys } from '@/lib/query-keys';
 import { useActionStatus } from '@/lib/use-action-status';
 
-export const Route = createFileRoute('/_main/accent')({
+export const Route = createFileRoute('/accent')({
   component: AccentPage,
 });
 
