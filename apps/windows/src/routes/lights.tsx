@@ -251,7 +251,7 @@ function LightRow({
             <input
               type="color"
               aria-label={`Color for ${lightTitle(light)}`}
-              className="color-input"
+              className="h-9 w-12 rounded-lg border border-[var(--app-border-strong)] bg-card p-1 disabled:opacity-50"
               disabled={disabled}
               value={color}
               onChange={(e) => setColor(e.target.value)}

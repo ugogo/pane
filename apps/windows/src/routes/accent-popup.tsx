@@ -63,7 +63,7 @@ function AccentPopupPage() {
         width: '100%',
       }}
     >
-      <div className="accent-popup-root">
+      <div className="absolute inset-0 flex gap-1 bg-muted p-1 shadow-[0_8px_24px_var(--app-shadow-strong)]">
         {accents.map((ch, i) => {
           const active = i === selected;
           return (
@@ -74,13 +74,17 @@ function AccentPopupPage() {
               aria-current={active ? 'true' : undefined}
               className={
                 active
-                  ? 'accent-popup-chip accent-popup-chip-active'
-                  : 'accent-popup-chip'
+                  ? 'flex flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-0 bg-primary text-primary-foreground hover:bg-primary'
+                  : 'flex flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-0 bg-transparent text-muted-foreground hover:bg-[var(--app-white-08)] hover:text-foreground'
               }
               onClick={() => void accentSelect(ch)}
             >
-              <span className="accent-popup-char">{ch}</span>
-              <span className="accent-popup-shortcut">{i + 1}</span>
+              <span className="text-lg leading-none text-current">{ch}</span>
+              <span
+                className={`text-[9px] leading-none text-current ${active ? 'opacity-80' : 'opacity-60'}`}
+              >
+                {i + 1}
+              </span>
             </button>
           );
         })}

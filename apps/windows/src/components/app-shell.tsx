@@ -28,6 +28,12 @@ import { UpdateCheckContext } from '@/lib/update-check-context';
 import { useUpdateCheck, type UpdateNoticeState } from '@/lib/use-update-check';
 import { restartToApplyUpdate } from '@/lib/updater';
 
+const SHELL_SURFACE =
+  'relative isolate overflow-hidden bg-[var(--app-shell-nav)] backdrop-blur-[34px] backdrop-saturate-[1.35] backdrop-brightness-[0.68]';
+
+const NAV_LINK_BASE =
+  'flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm no-underline transition-[background-color,color] duration-120 ease-in-out max-md:min-w-max md:min-w-0';
+
 const modules = [
   {
     path: '/capture',
@@ -167,9 +173,14 @@ function AppShell({
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <AppTitlebar />
-      <div className="app-main-frame">
-        <div className="app-sidebar">
-          <nav aria-label="Pane modules" className="app-nav-list">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-row max-md:flex-col">
+        <div
+          className={`${SHELL_SURFACE} w-[200px] shrink-0 border-r border-[var(--app-border-medium)] px-4 py-5 shadow-[inset_-1px_0_0_var(--app-black-16),inset_1px_0_0_var(--app-white-12)] max-md:w-full max-md:border-r-0 max-md:border-b max-md:border-b-[var(--app-white-09)] max-md:px-3 max-md:py-2.5 [&>*]:relative [&>*]:z-[1]`}
+        >
+          <nav
+            aria-label="Pane modules"
+            className="flex flex-col gap-1 max-md:flex-row max-md:overflow-x-auto max-md:pb-0.5"
+          >
             {modules.map(({ path, label, icon: Icon }) => {
               const isActive = pathname === path;
               return (
@@ -179,8 +190,8 @@ function AppShell({
                   aria-current={isActive ? 'page' : undefined}
                   className={
                     isActive
-                      ? 'app-nav-link app-nav-link-active'
-                      : 'app-nav-link'
+                      ? `${NAV_LINK_BASE} bg-[var(--app-white-10)] text-foreground`
+                      : `${NAV_LINK_BASE} text-[var(--app-foreground-subtle)] hover:bg-[var(--app-white-08)] hover:text-foreground`
                   }
                 >
                   <Icon aria-hidden size={16} />

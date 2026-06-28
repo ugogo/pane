@@ -1,296 +1,23 @@
-.app-titlebar,
-.app-sidebar {
+/* Windows shell chrome — kept in plain CSS for AppBootFailure, which must
+ * render without the generated Tailwind/Pickle stylesheet. */
+
+.app-titlebar {
   position: relative;
+  z-index: 10;
   isolation: isolate;
+  display: flex;
+  align-items: center;
   overflow: hidden;
+  height: 36px;
+  user-select: none;
+  border-bottom: 1px solid var(--app-border);
   /* Keep in sync with colors.shellNav in packages/ui/src/tokens.cjs */
   background: var(--app-shell-nav);
   backdrop-filter: blur(34px) saturate(1.35) brightness(0.68);
   -webkit-backdrop-filter: blur(34px) saturate(1.35) brightness(0.68);
-}
-
-.app-titlebar {
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  height: 36px;
-  user-select: none;
-  border-bottom: 1px solid var(--app-border);
   box-shadow:
     inset 0 1px 0 var(--app-white-08),
     inset 0 -1px 0 var(--app-black-20);
-}
-
-.app-sidebar {
-  flex-shrink: 0;
-  width: 200px;
-  padding: 20px 16px;
-  border-right: 1px solid var(--app-border-medium);
-  box-shadow:
-    inset -1px 0 0 var(--app-black-16),
-    inset 1px 0 0 var(--app-white-12);
-}
-
-.app-sidebar > * {
-  position: relative;
-  z-index: 1;
-}
-
-.app-main-frame {
-  display: flex;
-  flex: 1;
-  flex-direction: row;
-  min-height: 0;
-  min-width: 0;
-}
-
-.app-nav-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.app-window-control,
-.window-action-control {
-  display: grid;
-  width: 46px;
-  height: 36px;
-  color: var(--app-foreground-control);
-  place-items: center;
-  transition:
-    color 120ms ease,
-    background-color 120ms ease;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-}
-
-.app-window-control:hover,
-.window-action-control:hover {
-  color: var(--app-foreground-control-hover);
-  background: var(--app-white-09);
-}
-
-.app-window-control-close:hover,
-.window-action-control-close:hover {
-  color: var(--app-foreground);
-  background: var(--app-close-hover);
-}
-
-.app-nav-link {
-  display: flex;
-  min-width: max-content;
-  align-items: center;
-  gap: 8px;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 14px;
-  color: var(--app-foreground-subtle);
-  text-decoration: none;
-  transition:
-    background-color 120ms ease,
-    color 120ms ease;
-}
-
-.app-nav-link:hover {
-  background: var(--app-white-08);
-  color: var(--app-foreground);
-}
-
-.app-nav-link-active {
-  background: var(--app-white-10);
-  color: var(--app-foreground);
-}
-
-@media (max-width: 767px) {
-  .app-main-frame {
-    flex-direction: column;
-  }
-
-  .app-sidebar {
-    width: 100%;
-    padding: 10px 12px;
-    border-right: 0;
-    border-bottom: 1px solid var(--app-white-09);
-  }
-
-  .app-nav-list {
-    flex-direction: row;
-    overflow-x: auto;
-    padding-bottom: 2px;
-  }
-
-  .app-nav-link {
-    min-width: max-content;
-  }
-}
-
-@media (min-width: 768px) {
-  .app-nav-link {
-    min-width: 0;
-  }
-}
-
-/* Native color picker — keep in sync with colors.card / colors.input */
-.color-input {
-  background: var(--app-card);
-  border: 1px solid var(--app-border-strong);
-  border-radius: 8px;
-  height: 36px;
-  padding: 4px;
-  width: 48px;
-}
-
-.color-input:disabled {
-  opacity: 0.5;
-}
-
-.preview-card {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 250px;
-  height: 200px;
-  overflow: hidden;
-  border-radius: 8px;
-  border: 1px solid var(--app-border);
-  background: var(--app-panel-raised);
-  color: var(--app-foreground);
-  box-shadow: 0 8px 24px var(--app-shadow-strong);
-}
-
-.preview-card:hover .preview-overlay,
-.preview-card:focus-within .preview-overlay,
-.preview-card:hover .preview-chrome-btn,
-.preview-card:focus-within .preview-chrome-btn,
-.preview-card:hover .preview-size,
-.preview-card:hover .preview-size {
-  opacity: 1;
-}
-
-.preview-card img,
-.capture-zoom-card img {
-  outline: 1px solid rgb(255 255 255 / 0.1);
-  outline-offset: -1px;
-}
-
-.preview-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: var(--app-preview-overlay);
-  opacity: 0;
-  transition: opacity 150ms ease;
-  backdrop-filter: blur(1px);
-}
-
-.preview-chrome-btn {
-  position: absolute;
-  top: 6px;
-  display: flex;
-  width: 30px;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 999px;
-  background: var(--app-preview-control);
-  color: var(--app-foreground);
-  cursor: pointer;
-  opacity: 0;
-  transition:
-    background-color 120ms ease,
-    opacity 150ms ease;
-  z-index: 2;
-}
-
-.preview-chrome-btn:hover {
-  background: var(--app-panel-raised);
-}
-
-.preview-chrome-btn svg,
-.preview-action-btn svg,
-.image-editor-btn svg {
-  color: currentcolor;
-  stroke: currentcolor;
-  fill: none;
-}
-
-.preview-chrome-btn-left {
-  left: 6px;
-}
-
-.preview-chrome-btn-right {
-  right: 6px;
-}
-
-.preview-size {
-  position: absolute;
-  bottom: 6px;
-  left: 6px;
-  border-radius: 4px;
-  padding: 2px 6px;
-  background: var(--app-preview-control);
-  color: var(--app-foreground-muted);
-  font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
-  font-size: 10px;
-  opacity: 0;
-  transition: opacity 150ms ease;
-  pointer-events: none;
-}
-
-.preview-action-btn {
-  display: flex;
-  min-width: 76px;
-  height: 32px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border-radius: 6px;
-  border: 1px solid var(--app-border);
-  background: var(--app-preview-control);
-  color: var(--app-foreground);
-  font-size: 12px;
-  font-weight: 600;
-  box-shadow: 0 4px 12px var(--app-shadow);
-  cursor: pointer;
-}
-
-.preview-action-btn svg {
-  color: var(--app-foreground-muted);
-}
-
-.preview-action-btn:disabled {
-  cursor: wait;
-}
-
-.shortcut-input {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--app-border-strong);
-  border-radius: 8px;
-  background: var(--app-panel);
-  font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
-  font-size: 14px;
-  text-align: left;
-  cursor: text;
-}
-
-.shortcut-input--capturing {
-  background: var(--app-panel-hover);
-  border-color: var(--app-ring);
-}
-
-.shortcut-input:focus-visible {
-  outline: 2px solid var(--app-ring);
-  outline-offset: 2px;
 }
 
 .app-titlebar-left {
@@ -322,241 +49,91 @@
   white-space: nowrap;
 }
 
-.app-titlebar-controls,
-.window-action-bar {
+.app-titlebar-controls {
   display: flex;
   height: 100%;
   margin-left: auto;
 }
 
-.window-action-bar {
-  flex: none;
+.app-window-control {
+  display: grid;
+  width: 46px;
+  height: 36px;
+  color: var(--app-foreground-control);
+  place-items: center;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
 }
 
-.accent-popup-root {
-  position: absolute;
-  inset: 0;
+.app-window-control:hover {
+  color: var(--app-foreground-control-hover);
+  background: var(--app-white-09);
+}
+
+.app-window-control-close:hover {
+  color: var(--app-foreground);
+  background: var(--app-close-hover);
+}
+
+/* Boot/render failure fallback. Plain-CSS only so it still styles correctly
+   when the generated Pickle/Tailwind stylesheet is missing or invalid. */
+.app-boot-failure {
   display: flex;
-  gap: 4px;
-  padding: 4px;
-  background: var(--app-panel-raised);
-  box-shadow: 0 8px 24px var(--app-shadow-strong);
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
 }
 
-.accent-popup-chip {
+.app-boot-failure-body {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 24px;
+}
+
+.app-boot-failure-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 480px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+}
+
+.app-boot-failure-text {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-  background: transparent;
-  color: var(--app-foreground-muted);
+  min-width: 0;
 }
 
-.accent-popup-chip:hover {
-  background: var(--app-white-08);
-  color: var(--app-foreground);
-}
-
-.accent-popup-char {
-  color: currentcolor;
-  font-size: 18px;
-  line-height: 1;
-}
-
-.accent-popup-shortcut {
-  color: currentcolor;
-  font-size: 9px;
-  line-height: 1;
-  opacity: 0.6;
-}
-
-.accent-popup-chip-active {
-  background: var(--app-primary);
-  color: var(--app-primary-foreground);
-}
-
-.accent-popup-chip-active:hover {
-  background: var(--app-primary);
-}
-
-.accent-popup-chip-active .accent-popup-shortcut {
-  opacity: 0.8;
-}
-
-@keyframes area-selector-fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-.area-selector-root {
-  animation: area-selector-fade-in 140ms ease-out both;
-}
-
-.area-selector-dim {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  background: var(--app-selection-dim);
-}
-
-.area-selector-rect {
-  position: absolute;
-  border: 1px solid var(--app-ring);
-  pointer-events: none;
-  box-shadow:
-    0 0 0 100vmax var(--app-selection-dim),
-    0 0 0 1px var(--app-selection-outline);
-}
-
-.area-selector-size-label {
-  position: absolute;
-  left: 0;
-  font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
-  font-size: 12px;
-}
-
-.area-selector-pill {
-  background: var(--app-area-pill);
-  border: 1px solid var(--app-border);
-  border-radius: 6px;
-  color: var(--app-foreground);
-  font-size: 12px;
-  padding: 6px 12px;
-  box-shadow: 0 4px 12px var(--app-shadow);
-  pointer-events: none;
-}
-
-.area-selector-error {
-  background: var(--app-destructive);
-  border-color: var(--app-border-faint);
-}
-
-.preview-error {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  text-align: center;
-  font-size: 12px;
+.app-boot-failure-title {
   color: var(--app-destructive);
-}
-
-.preview-card-animated {
-  transform-origin: 50% 50%;
-}
-
-.capture-zoom-card {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-  background: var(--app-card);
-  box-shadow: 0 8px 24px var(--app-shadow-strong);
-}
-
-.capture-zoom-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 999px;
-  background: var(--app-preview-control);
-  color: var(--app-foreground);
-  box-shadow: 0 4px 12px var(--app-shadow);
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-
-.capture-zoom-close:hover {
-  background: var(--app-panel-hover);
-}
-
-.capture-zoom-error {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  color: var(--app-destructive);
-  font-size: 12px;
-  text-align: center;
-}
-
-/* ── Image editor ─────────────────────────────────────────────────────────── */
-
-.image-editor-root {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--app-card);
-  color: var(--app-foreground);
-  font-size: 13px;
-}
-
-.image-editor-header {
-  display: flex;
-  align-items: center;
-  height: 36px;
-  padding-left: 14px;
-  border-bottom: 1px solid var(--app-border);
-  flex: none;
-}
-
-.image-editor-title {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
 }
 
-.image-editor-action-control svg {
-  width: 16px;
-  height: 16px;
+.app-boot-failure-message {
+  color: var(--app-destructive);
+  font-size: 13px;
 }
 
-.image-editor-body {
-  display: flex;
-  flex: 1;
-  min-height: 0;
+.app-boot-failure-hint {
+  color: var(--app-foreground-muted);
+  font-size: 12px;
 }
 
-.image-editor-stage {
-  position: relative;
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  padding: 20px;
-  overflow: hidden;
-  background: var(--app-panel);
-}
-
-.image-editor-canvas {
-  position: relative;
-  flex: none;
-  max-width: 100%;
-  max-height: 100%;
-}
+/* Image editor — data-attribute cursors, resize handles, and range styling
+   that Tailwind cannot express without excessive duplication. */
 
 .image-editor-frame {
   position: relative;
@@ -581,60 +158,12 @@
   cursor: grab;
 }
 
-/* Hand tool overrides the per-tool cursor while panning the zoomed view. */
 .image-editor-frame[data-grab='true'] {
   cursor: grab;
 }
 
 .image-editor-frame[data-grab='true']:active {
   cursor: grabbing;
-}
-
-.image-editor-viewbar {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 6;
-  display: flex;
-  gap: 6px;
-}
-
-.image-editor-viewbar-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  height: 30px;
-  padding: 0 9px;
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--app-panel-raised) 88%, transparent);
-  color: var(--app-foreground);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  box-shadow: 0 8px 22px var(--app-shadow-strong);
-  cursor: pointer;
-  transition:
-    background-color 120ms ease,
-    border-color 120ms ease;
-}
-
-.image-editor-viewbar-btn:hover {
-  border-color: var(--app-border-strong);
-  background: var(--app-panel-hover);
-}
-
-.image-editor-viewbar-btn[aria-pressed='true'] {
-  border-color: var(--app-ring);
-  color: var(--app-primary);
-}
-
-.image-editor-preview {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: fill;
-  pointer-events: none;
 }
 
 .image-editor-selection {
@@ -651,8 +180,6 @@
   opacity: 0.72;
 }
 
-/* In the centered crop preview the selection rect hugs the rounded image, so
-   drop its border + dim and keep only the resize handles. */
 .image-editor-selection[data-preview='true'] {
   border-color: transparent;
   box-shadow: none;
@@ -831,128 +358,6 @@
   cursor: ew-resize;
 }
 
-.image-editor-error {
-  color: var(--app-destructive);
-  font-size: 12px;
-  text-align: center;
-}
-
-.image-editor-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  width: 248px;
-  flex: none;
-  padding: 16px;
-  border-left: 1px solid var(--app-border);
-  background: var(--app-panel-raised);
-}
-
-.image-editor-section {
-  padding-top: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--app-foreground-muted);
-}
-
-.image-editor-section + .image-editor-tool-grid,
-.image-editor-section + .image-editor-swatch-row,
-.image-editor-section + .image-editor-crop-grid {
-  margin-top: -4px;
-}
-
-.image-editor-tool-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.image-editor-tool,
-.image-editor-icon-btn,
-.image-editor-swatch {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--app-border);
-  background: var(--app-panel);
-  color: var(--app-foreground-muted);
-  cursor: pointer;
-  transition:
-    background-color 120ms ease,
-    border-color 120ms ease,
-    color 120ms ease;
-}
-
-.image-editor-tool {
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: 8px;
-}
-
-.image-editor-tool:hover:not(:disabled),
-.image-editor-icon-btn:hover:not(:disabled) {
-  background: var(--app-panel-hover);
-  color: var(--app-foreground);
-}
-
-.image-editor-tool[aria-pressed='true'],
-.image-editor-icon-btn[aria-pressed='true'] {
-  border-color: var(--app-ring);
-  background: var(--app-panel-hover);
-  color: var(--app-foreground);
-}
-
-.image-editor-inline-actions {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.image-editor-icon-btn {
-  width: 34px;
-  height: 30px;
-  border-radius: 8px;
-}
-
-.image-editor-icon-btn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.image-editor-swatch-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.image-editor-swatch {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  box-shadow: inset 0 0 0 2px
-    color-mix(in srgb, var(--app-panel) 52%, transparent);
-}
-
-.image-editor-swatch[aria-pressed='true'] {
-  border-color: var(--app-foreground);
-  box-shadow:
-    inset 0 0 0 2px color-mix(in srgb, var(--app-panel) 52%, transparent),
-    0 0 0 2px var(--app-ring);
-}
-
-.image-editor-range-field {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 42px;
-  align-items: center;
-  gap: 8px;
-  color: var(--app-foreground-muted);
-  font-size: 11px;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
 .image-editor-range {
   width: 100%;
   height: 18px;
@@ -997,214 +402,4 @@
   border-radius: 999px;
   background: var(--app-primary);
   box-shadow: 0 0 0 1px var(--app-border);
-}
-
-.image-editor-range-field output {
-  color: var(--app-foreground);
-  font-size: 12px;
-  text-align: right;
-}
-
-.image-editor-crop-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 12px;
-}
-
-.image-editor-field {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
-}
-
-.image-editor-field > span {
-  color: var(--app-foreground-muted);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.image-editor-input-wrap {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  padding: 0 8px;
-  border: 1px solid var(--app-border-strong);
-  border-radius: 8px;
-  background: var(--app-panel);
-}
-
-.image-editor-input-wrap:focus-within {
-  border-color: var(--app-ring);
-}
-
-.image-editor-input {
-  width: 100%;
-  min-width: 0;
-  height: 30px;
-  border: 0;
-  background: transparent;
-  color: var(--app-foreground);
-  font-size: 13px;
-  text-align: left;
-  outline: none;
-}
-
-.image-editor-unit {
-  font-size: 11px;
-  color: var(--app-foreground-muted);
-}
-
-.image-editor-lock {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-  background: var(--app-panel);
-  color: var(--app-foreground-muted);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.image-editor-lock[aria-pressed='true'] {
-  border-color: var(--app-ring);
-  color: var(--app-foreground);
-}
-
-.image-editor-presets {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-}
-
-.image-editor-preset {
-  height: 30px;
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-  background: var(--app-panel);
-  color: var(--app-foreground);
-  font-size: 12px;
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-
-.image-editor-preset:hover:not(:disabled) {
-  background: var(--app-panel-hover);
-}
-
-.image-editor-preset:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.image-editor-spacer {
-  flex: 1;
-}
-
-.image-editor-saved {
-  font-size: 12px;
-  color: var(--app-foreground-muted);
-}
-
-.image-editor-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.image-editor-btn {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid var(--app-border);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-
-.image-editor-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.image-editor-btn-ghost {
-  background: var(--app-panel);
-  color: var(--app-foreground);
-}
-
-.image-editor-btn-ghost:hover:not(:disabled) {
-  background: var(--app-panel-hover);
-}
-
-.image-editor-btn-primary {
-  border-color: transparent;
-  background: var(--app-primary);
-  color: var(--app-primary-foreground);
-}
-
-.image-editor-btn-primary svg,
-.image-editor-btn-primary svg * {
-  color: currentcolor;
-  stroke: currentcolor;
-}
-
-/* Boot/render failure fallback. Plain-CSS only so it still styles correctly
-   when the generated Pickle/Tailwind stylesheet is missing or invalid. */
-.app-boot-failure {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.app-boot-failure-body {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-}
-
-.app-boot-failure-card {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  width: 100%;
-  max-width: 480px;
-  padding: 16px;
-  border-radius: 12px;
-  background: rgba(248, 113, 113, 0.1);
-  border: 1px solid rgba(248, 113, 113, 0.25);
-}
-
-.app-boot-failure-text {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.app-boot-failure-title {
-  color: var(--app-destructive);
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.app-boot-failure-message {
-  color: var(--app-destructive);
-  font-size: 13px;
-}
-
-.app-boot-failure-hint {
-  color: var(--app-foreground-muted);
-  font-size: 12px;
 }

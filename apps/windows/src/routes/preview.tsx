@@ -296,15 +296,20 @@ function PreviewPage() {
     >
       <style>{CAPTURE_KEYFRAMES}</style>
       <div
-        className="preview-card preview-card-animated"
+        className="group absolute bottom-0 left-0 h-[200px] w-[250px] overflow-hidden rounded-lg border border-border bg-muted text-foreground shadow-[0_8px_24px_var(--app-shadow-strong)] [&_img]:-outline-offset-1 [&_img]:outline [&_img]:outline-white/10"
         data-tauri-drag-region
         onAnimationEnd={onCardAnimationEnd}
         style={{
           opacity: phase === 'hidden' ? 0 : 1,
           animation: PHASE_ANIMATION[phase],
+          transformOrigin: '50% 50%',
         }}
       >
-        {error ? <p className="preview-error">{error}</p> : null}
+        {error ? (
+          <p className="absolute inset-0 flex items-center justify-center p-3 text-center text-xs text-destructive">
+            {error}
+          </p>
+        ) : null}
         {capture && (
           <img
             key={revision}
@@ -322,7 +327,7 @@ function PreviewPage() {
         )}
 
         {capture && (
-          <div className="preview-overlay">
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-[var(--app-preview-overlay)] opacity-0 backdrop-blur-[1px] transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
             <ActionButton
               icon={actions.copy === 'success' ? CheckIcon : ClipboardIcon}
               label={actions.copy === 'success' ? 'Copied' : 'Copy'}
@@ -355,7 +360,7 @@ function PreviewPage() {
         />
 
         {capture && (
-          <span className="preview-size">
+          <span className="pointer-events-none absolute bottom-1.5 left-1.5 rounded px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100 bg-[var(--app-preview-control)]">
             {capture.width} x {capture.height}
           </span>
         )}
@@ -380,7 +385,7 @@ function PreviewChromeButton({
       type="button"
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onClick}
-      className={`preview-chrome-btn preview-chrome-btn-${side}`}
+      className={`absolute top-1.5 z-[2] flex size-[30px] cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--app-preview-control)] text-foreground opacity-0 transition-[background-color,opacity] duration-150 hover:bg-muted group-hover:opacity-100 group-focus-within:opacity-100 [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:text-current ${side === 'left' ? 'left-1.5' : 'right-1.5'}`}
       aria-label={label}
     >
       <Icon aria-hidden size={14} />
@@ -405,7 +410,7 @@ function ActionButton({
       disabled={busy}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onClick}
-      className="preview-action-btn"
+      className="flex h-8 min-w-[76px] cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-[var(--app-preview-control)] text-xs font-semibold text-foreground shadow-[0_4px_12px_var(--app-shadow)] disabled:cursor-wait [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:text-muted-foreground"
     >
       <Icon aria-hidden size={14} />
       {label}

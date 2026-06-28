@@ -164,8 +164,8 @@ export function ShortcutInput({
       onKeyUp={handleKeyUp}
       className={
         capturing
-          ? 'shortcut-input shortcut-input--capturing'
-          : 'shortcut-input'
+          ? 'flex w-full min-h-8 cursor-text items-center rounded-lg border border-ring bg-accent px-2.5 text-left font-mono text-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
+          : 'flex w-full min-h-8 cursor-text items-center rounded-lg border border-[var(--app-border-strong)] bg-secondary px-2.5 text-left font-mono text-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
       }
     >
       {value || capturing ? (

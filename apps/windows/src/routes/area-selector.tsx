@@ -92,7 +92,7 @@ function AreaSelectorPage() {
 
   return (
     <div
-      className="area-selector-root"
+      className="animate-[area-selector-fade-in_140ms_ease-out_both]"
       role="application"
       aria-label="Drag to select a capture region"
       style={{
@@ -118,11 +118,13 @@ function AreaSelectorPage() {
         void finish(finalRect);
       }}
     >
-      {!rect ? <div className="area-selector-dim" /> : null}
+      {!rect ? (
+        <div className="pointer-events-none fixed inset-0 bg-[var(--app-selection-dim)]" />
+      ) : null}
 
       {rect ? (
         <div
-          className="area-selector-rect"
+          className="pointer-events-none absolute border border-ring shadow-[0_0_0_100vmax_var(--app-selection-dim),0_0_0_1px_var(--app-selection-outline)]"
           style={{
             left: rect.x,
             top: rect.y,
@@ -131,7 +133,7 @@ function AreaSelectorPage() {
           }}
         >
           <span
-            className="area-selector-pill area-selector-size-label"
+            className="absolute left-0 font-mono text-xs bg-[var(--app-area-pill)] border border-border rounded-md text-foreground px-3 py-1.5 shadow-[0_4px_12px_var(--app-shadow)] pointer-events-none"
             style={{
               top: sizeLabelInside ? 6 : -24,
             }}
@@ -142,7 +144,7 @@ function AreaSelectorPage() {
       ) : null}
 
       <div
-        className="area-selector-pill"
+        className="pointer-events-none bg-[var(--app-area-pill)] border border-border rounded-md text-xs text-foreground px-3 py-1.5 shadow-[0_4px_12px_var(--app-shadow)]"
         style={{
           position: 'absolute',
           left: '50%',
@@ -156,7 +158,7 @@ function AreaSelectorPage() {
 
       {error ? (
         <div
-          className="area-selector-pill area-selector-error"
+          className="pointer-events-none bg-destructive border border-[var(--app-border-faint)] rounded-md text-xs text-foreground px-3 py-1.5 shadow-[0_4px_12px_var(--app-shadow)]"
           style={{
             position: 'absolute',
             bottom: 12,

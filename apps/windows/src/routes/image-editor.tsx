@@ -26,6 +26,12 @@ import {
 } from '@/lib/commands';
 import { useEffectEvent } from '@/lib/use-effect-event';
 
+const EDITOR_TOOL_BTN =
+  'flex cursor-pointer items-center justify-center border border-border bg-secondary text-muted-foreground transition-[background-color,border-color,color] duration-120 ease-in-out hover:enabled:bg-accent hover:enabled:text-foreground aria-pressed:border-ring aria-pressed:bg-accent aria-pressed:text-foreground disabled:cursor-default disabled:opacity-45';
+
+const WINDOW_ACTION_CONTROL =
+  'grid h-9 w-[46px] cursor-pointer place-items-center border-0 bg-transparent p-0 text-[var(--app-foreground-control)] transition-[color,background-color] duration-120 hover:bg-[var(--app-white-09)] hover:text-[var(--app-foreground-control-hover)]';
+
 export const Route = createFileRoute('/image-editor')({
   component: ImageEditorPage,
 });
@@ -1392,9 +1398,9 @@ function ImageEditorPage() {
       : strokeWidth;
 
   return (
-    <div className="image-editor-root">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-card text-[13px] text-foreground">
       <div
-        className="image-editor-header"
+        className="flex h-9 shrink-0 items-center border-b border-border pl-3.5"
         data-tauri-drag-region
         role="presentation"
         onMouseDown={(event) => {
@@ -1404,12 +1410,12 @@ function ImageEditorPage() {
           void getCurrentWindow().startDragging().catch(console.error);
         }}
       >
-        <span className="image-editor-title">Edit capture</span>
-        <div className="window-action-bar image-editor-action-bar">
+        <span className="text-[13px] font-semibold">Edit capture</span>
+        <div className="ml-auto flex h-full shrink-0">
           <button
             type="button"
             onClick={() => void hideImageEditor()}
-            className="window-action-control window-action-control-close image-editor-action-control"
+            className={`${WINDOW_ACTION_CONTROL} hover:bg-[var(--app-close-hover)] hover:text-foreground [&_svg]:size-4`}
             aria-label="Close editor"
           >
             <XIcon aria-hidden size={16} />
@@ -1417,7 +1423,7 @@ function ImageEditorPage() {
         </div>
       </div>
 
-      <div className="image-editor-body">
+      <div className="flex min-h-0 flex-1">
         <EditorStage
           key={sessionId ?? 'none'}
           src={src}
@@ -1534,9 +1540,11 @@ function EditorPanel({
   onSave: () => void;
 }) {
   return (
-    <div className="image-editor-panel">
-      <h2 className="image-editor-section">Tools</h2>
-      <div className="image-editor-tool-grid">
+    <div className="flex w-[248px] shrink-0 flex-col gap-3.5 border-l border-border bg-muted p-4">
+      <h2 className="pt-1 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+        Tools
+      </h2>
+      <div className="-mt-1 grid grid-cols-6 gap-1.5">
         {TOOLS.map(({ id, label, icon: Icon, hint }) => (
           <button
             key={id}
@@ -1545,21 +1553,21 @@ function EditorPanel({
             aria-label={label}
             aria-pressed={tool === id}
             onClick={() => onTool(id)}
-            className="image-editor-tool"
+            className={`${EDITOR_TOOL_BTN} aspect-square w-full rounded-lg`}
           >
             <Icon aria-hidden size={16} />
           </button>
         ))}
       </div>
 
-      <div className="image-editor-inline-actions">
+      <div className="mb-1.5 flex gap-1.5">
         <button
           type="button"
           title="Undo"
           aria-label="Undo"
           onClick={onUndo}
           disabled={undo.length === 0}
-          className="image-editor-icon-btn"
+          className={`${EDITOR_TOOL_BTN} h-[30px] w-[34px] rounded-lg`}
         >
           <Undo2Icon aria-hidden size={15} />
         </button>
@@ -1569,14 +1577,16 @@ function EditorPanel({
           aria-label="Redo"
           onClick={onRedo}
           disabled={redo.length === 0}
-          className="image-editor-icon-btn"
+          className={`${EDITOR_TOOL_BTN} h-[30px] w-[34px] rounded-lg`}
         >
           <Redo2Icon aria-hidden size={15} />
         </button>
       </div>
 
-      <h2 className="image-editor-section">Style</h2>
-      <div className="image-editor-swatch-row">
+      <h2 className="pt-1 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+        Style
+      </h2>
+      <div className="-mt-1 flex flex-wrap gap-1.5">
         {SWATCHES.map((swatch) => (
           <button
             key={swatch}
@@ -1585,12 +1595,12 @@ function EditorPanel({
             aria-label={`Use ${swatch}`}
             aria-pressed={color === swatch}
             onClick={() => onColor(swatch)}
-            className="image-editor-swatch"
+            className={`${EDITOR_TOOL_BTN} size-7 rounded-full shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--secondary)_52%,transparent)] aria-pressed:border-foreground aria-pressed:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--secondary)_52%,transparent),0_0_0_2px_var(--ring)]`}
             style={{ background: swatch }}
           />
         ))}
       </div>
-      <label className="image-editor-range-field">
+      <label className="mb-1.5 grid grid-cols-[auto_minmax(0,1fr)_42px] items-center gap-2 text-[11px] font-semibold text-muted-foreground [&_output]:text-right [&_output]:text-xs [&_output]:text-foreground">
         <span>Stroke</span>
         <input
           type="range"
@@ -1612,8 +1622,10 @@ function EditorPanel({
         onBackground={onBackground}
       />
 
-      <h2 className="image-editor-section">Crop</h2>
-      <div className="image-editor-crop-grid">
+      <h2 className="pt-1 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+        Crop
+      </h2>
+      <div className="-mt-1 grid grid-cols-2 gap-x-3 gap-y-2.5">
         <CropField
           label="X"
           value={crop?.x ?? 0}
@@ -1640,14 +1652,14 @@ function EditorPanel({
         />
       </div>
 
-      <div className="image-editor-spacer" />
+      <div className="flex-1" />
 
-      <div className="image-editor-actions">
+      <div className="flex gap-2">
         <button
           type="button"
           onClick={onReset}
           disabled={!base || unchanged}
-          className="image-editor-btn image-editor-btn-ghost"
+          className="flex h-9 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary text-[13px] font-semibold transition-colors duration-120 hover:enabled:bg-accent disabled:cursor-default disabled:opacity-50"
         >
           <RotateCcwIcon aria-hidden size={14} />
           Reset
@@ -1658,7 +1670,7 @@ function EditorPanel({
           disabled={
             !base || !crop || crop.w < 1 || crop.h < 1 || save === 'busy'
           }
-          className="image-editor-btn image-editor-btn-primary"
+          className="flex h-9 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-transparent bg-primary text-[13px] font-semibold text-primary-foreground transition-colors duration-120 disabled:cursor-default disabled:opacity-50 [&_svg]:text-current [&_svg_*]:stroke-current"
         >
           {save === 'success' ? (
             <CheckIcon aria-hidden size={14} />
@@ -1689,8 +1701,10 @@ function BackgroundControls({
 }) {
   return (
     <>
-      <h2 className="image-editor-section">Background</h2>
-      <label className="image-editor-range-field">
+      <h2 className="pt-1 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+        Background
+      </h2>
+      <label className="mb-1.5 grid grid-cols-[auto_minmax(0,1fr)_42px] items-center gap-2 text-[11px] font-semibold text-muted-foreground [&_output]:text-right [&_output]:text-xs [&_output]:text-foreground">
         <span>Padding</span>
         <input
           type="range"
@@ -1703,7 +1717,7 @@ function BackgroundControls({
         />
         <output>{padding}px</output>
       </label>
-      <div className="image-editor-swatch-row">
+      <div className="-mt-1 flex flex-wrap gap-1.5">
         {GRADIENTS.map((gradient) => (
           <button
             key={gradient.id}
@@ -1712,7 +1726,7 @@ function BackgroundControls({
             aria-label={`Use ${gradient.label} gradient`}
             aria-pressed={background === gradient.id}
             onClick={() => onBackground(gradient.id)}
-            className="image-editor-swatch"
+            className={`${EDITOR_TOOL_BTN} size-7 rounded-full shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--secondary)_52%,transparent)] aria-pressed:border-foreground aria-pressed:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--secondary)_52%,transparent),0_0_0_2px_var(--ring)]`}
             style={{ backgroundImage: gradientCss(gradient) }}
           />
         ))}
@@ -1733,18 +1747,18 @@ function CropField({
   onChange: (value: number) => void;
 }) {
   return (
-    <label className="image-editor-field">
+    <label className="flex min-w-0 flex-col items-stretch gap-1 [&>span]:text-[11px] [&>span]:font-semibold [&>span]:text-muted-foreground">
       <span>{label}</span>
-      <div className="image-editor-input-wrap">
+      <div className="flex w-full items-center gap-1 rounded-lg border border-[var(--app-border-strong)] bg-secondary px-2 focus-within:border-ring">
         <input
           type="number"
           min={label === 'X' || label === 'Y' ? 0 : 1}
           value={Number.isFinite(value) ? value : ''}
           disabled={disabled}
           onChange={(e) => onChange(e.currentTarget.valueAsNumber)}
-          className="image-editor-input"
+          className="h-[30px] w-full min-w-0 border-0 bg-transparent text-left text-[13px] text-foreground outline-none"
         />
-        <span className="image-editor-unit">px</span>
+        <span className="text-[11px] text-muted-foreground">px</span>
       </div>
     </label>
   );
@@ -2687,12 +2701,17 @@ function EditorStageView({
   ) => void;
 }) {
   return (
-    <div className="image-editor-stage" ref={stageRef}>
-      {error ? <p className="image-editor-error">{error}</p> : null}
+    <div
+      className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-secondary p-5"
+      ref={stageRef}
+    >
+      {error ? (
+        <p className="text-center text-xs text-destructive">{error}</p>
+      ) : null}
       {src ? (
         <div
           ref={wrapperRef}
-          className="image-editor-canvas"
+          className="relative max-h-full max-w-full shrink-0"
           style={{
             padding: framePadding,
             background: background ?? undefined,
@@ -2734,7 +2753,7 @@ function EditorStageView({
             <canvas
               ref={canvasRef}
               aria-label="Capture annotation canvas"
-              className="image-editor-preview"
+              className="block h-full w-full object-fill pointer-events-none"
             />
             {displayCrop ? (
               <CropSelectionOverlay
@@ -2760,10 +2779,10 @@ function EditorStageView({
         </div>
       ) : null}
       {src && zoom !== 1 ? (
-        <div className="image-editor-viewbar">
+        <div className="absolute right-3 top-3 z-[6] flex gap-1.5">
           <button
             type="button"
-            className="image-editor-viewbar-btn"
+            className="flex h-[30px] cursor-pointer items-center gap-[5px] rounded-lg border border-border bg-[color-mix(in_srgb,var(--muted)_88%,transparent)] px-[9px] text-[11px] font-semibold tabular-nums text-foreground shadow-[0_8px_22px_var(--app-shadow-strong)] transition-[background-color,border-color] duration-120 hover:border-[var(--app-border-strong)] hover:bg-accent aria-pressed:border-ring aria-pressed:text-primary"
             title="Fit to window"
             aria-label="Fit to window"
             onClick={onFitZoom}
