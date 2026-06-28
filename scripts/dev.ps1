@@ -5,7 +5,7 @@
 .DESCRIPTION
     Ensures only one dev session runs at a time for this repo:
 
-      1. Acquire a repo-scoped named mutex so concurrent `npm run dev` calls
+      1. Acquire a repo-scoped named mutex so concurrent `pnpm run dev` calls
          cannot race into parallel `tauri dev` invocations.
       2. If another wrapper holds the mutex, stop the existing dev tree and
          wait for the mutex to become available.
@@ -67,7 +67,7 @@ function Assert-DevPortAvailable {
         "PID ${_}: $commandLine"
     }
 
-    Fail "Port 8081 is still in use after dev cleanup. Stop that process or run npm run stop in the owning checkout.`n$($details -join "`n")"
+    Fail "Port 8081 is still in use after dev cleanup. Stop that process or run pnpm run stop in the owning checkout.`n$($details -join "`n")"
 }
 
 function Add-WebView2BrowserArgument {
@@ -90,9 +90,9 @@ function Invoke-TauriDev {
     # The Tauri CLI is hoisted to the workspace-root node_modules, but it must
     # run from the Windows app dir so it finds apps/windows/tauri/tauri.conf.json
     # and runs the before-commands against apps/windows.
-    $tauriCli = Join-Path $root "node_modules/@tauri-apps/cli/tauri.js"
+    $tauriCli = Join-Path $root "apps/windows/node_modules/@tauri-apps/cli/tauri.js"
     if (-not (Test-Path $tauriCli)) {
-        Fail "Tauri CLI not installed. Run npm install first."
+        Fail "Tauri CLI not installed. Run pnpm install first."
     }
     $appDir = Join-Path $root "apps\windows"
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { EyeIcon } from 'lucide-react';
-import { Button, Card, Label, MutedText, XStack, YStack } from '@pane/ui';
+import { Button, Card, Grid, Text, YStack } from 'pickle-ui';
 import { ShortcutInput } from '@/components/ShortcutInput';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusText } from '@/components/features/status-ui';
@@ -111,8 +111,11 @@ function CapturePage() {
   }
 
   return (
-    <YStack gap="$4">
-      <XStack flexWrap="wrap" gap="$3">
+    <YStack gap={4}>
+      <Grid
+        className="grid-cols-[repeat(auto-fit,minmax(17.5rem,1fr))]"
+        gap={3}
+      >
         <CaptureRow
           label="Fullscreen capture"
           actionLabel="Capture full screen"
@@ -133,16 +136,15 @@ function CapturePage() {
           onTrigger={() => trigger.mutate('area')}
           busy={trigger.isPending}
         />
-      </XStack>
+      </Grid>
 
-      <XStack flexDirection="column" gap="$2">
+      <YStack gap={2}>
         <Button
           aria-pressed={previewVisible ?? undefined}
-          icon={<EyeIcon aria-hidden size={14} />}
-          btnScale="sm"
-          appearance="secondary"
-          onPress={() => preview.mutate()}
+          variant="secondary"
+          onClick={() => preview.mutate()}
         >
+          <EyeIcon aria-hidden size={14} />
           {previewVisible ? 'Hide floating preview' : 'Show floating preview'}
         </Button>
         {status.message ? (
@@ -150,7 +152,7 @@ function CapturePage() {
         ) : hotkeysError ? (
           <StatusText status="warn">{hotkeysError}</StatusText>
         ) : null}
-      </XStack>
+      </YStack>
     </YStack>
   );
 }
@@ -175,23 +177,27 @@ function CaptureRow({
   busy: boolean;
 }) {
   return (
-    <Card flex={1} gap="$3" padding="$3" style={{ minWidth: 280 }}>
-      <YStack gap="$2">
-        <Label fontSize="$3">{label}</Label>
-        <Button disabled={busy} btnScale="sm" width="100%" onPress={onTrigger}>
-          {actionLabel}
-        </Button>
-      </YStack>
-      <YStack gap="$1">
-        <MutedText fontSize="$2">Shortcut</MutedText>
-        <ShortcutInput
-          value={hotkey}
-          onCommit={onCommit}
-          onClear={onClear}
-          ariaLabel={shortcutLabel}
-          placeholder="Click and press a chord"
-        />
-      </YStack>
+    <Card className="gap-3 py-3">
+      <Card.Content className="px-3">
+        <YStack gap={2}>
+          <Text as="h2" weight="bold">
+            {label}
+          </Text>
+          <Button className="w-full" disabled={busy} onClick={onTrigger}>
+            {actionLabel}
+          </Button>
+        </YStack>
+        <YStack className="mt-3" gap={1}>
+          <Text tone="muted">Shortcut</Text>
+          <ShortcutInput
+            value={hotkey}
+            onCommit={onCommit}
+            onClear={onClear}
+            ariaLabel={shortcutLabel}
+            placeholder="Click and press a chord"
+          />
+        </YStack>
+      </Card.Content>
     </Card>
   );
 }

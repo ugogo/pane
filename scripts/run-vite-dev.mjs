@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
 const appDir = join(repoRoot, 'apps', 'windows');
-const viteBin = join(repoRoot, 'node_modules', 'vite', 'bin', 'vite.js');
+const viteBin = join(appDir, 'node_modules', 'vite', 'bin', 'vite.js');
 const args = process.argv.slice(2);
 const viteArgs = args.length > 0 ? args : ['--host', '127.0.0.1'];
 

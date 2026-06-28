@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { Card, Label, MutedText, Switch, XStack, YStack } from '@pane/ui';
+import { Card, Switch, Text, XStack, YStack } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusText } from '@/components/features/status-ui';
 import { getAccentPopupEnabled, setAccentPopupEnabled } from '@/lib/commands';
@@ -42,22 +42,27 @@ function AccentPage() {
   }
 
   return (
-    <YStack gap="$3">
-      <Card padding="$3">
-        <XStack gap="$4" alignItems="center" justifyContent="space-between">
-          <YStack flex={1} gap="$1">
-            <Label fontSize="$3">Enabled</Label>
-            <MutedText fontSize="$3">
-              Choose variants with click, number keys, or Esc to dismiss.
-            </MutedText>
-          </YStack>
-          <Switch
-            aria-label="Enable long-press accents"
-            checked={enabled ?? false}
-            disabled={enabled === null}
-            onCheckedChange={(next) => toggle.mutate(next)}
-          />
-        </XStack>
+    <YStack gap={4}>
+      <Card className="gap-3 py-3">
+        <Card.Content className="px-3">
+          <XStack align="center" gap={4} justify="between">
+            <YStack className="min-w-0 flex-1" gap={1}>
+              <Text as="h2" weight="bold">
+                Enabled
+              </Text>
+              <Text tone="muted">
+                Choose variants with click, number keys, or Esc to dismiss.
+              </Text>
+            </YStack>
+            <Switch
+              checked={enabled ?? false}
+              disabled={enabled === null}
+              label="Enable long-press accents"
+              labelClassName="sr-only"
+              onCheckedChange={(next) => toggle.mutate(next)}
+            />
+          </XStack>
+        </Card.Content>
       </Card>
       {status.message ? (
         <StatusText status={status.status}>{status.message}</StatusText>

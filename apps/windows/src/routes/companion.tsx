@@ -1,17 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { CopyIcon, QrCodeIcon, WifiIcon, XIcon } from 'lucide-react';
-import {
-  Button,
-  Card,
-  Label,
-  MutedPanel,
-  MutedText,
-  Switch,
-  Text,
-  XStack,
-  YStack,
-} from '@pane/ui';
+import { Button, Card, Switch, Text, XStack, YStack } from 'pickle-ui';
 import { WebQRCode } from '@/components/WebQRCode';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusBadge, StatusText } from '@/components/features/status-ui';
@@ -70,130 +60,144 @@ function CompanionPage() {
   const busy = mutation.isPending || statusQuery.isFetching;
 
   return (
-    <YStack gap="$3">
-      <Card padding="$3">
-        <XStack gap="$4" alignItems="center" justifyContent="space-between">
-          <YStack flex={1} gap="$1" style={{ minWidth: 0 }}>
-            <XStack gap="$2" alignItems="center">
-              <Label fontSize="$3">Local companion</Label>
-              <StatusBadge status={status?.enabled ? 'pass' : 'disabled'} />
-            </XStack>
-            <MutedText fontSize="$3" numberOfLines={1}>
-              {status
-                ? `${status.serviceName} · ${status.serviceType}`
-                : 'Loading companion state'}
-            </MutedText>
-          </YStack>
-          <Switch
-            aria-label="Enable mobile companion"
-            checked={status?.enabled ?? false}
-            disabled={!status || busy}
-            onCheckedChange={(checked) =>
-              void update(() => setCompanionEnabled(checked))
-            }
-          />
-        </XStack>
+    <YStack gap={4}>
+      <Card className="gap-3 py-3">
+        <Card.Content className="px-3">
+          <XStack align="center" gap={4} justify="between">
+            <YStack className="min-w-0 flex-1" gap={1}>
+              <XStack align="center" gap={2}>
+                <Text as="h2" weight="bold">
+                  Local companion
+                </Text>
+                <StatusBadge status={status?.enabled ? 'pass' : 'disabled'} />
+              </XStack>
+              <Text className="truncate" tone="muted">
+                {status
+                  ? `${status.serviceName} · ${status.serviceType}`
+                  : 'Loading companion state'}
+              </Text>
+            </YStack>
+            <Switch
+              checked={status?.enabled ?? false}
+              disabled={!status || busy}
+              label="Enable mobile companion"
+              labelClassName="sr-only"
+              onCheckedChange={(checked) =>
+                void update(() => setCompanionEnabled(checked))
+              }
+            />
+          </XStack>
+        </Card.Content>
       </Card>
 
-      <Card gap="$3" padding="$3">
-        <XStack gap="$3" alignItems="center" justifyContent="space-between">
-          <YStack flex={1} style={{ minWidth: 0 }}>
-            <Label fontSize="$3">Pairing session</Label>
-            <MutedText fontSize="$3">
-              {pairing
-                ? `Expires at ${formatExpiry(pairing.expiresAt)}`
-                : 'No active pairing window'}
-            </MutedText>
-          </YStack>
-          <XStack gap="$2" flexShrink={0}>
-            {pairing ? (
+      <Card className="gap-3 py-3">
+        <Card.Content className="px-3">
+          <XStack align="center" gap={4} justify="between">
+            <YStack className="min-w-0 flex-1" gap={1}>
+              <Text as="h2" weight="bold">
+                Pairing session
+              </Text>
+              <Text tone="muted">
+                {pairing
+                  ? `Expires at ${formatExpiry(pairing.expiresAt)}`
+                  : 'No active pairing window'}
+              </Text>
+            </YStack>
+            <XStack className="shrink-0" gap={2}>
+              {pairing ? (
+                <Button
+                  aria-label="Cancel pairing"
+                  disabled={busy}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void update(cancelCompanionPairing)}
+                >
+                  <XIcon aria-hidden size={16} />
+                </Button>
+              ) : null}
               <Button
-                aria-label="Cancel pairing"
                 disabled={busy}
-                icon={<XIcon aria-hidden size={16} />}
-                btnScale="sm"
-                appearance="outline"
-                onPress={() => void update(cancelCompanionPairing)}
-              />
-            ) : null}
-            <Button
-              disabled={busy}
-              icon={<QrCodeIcon aria-hidden size={16} />}
-              btnScale="sm"
-              appearance="outline"
-              onPress={() => void update(startCompanionPairing)}
-            >
-              Pair
-            </Button>
-          </XStack>
-        </XStack>
-
-        {pairing ? (
-          <MutedPanel>
-            <XStack gap="$3" alignItems="center" justifyContent="space-between">
-              <Label fontSize="$3">Scan to pair</Label>
-              <Button
-                icon={<CopyIcon aria-hidden size={16} />}
-                btnScale="sm"
-                appearance="outline"
-                onPress={() =>
-                  void navigator.clipboard.writeText(pairing.pairingUri)
-                }
+                size="sm"
+                variant="outline"
+                onClick={() => void update(startCompanionPairing)}
               >
-                Copy URI
+                <QrCodeIcon aria-hidden size={16} />
+                Pair
               </Button>
             </XStack>
-            <YStack alignItems="center" marginTop="$3">
-              <WebQRCode
-                level="M"
-                quietZone={0}
-                size={176}
-                value={pairing.pairingUri}
-              />
-            </YStack>
-            <MutedText
-              fontSize="$2"
-              marginTop="$2"
-              style={{ textAlign: 'center' }}
-            >
-              Open Pane Companion on your iPhone and scan this code.
-            </MutedText>
-          </MutedPanel>
-        ) : null}
-      </Card>
+          </XStack>
 
-      <Card gap="$3" padding="$3">
-        <XStack gap="$2" alignItems="center">
-          <WifiIcon aria-hidden size={14} />
-          <Label fontSize="$3">Trusted devices</Label>
-        </XStack>
-
-        {devices.length === 0 ? (
-          <MutedText fontSize="$3">No iPhones paired yet.</MutedText>
-        ) : (
-          <YStack gap="$2">
-            {devices.map((device) => (
-              <XStack key={device.id} gap="$2" alignItems="center">
-                <YStack flex={1} minWidth={0}>
-                  <Text fontSize="$3" fontWeight="600" numberOfLines={1}>
-                    {device.name}
-                  </Text>
-                  <MutedText fontSize="$2">{device.role}</MutedText>
-                </YStack>
+          {pairing ? (
+            <div className="mt-3 rounded-lg border border-border bg-muted p-3">
+              <XStack align="center" gap={3} justify="between">
+                <Text as="h3" weight="bold">
+                  Scan to pair
+                </Text>
                 <Button
-                  disabled={busy}
-                  btnScale="xs"
-                  appearance="ghost"
-                  onPress={() =>
-                    void update(() => revokeCompanionDevice(device.id))
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    void navigator.clipboard.writeText(pairing.pairingUri)
                   }
                 >
-                  Revoke
+                  <CopyIcon aria-hidden size={16} />
+                  Copy URI
                 </Button>
               </XStack>
-            ))}
-          </YStack>
-        )}
+              <XStack className="mt-3" justify="center">
+                <WebQRCode
+                  level="M"
+                  quietZone={0}
+                  size={176}
+                  value={pairing.pairingUri}
+                />
+              </XStack>
+              <Text className="mt-2 text-center" tone="muted">
+                Open Pane Companion on your iPhone and scan this code.
+              </Text>
+            </div>
+          ) : null}
+        </Card.Content>
+      </Card>
+
+      <Card className="gap-3 py-3">
+        <Card.Content className="px-3">
+          <XStack align="center" gap={2}>
+            <WifiIcon aria-hidden className="text-muted-foreground" size={14} />
+            <Text as="h2" weight="bold">
+              Trusted devices
+            </Text>
+          </XStack>
+
+          {devices.length === 0 ? (
+            <Text className="mt-3" tone="muted">
+              No iPhones paired yet.
+            </Text>
+          ) : (
+            <YStack className="mt-3" gap={2}>
+              {devices.map((device) => (
+                <XStack key={device.id} align="center" gap={2}>
+                  <div className="min-w-0 flex-1">
+                    <Text className="truncate" weight="bold">
+                      {device.name}
+                    </Text>
+                    <Text tone="muted">{device.role}</Text>
+                  </div>
+                  <Button
+                    disabled={busy}
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      void update(() => revokeCompanionDevice(device.id))
+                    }
+                  >
+                    Revoke
+                  </Button>
+                </XStack>
+              ))}
+            </YStack>
+          )}
+        </Card.Content>
       </Card>
 
       {actionStatus.message ? (

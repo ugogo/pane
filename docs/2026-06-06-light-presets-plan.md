@@ -1,9 +1,9 @@
 ---
 title: Light Control Presets Plan
 type: plan
-status: proposed
+status: shipped
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-28
 ---
 
 # Light Control Presets Plan
@@ -17,6 +17,13 @@ headers, and the DX Light strip.
 This is separate from the existing DDC/CI monitor presets in Display. Display
 presets store monitor brightness, contrast, and RGB gain. Light presets store
 lighting hardware targets: color, brightness, and on/off intent per light.
+
+## Shipped Status
+
+The Windows implementation is shipped. The Lights route can load, save, apply,
+update, and delete presets through the Tauri light-preset commands. Companion
+snapshot support remains a separate future enhancement if mobile preset
+application becomes part of a later release.
 
 ## Goals
 
@@ -37,12 +44,12 @@ lighting hardware targets: color, brightness, and on/off intent per light.
 
 ## Delivery Approach
 
-| Slice | Scope                                                                                                                 | Validation                                                                                          |
-| ----- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| 1     | Add Rust persistence for `light-presets.json` under `app_config_dir` and Tauri commands to list/save/delete presets.  | Rust unit tests around JSON round-trip, overwrite, delete, and identifier-scoped path construction. |
-| 2     | Add an apply command that resolves each target light and writes color/brightness/off through existing light services. | Unit tests for target matching plus a manual smoke test with at least one light class.              |
-| 3     | Add a compact preset bar to `apps/windows/app/(main)/lights.tsx`.                                                     | `npm run lint`, `npm run typecheck`, manual apply/update/delete flow.                               |
-| 4     | Add companion snapshot support if mobile preset application should include light presets.                             | Companion snapshot test and actual-phone smoke test if included.                                    |
+| Slice | Scope                                                                                                                 | Status     |
+| ----- | --------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1     | Add Rust persistence for `light-presets.json` under `app_config_dir` and Tauri commands to list/save/delete presets.  | Shipped    |
+| 2     | Add an apply command that resolves each target light and writes color/brightness/off through existing light services. | Shipped    |
+| 3     | Add a compact preset bar to `apps/windows/src/routes/lights.tsx`.                                                     | Shipped    |
+| 4     | Add companion snapshot support if mobile preset application should include light presets.                             | Future opt |
 
 ## Data Model
 
@@ -100,10 +107,9 @@ Candidate commands:
 
 - Add wire types and invoke wrappers in `apps/windows/src/lib/commands.ts`.
 - Add `lightPresets` to `apps/windows/src/lib/query-keys.ts`.
-- Add a `PresetBar` to `apps/windows/app/(main)/lights.tsx`, borrowing the
-  compact interaction pattern from `apps/windows/app/(main)/display.tsx`.
-- Prefer the shared `PresetGroup`, `PresetNameButton`, and `PresetIconButton`
-  components from `@pane/ui`.
+- Add a `PresetBar` to `apps/windows/src/routes/lights.tsx`, borrowing the
+  compact interaction pattern from the Display route.
+- Use Pickle UI primitives and lucide icons in Windows.
 - Replace `window.prompt` only if a local naming modal already exists by then;
   otherwise keep the first slice simple and consistent with Display.
 
@@ -119,10 +125,10 @@ Candidate commands:
 
 ## Test Plan
 
-- `npm run lint`
-- `npm run typecheck`
-- `npm run rust:fmt:check`
-- `npm run rust:clippy`
+- `pnpm run lint`
+- `pnpm run typecheck`
+- `pnpm run rust:fmt:check`
+- `pnpm run rust:clippy`
 - Rust unit tests for persistence and apply target matching.
 - Manual smoke:
   - save a preset from current light states

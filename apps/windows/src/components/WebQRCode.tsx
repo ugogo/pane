@@ -1,15 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentProps } from 'react';
 import QRCode from 'qrcode';
-import { type YStackProps } from 'tamagui';
-import { colors, YStack } from '@pane/ui';
 
-export type WebQRCodeProps = Omit<YStackProps, 'backgroundColor'> & {
+export type WebQRCodeProps = Omit<ComponentProps<'div'>, 'children'> & {
   value: string;
   size?: number;
   level?: 'L' | 'M' | 'Q' | 'H';
   backgroundColor?: string;
   color?: string;
-  containerBackgroundColor?: YStackProps['backgroundColor'];
+  containerBackgroundColor?: string;
   quietZone?: number;
 };
 
@@ -17,10 +15,12 @@ export function WebQRCode({
   value,
   size = 176,
   level = 'M',
-  backgroundColor = colors.white,
-  color = colors.black,
-  containerBackgroundColor = '$white',
+  backgroundColor = '#ffffff',
+  color = '#000000',
+  containerBackgroundColor = '#ffffff',
   quietZone = 0,
+  className,
+  style,
   ...containerProps
 }: WebQRCodeProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
@@ -50,11 +50,17 @@ export function WebQRCode({
   }, [backgroundColor, color, level, quietZone, size, value]);
 
   return (
-    <YStack
-      alignItems="center"
-      backgroundColor={containerBackgroundColor}
-      borderRadius="$3"
-      padding="$3"
+    <div
+      className={className}
+      style={{
+        alignItems: 'center',
+        backgroundColor: containerBackgroundColor,
+        borderRadius: 8,
+        display: 'flex',
+        justifyContent: 'center',
+        padding: 12,
+        ...style,
+      }}
       {...containerProps}
     >
       {dataUrl ? (
@@ -67,8 +73,8 @@ export function WebQRCode({
           width={size}
         />
       ) : (
-        <YStack height={size} width={size} />
+        <div style={{ height: size, width: size }} />
       )}
-    </YStack>
+    </div>
   );
 }

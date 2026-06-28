@@ -1,25 +1,12 @@
 import type { ReactNode } from 'react';
-import {
-  Badge,
-  MutedText,
-  colors,
-  status as uiStatus,
-  type BadgeVariant,
-} from '@pane/ui';
+import { Badge, Text, type BadgeProps } from 'pickle-ui';
 import type { Status } from '@/lib/status';
 
-function statusMessageColor(status: Status): string | undefined {
-  if (status === 'fail') return colors.destructive;
-  if (status === 'pass') return uiStatus.pass;
-  if (status === 'warn') return uiStatus.warn;
-  return undefined;
-}
-
-function badgeVariant(status: Status): BadgeVariant {
-  if (status === 'fail') return 'fail';
-  if (status === 'pass') return 'pass';
-  if (status === 'disabled') return 'disabled';
-  return 'default';
+function badgeVariant(status: Status): BadgeProps['variant'] {
+  if (status === 'fail') return 'failed';
+  if (status === 'pass') return 'success';
+  if (status === 'disabled') return 'secondary';
+  return 'outline';
 }
 
 export function StatusBadge({
@@ -44,11 +31,21 @@ export function StatusText({
   status: Status;
   children: ReactNode;
 }) {
-  const color = statusMessageColor(status);
   return (
-    <MutedText fontSize="$3" style={color ? { color } : undefined}>
+    <Text
+      className={
+        status === 'fail'
+          ? 'text-destructive'
+          : status === 'pass'
+            ? 'text-emerald-400'
+            : status === 'warn'
+              ? 'text-amber-400'
+              : undefined
+      }
+      role={status === 'fail' ? 'alert' : 'status'}
+    >
       {children}
-    </MutedText>
+    </Text>
   );
 }
 

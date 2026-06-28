@@ -24,4 +24,3 @@ apps/windows/tauri/resources/identity/pane-codesign.cer
 
 # Transient lock written by scheduled/background agent tasks.
 .claude/scheduled_tasks.lock
-

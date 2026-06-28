@@ -8,21 +8,7 @@ import {
   SunsetIcon,
   Trash2Icon,
 } from 'lucide-react';
-import {
-  Button,
-  Card,
-  MutedText,
-  PresetGroup,
-  PresetIconButton,
-  PresetNameButton,
-  Slider,
-  SliderLabel,
-  SliderRow,
-  SliderValue,
-  Text,
-  XStack,
-  YStack,
-} from '@pane/ui';
+import { Button, Card, Slider, Text, XStack, YStack } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusText } from '@/components/features/status-ui';
 import {
@@ -62,7 +48,11 @@ function scanForMonitors(list: MonitorInfo[]): StatusMessage {
 
 type FeatureKey = 'brightness' | 'contrast';
 
-const sliderMeta: { key: FeatureKey; icon: typeof SunIcon; label: string }[] = [
+const sliderMeta: {
+  key: FeatureKey;
+  icon: typeof SunIcon;
+  label: string;
+}[] = [
   { key: 'brightness', icon: SunIcon, label: 'Brightness' },
   { key: 'contrast', icon: ContrastIcon, label: 'Contrast' },
 ];
@@ -318,7 +308,7 @@ function DisplayPage() {
   }
 
   return (
-    <YStack gap="$4">
+    <YStack gap={4}>
       <PresetBar
         presets={presets}
         busy={busy}
@@ -334,7 +324,7 @@ function DisplayPage() {
         <StatusText status={scan.status}>{scan.message}</StatusText>
       ) : null}
 
-      <YStack gap="$3">
+      <YStack gap={3}>
         {monitors.map((m) =>
           m.ready ? (
             <MonitorRow
@@ -372,46 +362,54 @@ function PresetBar({
   onSave: () => void;
 }) {
   return (
-    <XStack flexWrap="wrap" gap="$2" alignItems="center">
-      <Button
-        disabled={busy}
-        btnScale="sm"
-        appearance="outline"
-        onPress={onRefresh}
-      >
+    <XStack align="center" gap={2} wrap="wrap">
+      <Button disabled={busy} size="sm" variant="outline" onClick={onRefresh}>
         Refresh
       </Button>
 
       {presets.map((p) => (
-        <PresetGroup key={p.name}>
-          <PresetNameButton disabled={busy} onPress={() => onApply(p.name)}>
+        <XStack
+          key={p.name}
+          className="overflow-hidden rounded-md border border-border"
+        >
+          <Button
+            className="rounded-none border-0"
+            disabled={busy}
+            size="sm"
+            variant="secondary"
+            onClick={() => onApply(p.name)}
+          >
             {p.name}
-          </PresetNameButton>
-          <PresetIconButton
+          </Button>
+          <Button
             aria-label={`Update ${p.name} preset`}
+            className="rounded-none border-0 border-l border-border"
             disabled={busy || !hasMonitors}
-            onPress={() => onUpdate(p.name)}
+            size="sm"
+            variant="secondary"
+            onClick={() => onUpdate(p.name)}
           >
             <RotateCcwIcon aria-hidden size={12} />
-          </PresetIconButton>
-          <PresetIconButton
+          </Button>
+          <Button
             aria-label={`Delete ${p.name} preset`}
+            className="rounded-none border-0 border-l border-border"
             disabled={busy}
-            onPress={() => onDelete(p.name)}
+            size="sm"
+            variant="secondary"
+            onClick={() => onDelete(p.name)}
           >
             <Trash2Icon aria-hidden size={12} />
-          </PresetIconButton>
-        </PresetGroup>
+          </Button>
+        </XStack>
       ))}
 
       <Button
-        borderColor="$borderColor"
-        borderStyle="dashed"
-        borderWidth={1}
+        className="border-dashed"
         disabled={busy || !hasMonitors}
-        btnScale="sm"
-        appearance="ghost"
-        onPress={onSave}
+        size="sm"
+        variant="ghost"
+        onClick={onSave}
       >
         + Save preset
       </Button>
@@ -427,13 +425,15 @@ function PresetBar({
 function MonitorPending({ monitor }: { monitor: MonitorInfo }) {
   const name = monitor.name || `Monitor ${monitor.id}`;
   return (
-    <Card gap="$2" padding="$3">
-      <Text fontSize="$3" fontWeight="600" numberOfLines={1}>
-        {name}
-      </Text>
-      <MutedText fontSize="$2">
-        Reading settings over DDC/CI… Press Refresh if this persists.
-      </MutedText>
+    <Card className="gap-3 py-3">
+      <Card.Content className="px-3">
+        <Text className="truncate" weight="bold">
+          {name}
+        </Text>
+        <Text className="mt-2" tone="muted">
+          Reading settings over DDC/CI… Press Refresh if this persists.
+        </Text>
+      </Card.Content>
     </Card>
   );
 }
@@ -449,76 +449,94 @@ function MonitorRow({
 }) {
   const name = m.name || `Monitor ${m.id}`;
   return (
-    <Card gap="$2" padding="$3">
-      <Text fontSize="$3" fontWeight="600" numberOfLines={1}>
-        {name}
-      </Text>
+    <Card className="gap-3 py-3">
+      <Card.Content className="px-3">
+        <Text className="truncate" weight="bold">
+          {name}
+        </Text>
 
-      {sliderMeta.map(({ key, icon: Icon, label }) => {
-        const f = m[key];
-        return (
-          <SliderRow key={key}>
-            <SliderLabel>
-              <Icon aria-hidden size={12} />
-              <MutedText fontSize="$2">{label}</MutedText>
-            </SliderLabel>
-            {f.supported ? (
-              <>
-                <Slider
-                  max={f.max}
-                  min={0}
-                  step={1}
-                  value={f.value}
-                  onChange={(v) => onSlide(m.id, key, v)}
-                />
-                <SliderValue>{pct(f.value, f.max)}%</SliderValue>
-              </>
-            ) : (
-              <MutedText flex={1} fontSize="$2">
-                {label} not supported by this monitor
-              </MutedText>
-            )}
-          </SliderRow>
-        );
-      })}
+        {sliderMeta.map(({ key, icon: Icon, label }) => {
+          const f = m[key];
+          return (
+            <XStack key={key} className="mt-2" align="center" gap={2.5}>
+              <XStack className="w-23 shrink-0" align="center" gap={1}>
+                <Icon aria-hidden size={12} />
+                <Text tone="muted">{label}</Text>
+              </XStack>
+              {f.supported ? (
+                <>
+                  <Slider
+                    className="min-w-0 flex-1"
+                    max={f.max}
+                    min={0}
+                    step={1}
+                    value={[f.value]}
+                    onValueChange={(value) =>
+                      onSlide(
+                        m.id,
+                        key,
+                        typeof value === 'number'
+                          ? value
+                          : (value[0] ?? f.value),
+                      )
+                    }
+                  />
+                  <output className="w-11 shrink-0 text-right text-xs text-muted-foreground">
+                    {pct(f.value, f.max)}%
+                  </output>
+                </>
+              ) : (
+                <Text className="flex-1" tone="muted">
+                  {label} not supported by this monitor
+                </Text>
+              )}
+            </XStack>
+          );
+        })}
 
-      {m.redGain.supported && m.greenGain.supported && m.blueGain.supported ? (
-        <SliderRow>
-          <SliderLabel>
-            <SunsetIcon aria-hidden size={12} />
-            <MutedText fontSize="$2">Warmth</MutedText>
-          </SliderLabel>
-          <Slider
-            max={100}
-            min={0}
-            step={1}
-            value={gainsToWarmth(m)}
-            onChange={(v) => onWarmth(m.id, v)}
-          />
-          <SliderValue>
-            {gainsToWarmth(m) === 0 ? 'Default' : `${gainsToWarmth(m)}%`}
-          </SliderValue>
-        </SliderRow>
-      ) : null}
+        {m.redGain.supported &&
+        m.greenGain.supported &&
+        m.blueGain.supported ? (
+          <XStack className="mt-2" align="center" gap={2.5}>
+            <XStack className="w-23 shrink-0" align="center" gap={1}>
+              <SunsetIcon aria-hidden size={12} />
+              <Text tone="muted">Warmth</Text>
+            </XStack>
+            <Slider
+              className="min-w-0 flex-1"
+              max={100}
+              min={0}
+              step={1}
+              value={[gainsToWarmth(m)]}
+              onValueChange={(value) =>
+                onWarmth(
+                  m.id,
+                  typeof value === 'number'
+                    ? value
+                    : (value[0] ?? gainsToWarmth(m)),
+                )
+              }
+            />
+            <output className="w-11 shrink-0 text-right text-xs text-muted-foreground">
+              {gainsToWarmth(m) === 0 ? 'Default' : `${gainsToWarmth(m)}%`}
+            </output>
+          </XStack>
+        ) : null}
 
-      {!m.brightness.supported &&
-      !m.contrast.supported &&
-      !m.redGain.supported &&
-      !m.greenGain.supported &&
-      !m.blueGain.supported ? (
-        <MutedText
-          backgroundColor="$gray3"
-          borderColor="$borderColor"
-          borderWidth={1}
-          fontSize="$2"
-          marginTop="$2"
-          padding="$3"
-          borderRadius="$4"
-        >
-          DDC/CI unavailable. Enable DDC/CI in this monitor&apos;s on-screen
-          menu.
-        </MutedText>
-      ) : null}
+        {!m.brightness.supported &&
+        !m.contrast.supported &&
+        !m.redGain.supported &&
+        !m.greenGain.supported &&
+        !m.blueGain.supported ? (
+          <Text
+            className="mt-2 rounded-lg border border-border bg-muted p-3"
+            tone="muted"
+          >
+            DDC/CI unavailable. Enable DDC/CI in this monitor&apos;s on-screen
+            menu.
+          </Text>
+        ) : null}
+      </Card.Content>
     </Card>
   );
 }

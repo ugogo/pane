@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:8081",
     "beforeDevCommand": "node ../../scripts/run-vite-dev.mjs",
-    "beforeBuildCommand": "npm run build"
+    "beforeBuildCommand": "pnpm run build"
   },
   "app": {
     "windows": [

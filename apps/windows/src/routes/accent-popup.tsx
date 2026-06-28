@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { createFileRoute } from '@tanstack/react-router';
-import { PopupTransition } from '@pane/ui';
 import { accentSelect } from '@/lib/commands';
 
 interface AccentPayload {
@@ -54,8 +53,8 @@ function AccentPopupPage() {
   if (accents.length === 0) return null;
 
   return (
-    <PopupTransition
-      motionKey={accents.join(',')}
+    <div
+      key={accents.join(',')}
       style={{
         display: 'block',
         height: '100%',
@@ -86,6 +85,6 @@ function AccentPopupPage() {
           );
         })}
       </div>
-    </PopupTransition>
+    </div>
   );
 }

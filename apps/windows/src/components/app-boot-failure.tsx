@@ -6,9 +6,8 @@ import { revealMainWindow } from '@/lib/reveal-main-window';
 
 /**
  * Last-resort failure UI. Rendered with plain DOM + shell.css/global.css classes
- * only — never Tamagui components — so it still renders correctly when the
- * failure is the Tamagui style layer itself (e.g. a missing/empty
- * tamagui.generated.css).
+ * only — never framework components — so it still renders correctly when the
+ * generated UI stylesheet is missing or invalid.
  */
 export function AppBootFailure({
   title = "Couldn't start Pane",

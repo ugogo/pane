@@ -1,9 +1,9 @@
 ---
 title: Capture Annotation Plan
 type: plan
-status: proposed
+status: in-progress
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-28
 ---
 
 # Capture Annotation Plan
@@ -16,6 +16,20 @@ rectangle, highlighter, text, blur/pixelate, undo/redo, save, and copy.
 
 The editor should stay inside the existing `image-editor` child window and keep
 the Rust side responsible for storing the latest committed capture.
+
+## Current Status
+
+The editor has moved beyond crop-only editing. Crop, arrow, rectangle,
+highlighter, pen, undo/redo, color/stroke controls, keyboard shortcuts, and
+commit back into the latest-capture flow are implemented in the Windows
+`image-editor` route.
+
+Still remaining from the original V1 target:
+
+- Text labels.
+- Blur/pixelate rectangles.
+- Clear-all.
+- Focused reducer/unit coverage for editor operations.
 
 ## Goals
 
@@ -35,12 +49,12 @@ the Rust side responsible for storing the latest committed capture.
 
 ## Delivery Approach
 
-| Slice | Scope                                                                                             | Validation                                                    |
-| ----- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| 1     | Refactor `image-editor.tsx` state so crop becomes a tool mode rather than the whole editor model. | Existing crop flow still saves the same output.               |
-| 2     | Add canvas-based rendering with arrow, rectangle, highlighter, and freehand pen.                  | Manual draw/save/copy smoke on a full-screen capture.         |
-| 3     | Add text labels, blur/pixelate rectangles, undo/redo, and clear-all.                              | Unit tests for reducer operations and manual visual QA.       |
-| 4     | Add polish: tool settings, keyboard shortcuts, cursor states, and accessibility labels.           | Browser screenshot checks at default 800-900 px window width. |
+| Slice | Scope                                                                                             | Status  |
+| ----- | ------------------------------------------------------------------------------------------------- | ------- |
+| 1     | Refactor `image-editor.tsx` state so crop becomes a tool mode rather than the whole editor model. | Shipped |
+| 2     | Add canvas-based rendering with arrow, rectangle, highlighter, and freehand pen.                  | Shipped |
+| 3     | Add text labels, blur/pixelate rectangles, undo/redo, and clear-all.                              | Partial |
+| 4     | Add polish: tool settings, keyboard shortcuts, cursor states, and accessibility labels.           | Partial |
 
 ## Architecture
 
@@ -103,19 +117,19 @@ Keep undo/redo as two stacks of editor states or operation patches. Avoid manual
 
 ## Frontend Touchpoints
 
-- `apps/windows/app/(views)/image-editor.tsx`
+- `apps/windows/src/routes/image-editor.tsx`
   - Split into smaller local components once tool modes grow.
-  - Keep CSS in `apps/windows/app/shell.css` unless moving editor styles into a
-    dedicated imported CSS file becomes clearer.
-- `apps/windows/app/(views)/preview.tsx`
+  - Keep editor-specific CSS in `apps/windows/src/styles/shell.css` unless
+    moving editor styles into a dedicated imported CSS file becomes clearer.
+- `apps/windows/src/routes/preview.tsx`
   - Keep the existing Edit button entry point.
   - Optionally add direct Copy after edit if annotation commit exposes a path.
 - `apps/windows/src/lib/commands.ts`
   - Reuse `replaceLatestCaptureWithEdit`.
   - Add a `copyEditedCaptureToClipboard(dataUrl)` command only if browser-side
     clipboard image writes are unreliable in WebView2.
-- `@pane/ui`
-  - Re-export any missing lucide icons used by the toolbar.
+- `lucide-react`
+  - Use Windows lucide imports with the `Icon` suffix.
 
 ## Rust Touchpoints
 
@@ -143,8 +157,8 @@ only allow the `image-editor` window unless the main window also needs it.
 
 ## Test Plan
 
-- `npm run lint`
-- `npm run typecheck`
+- `pnpm run lint`
+- `pnpm run typecheck`
 - Manual smoke:
   - crop only, save
   - draw arrow and rectangle, save

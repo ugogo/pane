@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { Button, MutedText, Stat, Switch, XStack, YStack } from '@pane/ui';
+import { Button, Grid, Switch, Text, XStack, YStack } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusText } from '@/components/features/status-ui';
 import { getProcessMetrics } from '@/lib/commands';
@@ -34,37 +34,49 @@ function DiagnosticsPage() {
   }
 
   return (
-    <YStack gap="$4">
+    <YStack gap={4}>
       {error ? <StatusText status="fail">{error}</StatusText> : null}
       {metrics ? (
-        <XStack flexWrap="wrap" gap="$3">
-          <Stat label="Working set" value={fmtMb(metrics.workingSetMb)} />
-          <Stat label="Virtual mem" value={fmtMb(metrics.virtualMemoryMb)} />
-          <Stat
+        <Grid className="grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]" gap={3}>
+          <Metric label="Working set" value={fmtMb(metrics.workingSetMb)} />
+          <Metric label="Virtual mem" value={fmtMb(metrics.virtualMemoryMb)} />
+          <Metric
             label="Startup elapsed"
             value={fmtMs(metrics.startupElapsedMs)}
           />
-          <Stat label="PID" value={String(metrics.pid)} />
-        </XStack>
+          <Metric label="PID" value={String(metrics.pid)} />
+        </Grid>
       ) : null}
 
-      <XStack gap="$3" alignItems="center">
+      <XStack align="center" gap={3}>
         <Button
-          btnScale="sm"
-          appearance="outline"
-          onPress={() => void metricsQuery.refetch()}
+          size="sm"
+          variant="outline"
+          onClick={() => void metricsQuery.refetch()}
         >
           Refresh
         </Button>
-        <XStack gap="$2" alignItems="center">
+        <XStack align="center" gap={2}>
           <Switch
-            aria-label="Auto-refresh process metrics"
             checked={autoRefresh}
+            label="Auto-refresh process metrics"
+            labelClassName="sr-only"
             onCheckedChange={setAutoRefresh}
           />
-          <MutedText fontSize="$3">Auto-refresh</MutedText>
+          <span className="text-sm text-muted-foreground">Auto-refresh</span>
         </XStack>
       </XStack>
     </YStack>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-36 flex-1 rounded-lg border border-border bg-muted p-3">
+      <Text tone="muted">{label}</Text>
+      <Text className="mt-1 font-mono tabular-nums" weight="bold">
+        {value}
+      </Text>
+    </div>
   );
 }

@@ -11,17 +11,17 @@ client** — **Expo Go is not supported** for the control screen.
 
 1. Install dependencies from the repo root:
    ```powershell
-   npm run companion:install
+   pnpm run companion:install
    ```
 2. Build and run on a physical device (from repo root):
    ```powershell
-   npm run companion
+   pnpm run companion
    ```
    This runs `expo run:ios --device` in `apps/mobile`. The phone and PC must be
    on the **same Wi-Fi network**.
 3. Edit screens under `apps/mobile/app/` — Metro hot-reloads on device.
 
-For a clean Metro cache: `npm run companion:clear`.
+For a clean Metro cache: `pnpm run companion:clear`.
 
 Expo Go may still work for non-control experiments, but pairing + sliders expect
 the dev client build.

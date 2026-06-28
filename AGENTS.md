@@ -5,27 +5,27 @@
 **Pane** is a Windows desktop utility suite: **Light Controls** and
 **CleanShot** in one modular hub, with more modules expected over time.
 
-- **Frontend**: TypeScript + React + Vite + TanStack Router + Tamagui (`@pane/ui`) on Windows web, Expo + React Native for the companion
+- **Frontend**: TypeScript + React + Vite + TanStack Router + Pickle UI/Tailwind on Windows web; Expo + React Native + Tamagui (`@pane/ui`) for the companion
 - **Backend**: Rust + Tauri 2
 - **Entry point**: `apps/windows/src/main.tsx` -> `apps/windows/tauri/src/lib.rs`
 
 ## Running the app
 
 ```powershell
-npm run dev          # stop any existing dev session, then start fresh (Tauri + Vite)
-npm run stop         # kill dev without restarting
+pnpm run dev          # stop any existing dev session, then start fresh (Tauri + Vite)
+pnpm run stop         # kill dev without restarting
 ```
 
-`npm run dev` always restarts: it stops leftover `pane.exe`, `cargo`, and Vite
+`pnpm run dev` always restarts: it stops leftover `pane.exe`, `cargo`, and Vite
 processes for this repo before launching. Concurrent calls serialize via a
-repo-scoped lock — the later call wins. Prefer `npm run dev` over raw
+repo-scoped lock — the later call wins. Prefer `pnpm run dev` over raw
 `tauri dev` or `vite`.
 
 For CDP-driven testing, set the env var before starting:
 
 ```powershell
 $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222"
-npm run dev
+pnpm run dev
 ```
 
 WebView2 then exposes Chrome DevTools Protocol on port 9222.
@@ -53,12 +53,12 @@ Formatting and linting are enforced; don't hand-format.
   in `CapturePreview`).
 
 ```powershell
-npm run lint           # eslint . --max-warnings 0
-npm run lint:fix       # eslint . --fix --max-warnings 0
-npm run format         # prettier --write .
-npm run format:check   # prettier --check .
-npm run rust:fmt       # cargo fmt
-npm run rust:clippy    # cargo clippy --all-targets -- -D warnings
+pnpm run lint           # eslint . --max-warnings 0
+pnpm run lint:fix       # eslint . --fix --max-warnings 0
+pnpm run format         # prettier --write .
+pnpm run format:check   # prettier --check .
+pnpm run rust:fmt       # cargo fmt
+pnpm run rust:clippy    # cargo clippy --all-targets -- -D warnings
 ```
 
 - **Format on save**: `.vscode/settings.json` enables format-on-save (Prettier
@@ -78,14 +78,17 @@ npm run rust:clippy    # cargo clippy --all-targets -- -D warnings
 
 ## UI Guidelines
 
-- Shared design system: [`packages/ui`](packages/ui) (`@pane/ui`) — Tamagui theme **`dark`** with Pane tokens (token values mirror desktop `global.css` / `shell.css`).
-- Use `Button`, `Card`, `Switch` (`native` on mobile), `Slider` (native range / `@react-native-community/slider`), `QRCode`, layout stacks from `@pane/ui` before adding one-off primitives.
-- Wrap app roots with `UIProvider`. The companion uses `@tamagui/babel-plugin` pointing at `packages/ui/tamagui.config.cjs`; Windows keeps Tamagui runtime styling through Vite.
-- Reusable motion belongs in `@pane/ui`: use Tamagui animations and shared wrappers such as `PageTransition` / `PopupTransition` for page, modal, popup, preview, and cross-platform component motion. Keep CSS animations for Windows-only chrome, DOM-specific hover polish, and specialized webview flows that are tightly coupled to Tauri window readiness.
+- Windows uses pinned `pickle-ui` primitives through `pickle-ui/styles.css`, compiled by Vite through `apps/windows/src/styles/windows.source.css` after Tailwind as documented by Pickle.
+- Windows enables TanStack Router `autoCodeSplitting` in `apps/windows/vite.config.ts`
+  so route components ship as lazy chunks without hand-written `.lazy.tsx`
+  route files.
+- The companion continues to use [`packages/ui`](packages/ui) (`@pane/ui`) with Tamagui's `dark` theme, native controls, and `UIProvider`.
+- Keep Windows composites DOM-native; do not recreate Tamagui's prop API in Windows.
+- Reusable companion motion belongs in `@pane/ui`; Windows motion uses CSS and must respect `prefers-reduced-motion`.
 - Windows-only chrome: `apps/windows/src/styles/shell.css` for titlebar/sidebar glass and `data-tauri-drag-region` — not in `@pane/ui`.
 - Optimize the main window for the default 800–900 px width.
-- Icons: `lucide-react` in the Windows app with the `Icon` suffix (`PenIcon`, not `Pen`). The Windows Babel config rewrites these imports to per-icon modules for tree-shaking. Do not add other icon libraries.
-- Companion dev requires a **dev client** build (`npm run companion` → `expo run:ios --device`); Expo Go is not supported for native sliders/Tamagui controls.
+- Icons: `lucide-react` in the Windows app with the `Icon` suffix (`PenIcon`, not `Pen`). Do not add other icon libraries.
+- Companion dev requires a **dev client** build (`pnpm run companion` -> `expo run:ios --device`); Expo Go is not supported for native sliders/Tamagui controls.
 
 ## Rust / Tauri guidelines
 
@@ -122,11 +125,11 @@ Edit permissions in `apps/windows/tauri/capabilities/*.json` (source of truth), 
 After changing any capability manifest, regenerate and **commit** the tracked output:
 
 ```powershell
-npm run tauri:gen
+pnpm run tauri:gen
 git add apps/windows/tauri/gen/schemas/
 ```
 
-`npm run tauri:gen` runs `cargo build`, which invokes `tauri_build` and refreshes `capabilities.json`, `acl-manifests.json`, and the desktop/windows schema JSON under `apps/windows/tauri/gen/schemas/`. Pre-commit runs this automatically when a staged diff touches `apps/windows/tauri/capabilities/`; CI enforces a clean tree via `npm run tauri:gen:check`.
+`pnpm run tauri:gen` runs `cargo build`, which invokes `tauri_build` and refreshes `capabilities.json`, `acl-manifests.json`, and the desktop/windows schema JSON under `apps/windows/tauri/gen/schemas/`. Pre-commit runs this automatically when a staged diff touches `apps/windows/tauri/capabilities/`; CI enforces a clean tree via `pnpm run tauri:gen:check`.
 
 ### Common dev signals
 

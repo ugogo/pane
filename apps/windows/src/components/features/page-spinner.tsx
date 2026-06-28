@@ -1,14 +1,20 @@
 import { Loader2Icon } from 'lucide-react';
-import { YStack } from '@pane/ui';
+import { Flex } from 'pickle-ui';
 
 export function PageSpinner() {
   return (
-    <YStack
-      alignItems="center"
-      justifyContent="center"
-      style={{ minHeight: 280 }}
+    <Flex
+      as="output"
+      align="center"
+      aria-label="Loading"
+      className="min-h-70"
+      justify="center"
     >
-      <Loader2Icon aria-hidden size={20} />
-    </YStack>
+      <Loader2Icon
+        aria-hidden
+        className="animate-spin text-muted-foreground"
+        size={20}
+      />
+    </Flex>
   );
 }
