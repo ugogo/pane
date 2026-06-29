@@ -171,8 +171,8 @@ if (-not $Version) {
     $conf = Get-Content -Raw "apps/windows/tauri/tauri.conf.json" | ConvertFrom-Json
     $Version = $conf.version
 }
-if ($Version -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') { Fail "bad version '$Version'." }
-$pkgVersion = $Version
+if ($Version -notmatch '^(\d+\.\d+\.\d+)(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$') { Fail "bad version '$Version'." }
+$pkgVersion = $Matches[1]
 if (($pkgVersion.ToCharArray() | Where-Object { $_ -eq '.' }).Count -eq 2) {
     $pkgVersion = "$pkgVersion.0"   # MSIX requires 4-part versions
 }

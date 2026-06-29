@@ -32,7 +32,7 @@ if (-not $env:GITHUB_TOKEN) {
 $knownIncrements = @("patch", "minor", "major", "premajor", "preminor", "prepatch", "prerelease")
 $hasIncrement = $false
 foreach ($arg in $ReleaseItArgs) {
-    if (-not $arg.StartsWith("-") -and ($knownIncrements -contains $arg -or $arg -match '^\d+\.\d+\.\d+')) {
+    if (-not $arg.StartsWith("-") -and ($knownIncrements -contains $arg -or $arg -match '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$')) {
         $hasIncrement = $true
         break
     }

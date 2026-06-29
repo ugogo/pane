@@ -26,8 +26,13 @@ function replaceFirst(
   writeFileSync(path, updated);
 }
 
-if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
-  fail(`expected stable semver x.y.z, got '${version ?? ''}'`);
+if (
+  !version ||
+  !/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/.test(version)
+) {
+  fail(
+    `expected semver x.y.z with optional prerelease/build metadata, got '${version ?? ''}'`,
+  );
 }
 
 replaceFirst(

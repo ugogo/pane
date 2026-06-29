@@ -33,8 +33,8 @@ function Step($msg) {
     Write-Host "==> $msg" -ForegroundColor Cyan
 }
 
-if ($Version -notmatch '^\d+\.\d+\.\d+$') {
-    Fail "expected stable semver x.y.z, got '$Version'."
+if ($Version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$') {
+    Fail "expected semver x.y.z with optional prerelease/build metadata, got '$Version'."
 }
 
 $remote = (git remote get-url origin).Trim()
