@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { createFileRoute } from '@tanstack/react-router';
 import { XIcon } from 'lucide-react';
@@ -13,6 +13,7 @@ export const Route = createFileRoute('/capture-zoom')({
 function CaptureZoomPage() {
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState<string>();
+  const requestId = useRef(0);
 
   useEffect(() => {
     document.documentElement.style.background = 'transparent';
@@ -20,12 +21,20 @@ function CaptureZoomPage() {
   }, []);
 
   function fetchFull() {
+    const id = requestId.current + 1;
+    requestId.current = id;
+    setSrc(null);
+    setError(undefined);
     return takeLatestCaptureFull()
       .then((c) => {
+        if (requestId.current !== id) return;
         setSrc(c.dataUrl);
         setError(undefined);
       })
-      .catch((e: unknown) => setError(String(e)));
+      .catch((e: unknown) => {
+        if (requestId.current !== id) return;
+        setError(String(e));
+      });
   }
 
   const onFetch = useEffectEvent(() => void fetchFull());

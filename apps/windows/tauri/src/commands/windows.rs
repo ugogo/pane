@@ -252,14 +252,12 @@ pub async fn show_capture_preview(app: AppHandle) -> Result<(), String> {
         Some(existing) => existing,
         None => create_capture_preview_window(&app)?,
     };
-    let was_visible = window.is_visible().unwrap_or(false);
 
     // A new capture supersedes any open enlarged view of the previous one. Keep
-    // the (hidden) window warm and tell it to prefetch the new full-res image so
-    // a later Space press shows it instantly.
+    // the zoom window warm; Rust pre-warms the enlarged image cache after the
+    // capture is stored so Space does not depend on hidden-webview IPC.
     if let Some(zoom) = app.get_webview_window(CAPTURE_ZOOM_LABEL) {
         let _ = zoom.hide();
-        let _ = app.emit_to(CAPTURE_ZOOM_LABEL, "refresh-capture", ());
     }
 
     window
@@ -271,11 +269,14 @@ pub async fn show_capture_preview(app: AppHandle) -> Result<(), String> {
     let _ = window.set_always_on_top(true);
     disable_window_transitions(&window);
 
+    // Show the already-warmed transparent webview immediately. The React route
+    // still waits until the thumbnail paints before it animates the card in, but
+    // the OS window open/focus no longer waits on IPC, image decode, and RAFs.
+    window.show().map_err(|e| e.to_string())?;
+    let _ = window.set_focus();
+
     app.emit_to(CAPTURE_PREVIEW_LABEL, "refresh-capture", ())
         .map_err(|e| e.to_string())?;
-    if was_visible {
-        let _ = window.show();
-    }
     Ok(())
 }
 
@@ -529,6 +530,7 @@ pub async fn commit_region_capture(
         let latest = app.state::<LatestCapture>();
         *latest.0.lock().unwrap() = Some(result);
     }
+    crate::commands::capture::prewarm_latest_capture_full(app.clone());
 
     capture_sound::play_capture_sound(&app);
     show_capture_preview(app).await?;

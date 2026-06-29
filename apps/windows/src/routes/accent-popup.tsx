@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { createFileRoute } from '@tanstack/react-router';
 import { Button, Text } from 'pickle-ui';
-import { accentSelect } from '@/lib/commands';
+import { accentPopupReady, accentSelect } from '@/lib/commands';
 
 interface AccentPayload {
   accents: string[];
@@ -11,6 +11,11 @@ interface AccentPayload {
 interface AccentPopupSearch {
   chars?: string;
 }
+
+type AccentPopupWindow = Window & {
+  __accentSel?: (i: number) => void;
+  __accentShow?: (accents: string[]) => void;
+};
 
 export const Route = createFileRoute('/accent-popup')({
   validateSearch: (search): AccentPopupSearch => ({
@@ -42,12 +47,16 @@ function AccentPopupPage() {
   }, []);
 
   useEffect(() => {
-    (window as Window & { __accentSel?: (i: number) => void }).__accentSel = (
-      i: number,
-    ) => setSelected(i);
+    const popupWindow = window as AccentPopupWindow;
+    popupWindow.__accentSel = (i: number) => setSelected(i);
+    popupWindow.__accentShow = (nextAccents: string[]) => {
+      setAccents(nextAccents);
+      setSelected(0);
+    };
+    void accentPopupReady();
     return () => {
-      delete (window as Window & { __accentSel?: (i: number) => void })
-        .__accentSel;
+      delete popupWindow.__accentSel;
+      delete popupWindow.__accentShow;
     };
   }, []);
 

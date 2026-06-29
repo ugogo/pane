@@ -15,6 +15,13 @@ pub fn accent_dismiss() -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn accent_popup_ready(window: tauri::WebviewWindow) -> Result<(), String> {
+    crate::commands::require_window(&window, &["accent-popup"])?;
+    crate::accent_popup::mark_ready();
+    Ok(())
+}
+
+#[tauri::command]
 pub fn get_accent_popup_enabled() -> bool {
     crate::accent_popup::is_enabled()
 }
