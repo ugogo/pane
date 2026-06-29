@@ -8,9 +8,10 @@ import {
   SunsetIcon,
   Trash2Icon,
 } from 'lucide-react';
-import { Button, Card, Slider, Text, XStack, YStack } from 'pickle-ui';
+import { Button, Card, Text, XStack, YStack } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
-import { StatusText } from '@/components/features/status-ui';
+import { LabeledSlider } from '@/components/labeled-slider';
+import { PageStatus } from '@/components/page-status';
 import {
   listMonitors,
   refreshMonitors,
@@ -320,9 +321,7 @@ function DisplayPage() {
         onSave={() => void onSavePreset()}
       />
 
-      {scan.message ? (
-        <StatusText status={scan.status}>{scan.message}</StatusText>
-      ) : null}
+      <PageStatus status={scan.status}>{scan.message}</PageStatus>
 
       <YStack gap={3}>
         {monitors.map((m) =>
@@ -379,7 +378,7 @@ function PresetBar({
           <Button
             aria-label={`Update ${p.name} preset`}
             disabled={busy || !hasMonitors}
-            variant="secondary"
+            variant="ghost"
             onClick={() => onUpdate(p.name)}
           >
             <RotateCcwIcon aria-hidden size={12} />
@@ -387,7 +386,7 @@ function PresetBar({
           <Button
             aria-label={`Delete ${p.name} preset`}
             disabled={busy}
-            variant="secondary"
+            variant="ghost"
             onClick={() => onDelete(p.name)}
           >
             <Trash2Icon aria-hidden size={12} />
@@ -446,44 +445,25 @@ function MonitorRow({
           const f = m[key];
           return (
             <div key={key} className="mt-2">
-              <XStack align="center" gap={2.5}>
-                <div className="w-23 shrink-0">
-                  <XStack align="center" gap={1}>
-                    <Icon aria-hidden size={12} />
-                    <Text tone="muted">{label}</Text>
-                  </XStack>
-                </div>
-                {f.supported ? (
-                  <>
-                    <div className="min-w-0 flex-1">
-                      <Slider
-                        max={f.max}
-                        min={0}
-                        step={1}
-                        value={[f.value]}
-                        onValueChange={(value) =>
-                          onSlide(
-                            m.id,
-                            key,
-                            typeof value === 'number'
-                              ? value
-                              : (value[0] ?? f.value),
-                          )
-                        }
-                      />
-                    </div>
-                    <output className="w-11 shrink-0 text-right text-xs text-muted-foreground">
-                      {pct(f.value, f.max)}%
-                    </output>
-                  </>
-                ) : (
-                  <div className="flex-1">
-                    <Text tone="muted">
-                      {label} not supported by this monitor
-                    </Text>
-                  </div>
-                )}
-              </XStack>
+              {f.supported ? (
+                <LabeledSlider
+                  label={label}
+                  leadingIcon={Icon}
+                  min={0}
+                  max={f.max}
+                  step={1}
+                  value={f.value}
+                  formatValue={(n) => `${pct(n, f.max)}%`}
+                  onValueChange={(value) => onSlide(m.id, key, value)}
+                />
+              ) : (
+                <XStack align="center" gap={1}>
+                  <Icon aria-hidden size={12} />
+                  <Text tone="muted">
+                    {label} not supported by this monitor
+                  </Text>
+                </XStack>
+              )}
             </div>
           );
         })}
@@ -492,33 +472,16 @@ function MonitorRow({
         m.greenGain.supported &&
         m.blueGain.supported ? (
           <div className="mt-2">
-            <XStack align="center" gap={2.5}>
-              <div className="w-23 shrink-0">
-                <XStack align="center" gap={1}>
-                  <SunsetIcon aria-hidden size={12} />
-                  <Text tone="muted">Warmth</Text>
-                </XStack>
-              </div>
-              <div className="min-w-0 flex-1">
-                <Slider
-                  max={100}
-                  min={0}
-                  step={1}
-                  value={[gainsToWarmth(m)]}
-                  onValueChange={(value) =>
-                    onWarmth(
-                      m.id,
-                      typeof value === 'number'
-                        ? value
-                        : (value[0] ?? gainsToWarmth(m)),
-                    )
-                  }
-                />
-              </div>
-              <output className="w-11 shrink-0 text-right text-xs text-muted-foreground">
-                {gainsToWarmth(m) === 0 ? 'Default' : `${gainsToWarmth(m)}%`}
-              </output>
-            </XStack>
+            <LabeledSlider
+              label="Warmth"
+              leadingIcon={SunsetIcon}
+              min={0}
+              max={100}
+              step={1}
+              value={gainsToWarmth(m)}
+              formatValue={(n) => (n === 0 ? 'Default' : `${n}%`)}
+              onValueChange={(value) => onWarmth(m.id, value)}
+            />
           </div>
         ) : null}
 

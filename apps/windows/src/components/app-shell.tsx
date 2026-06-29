@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
-import { Link, useRouterState } from '@tanstack/react-router';
+import { useRouterState } from '@tanstack/react-router';
 import {
   ActivityIcon,
   AlertTriangleIcon,
@@ -9,20 +9,18 @@ import {
   LanguagesIcon,
   LightbulbIcon,
   Loader2Icon,
-  MinusIcon,
   MonitorIcon,
   PowerIcon,
   RotateCcwIcon,
   SmartphoneIcon,
-  SquareIcon,
   Volume2Icon,
-  XIcon,
 } from 'lucide-react';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Button, Card, Text } from 'pickle-ui';
 import { AppBootFailure } from '@/components/app-boot-failure';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
-import { APP_DISPLAY_NAME } from '@/lib/app-name';
+import { AppNavLink } from '@/components/shell/app-nav-link';
+import { AppSidebar } from '@/components/shell/app-sidebar';
+import { AppTitlebar } from '@/components/shell/app-titlebar';
 import { useAppBoot } from '@/lib/use-app-boot';
 import { UpdateCheckContext } from '@/lib/update-check-context';
 import { useUpdateCheck, type UpdateNoticeState } from '@/lib/use-update-check';
@@ -167,29 +165,18 @@ function AppShell({
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <AppTitlebar />
-      <div className="app-main-frame">
-        <div className="app-sidebar">
-          <nav aria-label="Pane modules" className="app-nav-list">
-            {modules.map(({ path, label, icon: Icon }) => {
-              const isActive = pathname === path;
-              return (
-                <Link
-                  key={path}
-                  to={path}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={
-                    isActive
-                      ? 'app-nav-link app-nav-link-active'
-                      : 'app-nav-link'
-                  }
-                >
-                  <Icon aria-hidden size={16} />
-                  <Text as="span">{label}</Text>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-row max-md:flex-col">
+        <AppSidebar>
+          {modules.map(({ path, label, icon }) => (
+            <AppNavLink
+              key={path}
+              active={pathname === path}
+              icon={icon}
+              label={label}
+              to={path}
+            />
+          ))}
+        </AppSidebar>
 
         <div
           ref={contentScrollRef}
@@ -223,63 +210,6 @@ function AppShell({
             {children}
           </main>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function AppTitlebar() {
-  return (
-    <div
-      className="app-titlebar"
-      data-tauri-drag-region
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.button !== 0) return;
-        const target = event.target as HTMLElement;
-        if (target.closest('button')) return;
-        void getCurrentWindow().startDragging().catch(console.error);
-      }}
-    >
-      <div className="app-titlebar-left" data-tauri-drag-region>
-        <span className="app-titlebar-icon" data-tauri-drag-region>
-          <CameraIcon aria-hidden size={12} />
-        </span>
-        <span className="app-titlebar-title" data-tauri-drag-region>
-          <Text as="span" variant="small">
-            {APP_DISPLAY_NAME}
-          </Text>
-        </span>
-      </div>
-      <div className="app-titlebar-controls">
-        <button
-          aria-label="Minimize"
-          className="app-window-control"
-          type="button"
-          onClick={() =>
-            void getCurrentWindow().minimize().catch(console.error)
-          }
-        >
-          <MinusIcon aria-hidden size={14} />
-        </button>
-        <button
-          aria-label="Maximize or restore"
-          className="app-window-control"
-          type="button"
-          onClick={() =>
-            void getCurrentWindow().toggleMaximize().catch(console.error)
-          }
-        >
-          <SquareIcon aria-hidden size={12} />
-        </button>
-        <button
-          aria-label="Close to tray"
-          className="app-window-control app-window-control-close"
-          type="button"
-          onClick={() => void getCurrentWindow().hide().catch(console.error)}
-        >
-          <XIcon aria-hidden size={14} />
-        </button>
       </div>
     </div>
   );

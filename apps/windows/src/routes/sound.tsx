@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import {
+  CheckIcon,
   MicIcon,
   MicOffIcon,
   StarIcon,
   Volume2Icon,
   VolumeXIcon,
 } from 'lucide-react';
-import { Button, Card, Slider, Text, XStack, YStack } from 'pickle-ui';
+import { Badge, Button, Card, Text, XStack, YStack } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
-import { StatusText } from '@/components/features/status-ui';
+import { LabeledSlider } from '@/components/labeled-slider';
+import { PageStatus } from '@/components/page-status';
 import {
   setDefaultOutputDevice,
   setDefaultInputDevice,
@@ -28,6 +30,7 @@ import {
 } from '@/lib/audio-favorites';
 import { fetchSound, type SoundQueryData } from '@/lib/sound-query';
 import { queryKeys } from '@/lib/query-keys';
+import { cn } from '@/lib/cn';
 import { useActionStatus } from '@/lib/use-action-status';
 import { useDebouncedWrite } from '@/lib/use-debounced-write';
 import { useTauriEvent } from '@/lib/use-tauri-event';
@@ -170,9 +173,7 @@ function SoundPage() {
         </Button>
       </div>
 
-      {scanMessage ? (
-        <StatusText status={scanStatus}>{scanMessage}</StatusText>
-      ) : null}
+      <PageStatus status={scanStatus}>{scanMessage}</PageStatus>
 
       <YStack gap={3}>
         <Section
@@ -242,37 +243,17 @@ function Section({
           </div>
         ) : (
           <div className="mt-3 max-h-40 overflow-y-auto rounded-lg border border-border">
-            {ordered.map((d, index) => {
-              const isFav = favs.has(d.id);
-              return (
-                <div
-                  key={d.id}
-                  className={`flex items-center gap-2 px-2 py-2 ${index > 0 ? 'border-t border-border' : ''} ${d.isDefault ? 'bg-accent' : ''}`}
-                >
-                  <button
-                    className={`min-w-0 flex-1 truncate text-left text-sm focus-ring rounded-sm ${d.isDefault ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
-                    disabled={busy}
-                    type="button"
-                    onClick={() => onSelect(kind, d.id)}
-                  >
-                    <span className="mr-2 inline-block size-1.5 rounded-full bg-current" />
-                    {d.name}
-                  </button>
-                  <Button
-                    aria-label={isFav ? 'Remove favorite' : 'Add favorite'}
-                    disabled={busy}
-                    variant="ghost"
-                    onClick={() => onToggleFavorite(kind, d.id)}
-                  >
-                    <StarIcon
-                      aria-hidden
-                      fill={isFav ? 'currentColor' : 'none'}
-                      size={13}
-                    />
-                  </Button>
-                </div>
-              );
-            })}
+            {ordered.map((d, index) => (
+              <AudioDeviceRow
+                key={d.id}
+                busy={busy}
+                device={d}
+                isFavorite={favs.has(d.id)}
+                showTopBorder={index > 0}
+                onSelect={() => onSelect(kind, d.id)}
+                onToggleFavorite={() => onToggleFavorite(kind, d.id)}
+              />
+            ))}
           </div>
         )}
 
@@ -283,6 +264,7 @@ function Section({
                 aria-label={
                   kind === 'output' ? 'Toggle output mute' : 'Toggle input mute'
                 }
+                aria-pressed={muted}
                 variant="secondary"
                 onClick={() => onToggleMute(kind)}
               >
@@ -299,24 +281,16 @@ function Section({
                 )}
               </Button>
               <div className="min-w-0 flex-1">
-                <Slider
-                  max={100}
+                <LabeledSlider
+                  label="Volume"
                   min={0}
+                  max={100}
                   step={1}
-                  value={[vpct(vol.volume)]}
-                  onValueChange={(value) =>
-                    onVolume(
-                      kind,
-                      typeof value === 'number'
-                        ? value
-                        : (value[0] ?? vpct(vol.volume)),
-                    )
-                  }
+                  value={vpct(vol.volume)}
+                  formatValue={(n) => (muted ? 'Muted' : `${n}%`)}
+                  onValueChange={(value) => onVolume(kind, value)}
                 />
               </div>
-              <output className="w-11 shrink-0 text-right text-xs text-muted-foreground">
-                {muted ? 'Muted' : `${vpct(vol.volume)}%`}
-              </output>
             </XStack>
           </div>
         ) : (
@@ -326,5 +300,66 @@ function Section({
         )}
       </Card.Content>
     </Card>
+  );
+}
+
+function AudioDeviceRow({
+  device,
+  busy,
+  isFavorite,
+  showTopBorder,
+  onSelect,
+  onToggleFavorite,
+}: {
+  device: AudioDevice;
+  busy: boolean;
+  isFavorite: boolean;
+  showTopBorder: boolean;
+  onSelect: () => void;
+  onToggleFavorite: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 px-2 py-2',
+        showTopBorder && 'border-t border-border',
+        device.isDefault && 'bg-accent',
+      )}
+    >
+      <Button
+        variant="ghost"
+        className="min-w-0 flex-1 justify-start truncate"
+        disabled={busy}
+        type="button"
+        onClick={onSelect}
+      >
+        {device.isDefault ? (
+          <CheckIcon
+            aria-hidden
+            className="mr-2 size-3.5 shrink-0 text-primary"
+          />
+        ) : (
+          <span className="mr-2 inline-block size-1.5 shrink-0 rounded-full bg-current opacity-40" />
+        )}
+        {device.name}
+        {device.isDefault ? (
+          <Badge variant="outline" className="ml-2 shrink-0">
+            Default
+          </Badge>
+        ) : null}
+      </Button>
+      <Button
+        aria-label={isFavorite ? 'Remove favorite' : 'Add favorite'}
+        disabled={busy}
+        variant="ghost"
+        onClick={onToggleFavorite}
+      >
+        <StarIcon
+          aria-hidden
+          fill={isFavorite ? 'currentColor' : 'none'}
+          size={13}
+        />
+      </Button>
+    </div>
   );
 }

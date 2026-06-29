@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { createFileRoute } from '@tanstack/react-router';
 import { XIcon } from 'lucide-react';
+import { Button } from 'pickle-ui';
 import { hideCaptureZoom, takeLatestCaptureFull } from '@/lib/commands';
 import { useEffectEvent } from '@/lib/use-effect-event';
 
@@ -56,8 +57,15 @@ function CaptureZoomPage() {
       className="fixed inset-0 overflow-hidden bg-transparent"
       data-tauri-drag-region
     >
-      <div className="capture-zoom-card" data-tauri-drag-region>
-        {error ? <p className="capture-zoom-error">{error}</p> : null}
+      <div
+        className="absolute inset-0 overflow-hidden rounded-lg border border-border bg-card shadow-[0_8px_24px_var(--app-shadow-strong)] [&_img]:-outline-offset-1 [&_img]:outline [&_img]:outline-white/10"
+        data-tauri-drag-region
+      >
+        {error ? (
+          <p className="absolute inset-0 flex items-center justify-center p-3 text-center text-xs text-destructive">
+            {error}
+          </p>
+        ) : null}
         {!error && src ? (
           <img
             src={src}
@@ -73,15 +81,15 @@ function CaptureZoomPage() {
           />
         ) : null}
 
-        <button
-          type="button"
+        <Button
+          aria-label="Close preview"
+          variant="outline"
+          className="absolute right-2 top-2"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => void hideCaptureZoom()}
-          className="capture-zoom-close"
-          aria-label="Close preview"
         >
           <XIcon aria-hidden size={16} />
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -90,6 +90,22 @@ pnpm run rust:clippy    # cargo clippy --all-targets -- -D warnings
 - Icons: `lucide-react` in the Windows app with the `Icon` suffix (`PenIcon`, not `Pen`). Do not add other icon libraries.
 - Companion dev requires a **dev client** build (`pnpm run companion` -> `expo run:ios --device`); Expo Go is not supported for native sliders/Tamagui controls.
 
+### UI surfaces
+
+Map layout to Pickle primitives and `--app-*` tokens in `apps/windows/src/styles/global.css`:
+
+| Surface                               | Implementation                                                                                       |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Page background                       | `bg-background` on shell content                                                                     |
+| Cards                                 | Pickle `Card` / `Card.Content`                                                                       |
+| Inset panels, device lists            | `bg-muted` + `border-border`                                                                         |
+| Section separators on muted           | `border-[var(--app-border-medium)]`                                                                  |
+| Popup overlays (transparent webviews) | `--app-preview-overlay`, `--app-selection-dim` — use opaque rgb(), not `color-mix(..., transparent)` |
+
+Shared Windows composites: `LabeledSlider`, `PageStatus`, `PageSection` in
+`apps/windows/src/components/`. Button variant rules live in
+`page-status.tsx`.
+
 ## Rust / Tauri guidelines
 
 ### Sync commands deadlock window creation

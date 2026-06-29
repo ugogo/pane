@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Text } from 'pickle-ui';
+import { Button } from 'pickle-ui';
 
 const MOD_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta']);
 
@@ -148,10 +148,13 @@ export function ShortcutInput({
     : value || placeholder || 'Not set';
 
   return (
-    <button
+    <Button
       ref={ref}
       type="button"
+      variant="outline"
       aria-label={ariaLabel}
+      aria-pressed={capturing || undefined}
+      className="w-full justify-start"
       onFocus={() => {
         setCapturing(true);
         setDraft('');
@@ -162,21 +165,8 @@ export function ShortcutInput({
       }}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
-      className={
-        capturing
-          ? 'shortcut-input shortcut-input--capturing'
-          : 'shortcut-input'
-      }
     >
-      {value || capturing ? (
-        <Text as="span" variant="small">
-          {display}
-        </Text>
-      ) : (
-        <Text as="span" variant="small">
-          {display}
-        </Text>
-      )}
-    </button>
+      {display}
+    </Button>
   );
 }

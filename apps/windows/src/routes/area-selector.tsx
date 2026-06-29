@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { createFileRoute } from '@tanstack/react-router';
+import { Badge } from 'pickle-ui';
 import {
   areaSelectorOrigin,
   commitRegionCapture,
@@ -92,7 +93,7 @@ function AreaSelectorPage() {
 
   return (
     <div
-      className="area-selector-root"
+      className="animate-[area-selector-fade-in_140ms_ease-out_both]"
       role="application"
       aria-label="Drag to select a capture region"
       style={{
@@ -118,11 +119,13 @@ function AreaSelectorPage() {
         void finish(finalRect);
       }}
     >
-      {!rect ? <div className="area-selector-dim" /> : null}
+      {!rect ? (
+        <div className="pointer-events-none fixed inset-0 bg-[var(--app-selection-dim)]" />
+      ) : null}
 
       {rect ? (
         <div
-          className="area-selector-rect"
+          className="pointer-events-none absolute border border-ring shadow-[0_0_0_100vmax_var(--app-selection-dim),0_0_0_1px_var(--app-selection-outline)]"
           style={{
             left: rect.x,
             top: rect.y,
@@ -130,42 +133,36 @@ function AreaSelectorPage() {
             height: rect.h,
           }}
         >
-          <span
-            className="area-selector-pill area-selector-size-label"
+          <Badge
+            variant="outline"
+            className="pointer-events-none absolute left-0"
             style={{
               top: sizeLabelInside ? 6 : -24,
             }}
           >
             {Math.round(rect.w)} x {Math.round(rect.h)}
-          </span>
+          </Badge>
         </div>
       ) : null}
 
-      <div
-        className="area-selector-pill"
+      <Badge
+        variant="outline"
+        className="pointer-events-none absolute left-1/2 -translate-x-1/2"
         style={{
-          position: 'absolute',
-          left: '50%',
-          transform: 'translateX(-50%)',
           top: helperAtBottom ? undefined : 12,
           bottom: helperAtBottom ? 12 : undefined,
         }}
       >
         Drag to select - Esc to cancel
-      </div>
+      </Badge>
 
       {error ? (
-        <div
-          className="area-selector-pill area-selector-error"
-          style={{
-            position: 'absolute',
-            bottom: 12,
-            left: '50%',
-            transform: 'translateX(-50%)',
-          }}
+        <Badge
+          variant="destructive"
+          className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2"
         >
           {error}
-        </div>
+        </Badge>
       ) : null}
     </div>
   );

@@ -4,6 +4,8 @@ import { Loader2Icon, MoonIcon, RefreshCwIcon } from 'lucide-react';
 import { Button, Card, Switch, Text, XStack, YStack } from 'pickle-ui';
 import { PageSpinner } from '@/components/features/page-spinner';
 import { StatusText } from '@/components/features/status-ui';
+import { PageSection } from '@/components/page-section';
+import { PageStatus } from '@/components/page-status';
 import {
   getRunAtStartup,
   setRunAtStartup,
@@ -118,96 +120,103 @@ function StartupPage() {
 
   return (
     <YStack gap={4}>
-      <Card>
-        <Card.Content>
-          <XStack align="center" gap={4} justify="between">
-            <div className="min-w-0 flex-1">
-              <YStack gap={1}>
-                <Text as="h2" weight="bold">
-                  Start with Windows
-                </Text>
-                <Text tone="muted">
-                  {__DEV__
-                    ? 'Disabled in dev so the debug binary is not registered.'
-                    : 'Keep capture and accents available after sign-in.'}
-                </Text>
-              </YStack>
-            </div>
-            <Switch
-              checked={runAtStartup ?? false}
-              disabled={runAtStartup === null || __DEV__}
-              label=""
-              onCheckedChange={(enabled) => startupToggle.mutate(enabled)}
-            />
-          </XStack>
-        </Card.Content>
-      </Card>
-      {startupStatus.message ? (
-        <StatusText status={startupStatus.status}>
-          {startupStatus.message}
-        </StatusText>
-      ) : startupError ? (
-        <StatusText status="fail">{startupError}</StatusText>
-      ) : null}
+      <PageStatus status={startupStatus.status}>
+        {startupStatus.message}
+      </PageStatus>
+      <PageStatus status="fail">{startupError}</PageStatus>
+      <PageStatus status={sleepStatus.status}>{sleepStatus.message}</PageStatus>
 
-      <Card>
-        <Card.Content>
-          <YStack gap={2}>
+      <PageSection title="Launch">
+        <Card>
+          <Card.Content>
             <XStack align="center" gap={4} justify="between">
               <div className="min-w-0 flex-1">
                 <YStack gap={1}>
                   <Text as="h2" weight="bold">
-                    Software updates
+                    Start with Windows
                   </Text>
                   <Text tone="muted">
-                    Check GitHub Releases for a newer signed version of Pane.
+                    {__DEV__
+                      ? 'Disabled in dev so the debug binary is not registered.'
+                      : 'Keep capture and accents available after sign-in.'}
                   </Text>
                 </YStack>
               </div>
-              <Button
-                aria-label="Check for updates"
-                disabled={
-                  isChecking || updateBusy || checkState.status === 'skipped'
-                }
-                variant="secondary"
-                onClick={() => void checkNow()}
-              >
-                {isChecking ? (
-                  <Loader2Icon aria-hidden className="animate-spin" size={16} />
-                ) : (
-                  <RefreshCwIcon aria-hidden size={16} />
-                )}
-                {isChecking ? 'Checking' : 'Check for updates'}
+              <Switch
+                checked={runAtStartup ?? false}
+                disabled={runAtStartup === null || __DEV__}
+                label=""
+                onCheckedChange={(enabled) => startupToggle.mutate(enabled)}
+              />
+            </XStack>
+          </Card.Content>
+        </Card>
+      </PageSection>
+
+      <PageSection title="Updates">
+        <Card>
+          <Card.Content>
+            <YStack gap={2}>
+              <XStack align="center" gap={4} justify="between">
+                <div className="min-w-0 flex-1">
+                  <YStack gap={1}>
+                    <Text as="h2" weight="bold">
+                      Software updates
+                    </Text>
+                    <Text tone="muted">
+                      Check GitHub Releases for a newer signed version of Pane.
+                    </Text>
+                  </YStack>
+                </div>
+                <Button
+                  aria-label="Check for updates"
+                  disabled={
+                    isChecking || updateBusy || checkState.status === 'skipped'
+                  }
+                  variant="outline"
+                  onClick={() => void checkNow()}
+                >
+                  {isChecking ? (
+                    <Loader2Icon
+                      aria-hidden
+                      className="animate-spin"
+                      size={16}
+                    />
+                  ) : (
+                    <RefreshCwIcon aria-hidden size={16} />
+                  )}
+                  {isChecking ? 'Checking' : 'Check for updates'}
+                </Button>
+              </XStack>
+              <UpdateCheckMessage
+                checkState={checkState}
+                notice={updateNotice}
+              />
+            </YStack>
+          </Card.Content>
+        </Card>
+      </PageSection>
+
+      <PageSection title="Power">
+        <Card>
+          <Card.Content>
+            <XStack align="center" gap={4} justify="between">
+              <div className="min-w-0 flex-1">
+                <YStack gap={1}>
+                  <Text as="h2" weight="bold">
+                    Sleep computer
+                  </Text>
+                  <Text tone="muted">Put Windows into sleep mode now.</Text>
+                </YStack>
+              </div>
+              <Button variant="outline" onClick={() => sleep.mutate()}>
+                <MoonIcon aria-hidden size={16} />
+                Sleep
               </Button>
             </XStack>
-            <UpdateCheckMessage checkState={checkState} notice={updateNotice} />
-          </YStack>
-        </Card.Content>
-      </Card>
-
-      <Card>
-        <Card.Content>
-          <XStack align="center" gap={4} justify="between">
-            <div className="min-w-0 flex-1">
-              <YStack gap={1}>
-                <Text as="h2" weight="bold">
-                  Sleep computer
-                </Text>
-                <Text tone="muted">Put Windows into sleep mode now.</Text>
-              </YStack>
-            </div>
-            <Button variant="secondary" onClick={() => sleep.mutate()}>
-              <MoonIcon aria-hidden size={16} />
-              Sleep
-            </Button>
-          </XStack>
-        </Card.Content>
-      </Card>
-      {sleepStatus.message ? (
-        <StatusText status={sleepStatus.status}>
-          {sleepStatus.message}
-        </StatusText>
-      ) : null}
+          </Card.Content>
+        </Card>
+      </PageSection>
     </YStack>
   );
 }

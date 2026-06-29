@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { createFileRoute } from '@tanstack/react-router';
+import { Button, Text } from 'pickle-ui';
 import { accentSelect } from '@/lib/commands';
 
 interface AccentPayload {
@@ -63,25 +64,26 @@ function AccentPopupPage() {
         width: '100%',
       }}
     >
-      <div className="accent-popup-root">
+      <div className="absolute inset-0 flex gap-1 bg-muted p-1 shadow-[0_8px_24px_var(--app-shadow-strong)]">
         {accents.map((ch, i) => {
           const active = i === selected;
           return (
-            <button
+            <Button
               key={ch}
               type="button"
+              variant={active ? 'primary' : 'ghost'}
               aria-label={`Select ${ch}, shortcut ${i + 1}`}
               aria-current={active ? 'true' : undefined}
-              className={
-                active
-                  ? 'accent-popup-chip accent-popup-chip-active'
-                  : 'accent-popup-chip'
-              }
+              className="flex-1 flex-col"
               onClick={() => void accentSelect(ch)}
             >
-              <span className="accent-popup-char">{ch}</span>
-              <span className="accent-popup-shortcut">{i + 1}</span>
-            </button>
+              <Text as="span" variant="h3">
+                {ch}
+              </Text>
+              <Text as="span" tone="muted" variant="small">
+                {i + 1}
+              </Text>
+            </Button>
           );
         })}
       </div>

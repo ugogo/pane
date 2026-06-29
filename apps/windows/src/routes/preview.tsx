@@ -7,6 +7,7 @@ import {
   PenIcon,
   XIcon,
 } from 'lucide-react';
+import { Badge, Button } from 'pickle-ui';
 import { useEffectEvent } from '@/lib/use-effect-event';
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -19,6 +20,7 @@ import {
   toggleCaptureZoom,
   type CaptureResult,
 } from '@/lib/commands';
+import { cn } from '@/lib/cn';
 
 export const Route = createFileRoute('/preview')({
   component: PreviewPage,
@@ -296,15 +298,20 @@ function PreviewPage() {
     >
       <style>{CAPTURE_KEYFRAMES}</style>
       <div
-        className="preview-card preview-card-animated"
+        className="group absolute bottom-0 left-0 h-[200px] w-[250px] overflow-hidden rounded-lg border border-border bg-card text-foreground shadow-[0_8px_24px_var(--app-shadow-strong)] [&_img]:-outline-offset-1 [&_img]:outline [&_img]:outline-white/10"
         data-tauri-drag-region
         onAnimationEnd={onCardAnimationEnd}
         style={{
           opacity: phase === 'hidden' ? 0 : 1,
           animation: PHASE_ANIMATION[phase],
+          transformOrigin: '50% 50%',
         }}
       >
-        {error ? <p className="preview-error">{error}</p> : null}
+        {error ? (
+          <p className="absolute inset-0 flex items-center justify-center p-3 text-center text-xs text-destructive">
+            {error}
+          </p>
+        ) : null}
         {capture && (
           <img
             key={revision}
@@ -322,7 +329,7 @@ function PreviewPage() {
         )}
 
         {capture && (
-          <div className="preview-overlay">
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-[var(--app-preview-overlay)] opacity-0 backdrop-blur-[1px] transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
             <ActionButton
               icon={actions.copy === 'success' ? CheckIcon : ClipboardIcon}
               label={actions.copy === 'success' ? 'Copied' : 'Copy'}
@@ -355,9 +362,12 @@ function PreviewPage() {
         />
 
         {capture && (
-          <span className="preview-size">
+          <Badge
+            variant="outline"
+            className="pointer-events-none absolute bottom-1.5 left-1.5 font-mono opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          >
             {capture.width} x {capture.height}
-          </span>
+          </Badge>
         )}
       </div>
     </div>
@@ -376,15 +386,19 @@ function PreviewChromeButton({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      aria-label={label}
+      size="sm"
+      variant="outline"
+      className={cn(
+        'absolute top-1.5 z-[2] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100',
+        side === 'left' ? 'left-1.5' : 'right-1.5',
+      )}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onClick}
-      className={`preview-chrome-btn preview-chrome-btn-${side}`}
-      aria-label={label}
     >
       <Icon aria-hidden size={14} />
-    </button>
+    </Button>
   );
 }
 
@@ -400,15 +414,14 @@ function ActionButton({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <Button
       disabled={busy}
+      variant="outline"
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onClick}
-      className="preview-action-btn"
     >
       <Icon aria-hidden size={14} />
       {label}
-    </button>
+    </Button>
   );
 }

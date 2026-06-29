@@ -1,7 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { createFileRoute } from '@tanstack/react-router';
 import {
   ArrowUpRightIcon,
@@ -18,6 +17,7 @@ import {
   Undo2Icon,
   XIcon,
 } from 'lucide-react';
+import { Button, Input, InputGroup, Text } from 'pickle-ui';
 import {
   commitLatestCaptureEdit,
   hideImageEditor,
@@ -25,6 +25,11 @@ import {
   takeLatestCaptureEdit,
 } from '@/lib/commands';
 import { useEffectEvent } from '@/lib/use-effect-event';
+import { EditorSectionHeading } from '@/components/image-editor/editor-section-heading';
+import { EditorSliderField } from '@/components/image-editor/editor-slider-field';
+import { EditorToggleButton } from '@/components/image-editor/editor-toggle-button';
+import { ChildWindowTitlebar } from '@/components/shell/child-window-titlebar';
+import '@/styles/image-editor.css';
 
 export const Route = createFileRoute('/image-editor')({
   component: ImageEditorPage,
@@ -1392,32 +1397,19 @@ function ImageEditorPage() {
       : strokeWidth;
 
   return (
-    <div className="image-editor-root">
-      <div
-        className="image-editor-header"
-        data-tauri-drag-region
-        role="presentation"
-        onMouseDown={(event) => {
-          if (event.button !== 0) return;
-          const target = event.target as HTMLElement;
-          if (target.closest('button')) return;
-          void getCurrentWindow().startDragging().catch(console.error);
-        }}
-      >
-        <span className="image-editor-title">Edit capture</span>
-        <div className="window-action-bar image-editor-action-bar">
-          <button
-            type="button"
-            onClick={() => void hideImageEditor()}
-            className="window-action-control window-action-control-close image-editor-action-control"
-            aria-label="Close editor"
-          >
-            <XIcon aria-hidden size={16} />
-          </button>
-        </div>
-      </div>
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-card text-foreground">
+      <ChildWindowTitlebar
+        title={
+          <Text as="span" variant="small" weight="bold">
+            Edit capture
+          </Text>
+        }
+        closeLabel="Close editor"
+        onClose={() => void hideImageEditor()}
+        closeIcon={<XIcon aria-hidden size={16} />}
+      />
 
-      <div className="image-editor-body">
+      <div className="flex min-h-0 flex-1">
         <EditorStage
           key={sessionId ?? 'none'}
           src={src}
@@ -1534,76 +1526,71 @@ function EditorPanel({
   onSave: () => void;
 }) {
   return (
-    <div className="image-editor-panel">
-      <h2 className="image-editor-section">Tools</h2>
-      <div className="image-editor-tool-grid">
+    <div className="flex w-[248px] shrink-0 flex-col gap-3.5 border-l border-border bg-muted p-4">
+      <EditorSectionHeading>Tools</EditorSectionHeading>
+      <div className="-mt-1 grid grid-cols-6 gap-1.5">
         {TOOLS.map(({ id, label, icon: Icon, hint }) => (
-          <button
+          <EditorToggleButton
             key={id}
-            type="button"
+            size="tool"
             title={`${label} (${hint})`}
             aria-label={label}
             aria-pressed={tool === id}
             onClick={() => onTool(id)}
-            className="image-editor-tool"
           >
             <Icon aria-hidden size={16} />
-          </button>
+          </EditorToggleButton>
         ))}
       </div>
 
-      <div className="image-editor-inline-actions">
-        <button
-          type="button"
+      <div className="mb-1.5 flex gap-1.5">
+        <EditorToggleButton
+          size="icon"
           title="Undo"
           aria-label="Undo"
           onClick={onUndo}
           disabled={undo.length === 0}
-          className="image-editor-icon-btn"
         >
           <Undo2Icon aria-hidden size={15} />
-        </button>
-        <button
-          type="button"
+        </EditorToggleButton>
+        <EditorToggleButton
+          size="icon"
           title="Redo"
           aria-label="Redo"
           onClick={onRedo}
           disabled={redo.length === 0}
-          className="image-editor-icon-btn"
         >
           <Redo2Icon aria-hidden size={15} />
-        </button>
+        </EditorToggleButton>
       </div>
 
-      <h2 className="image-editor-section">Style</h2>
-      <div className="image-editor-swatch-row">
+      <SidebarSeparator />
+
+      <EditorSectionHeading>Style</EditorSectionHeading>
+      <div className="-mt-1 flex flex-wrap gap-1.5">
         {SWATCHES.map((swatch) => (
-          <button
+          <EditorToggleButton
             key={swatch}
-            type="button"
+            size="swatch"
             title={swatch}
             aria-label={`Use ${swatch}`}
             aria-pressed={color === swatch}
             onClick={() => onColor(swatch)}
-            className="image-editor-swatch"
             style={{ background: swatch }}
           />
         ))}
       </div>
-      <label className="image-editor-range-field">
-        <span>Stroke</span>
-        <input
-          type="range"
-          min={2}
-          max={18}
-          step={1}
-          value={strokeWidth}
-          disabled={strokeDisabled}
-          onChange={(e) => onWidth(e.currentTarget.valueAsNumber)}
-          className="image-editor-range"
-        />
-        <output>{strokeWidth}px</output>
-      </label>
+      <EditorSliderField
+        label="Stroke"
+        min={2}
+        max={18}
+        step={1}
+        value={strokeWidth}
+        disabled={strokeDisabled}
+        onValueChange={onWidth}
+      />
+
+      <SidebarSeparator />
 
       <BackgroundControls
         padding={padding}
@@ -1612,8 +1599,10 @@ function EditorPanel({
         onBackground={onBackground}
       />
 
-      <h2 className="image-editor-section">Crop</h2>
-      <div className="image-editor-crop-grid">
+      <SidebarSeparator />
+
+      <EditorSectionHeading>Crop</EditorSectionHeading>
+      <div className="-mt-1 grid grid-cols-2 gap-x-3 gap-y-2.5">
         <CropField
           label="X"
           value={crop?.x ?? 0}
@@ -1640,25 +1629,27 @@ function EditorPanel({
         />
       </div>
 
-      <div className="image-editor-spacer" />
+      <div className="flex-1" />
 
-      <div className="image-editor-actions">
-        <button
+      <div className="flex gap-2">
+        <Button
           type="button"
+          variant="secondary"
+          className="flex-1"
           onClick={onReset}
           disabled={!base || unchanged}
-          className="image-editor-btn image-editor-btn-ghost"
         >
           <RotateCcwIcon aria-hidden size={14} />
           Reset
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="primary"
+          className="flex-1"
           onClick={onSave}
           disabled={
             !base || !crop || crop.w < 1 || crop.h < 1 || save === 'busy'
           }
-          className="image-editor-btn image-editor-btn-primary"
         >
           {save === 'success' ? (
             <CheckIcon aria-hidden size={14} />
@@ -1670,10 +1661,14 @@ function EditorPanel({
             : save === 'busy'
               ? 'Saving...'
               : 'Save'}
-        </button>
+        </Button>
       </div>
     </div>
   );
+}
+
+function SidebarSeparator() {
+  return <hr className="border-[var(--app-border-medium)]" />;
 }
 
 function BackgroundControls({
@@ -1689,30 +1684,24 @@ function BackgroundControls({
 }) {
   return (
     <>
-      <h2 className="image-editor-section">Background</h2>
-      <label className="image-editor-range-field">
-        <span>Padding</span>
-        <input
-          type="range"
-          min={0}
-          max={MAX_PADDING}
-          step={2}
-          value={padding}
-          onChange={(e) => onPadding(e.currentTarget.valueAsNumber)}
-          className="image-editor-range"
-        />
-        <output>{padding}px</output>
-      </label>
-      <div className="image-editor-swatch-row">
+      <EditorSectionHeading>Background</EditorSectionHeading>
+      <EditorSliderField
+        label="Padding"
+        min={0}
+        max={MAX_PADDING}
+        step={2}
+        value={padding}
+        onValueChange={onPadding}
+      />
+      <div className="-mt-1 flex flex-wrap gap-1.5">
         {GRADIENTS.map((gradient) => (
-          <button
+          <EditorToggleButton
             key={gradient.id}
-            type="button"
+            size="swatch"
             title={gradient.label}
             aria-label={`Use ${gradient.label} gradient`}
             aria-pressed={background === gradient.id}
             onClick={() => onBackground(gradient.id)}
-            className="image-editor-swatch"
             style={{ backgroundImage: gradientCss(gradient) }}
           />
         ))}
@@ -1733,19 +1722,20 @@ function CropField({
   onChange: (value: number) => void;
 }) {
   return (
-    <label className="image-editor-field">
-      <span>{label}</span>
-      <div className="image-editor-input-wrap">
-        <input
+    <label className="flex min-w-0 flex-col items-stretch gap-1">
+      <Text as="span" variant="small" weight="bold" tone="muted">
+        {label}
+      </Text>
+      <InputGroup>
+        <Input
           type="number"
           min={label === 'X' || label === 'Y' ? 0 : 1}
           value={Number.isFinite(value) ? value : ''}
           disabled={disabled}
           onChange={(e) => onChange(e.currentTarget.valueAsNumber)}
-          className="image-editor-input"
         />
-        <span className="image-editor-unit">px</span>
-      </div>
+        <InputGroup.Addon className="bg-background">px</InputGroup.Addon>
+      </InputGroup>
     </label>
   );
 }
@@ -2687,12 +2677,19 @@ function EditorStageView({
   ) => void;
 }) {
   return (
-    <div className="image-editor-stage" ref={stageRef}>
-      {error ? <p className="image-editor-error">{error}</p> : null}
+    <div
+      className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-secondary p-5"
+      ref={stageRef}
+    >
+      {error ? (
+        <Text as="p" variant="small" tone="destructive" className="text-center">
+          {error}
+        </Text>
+      ) : null}
       {src ? (
         <div
           ref={wrapperRef}
-          className="image-editor-canvas"
+          className="relative max-h-full max-w-full shrink-0"
           style={{
             padding: framePadding,
             background: background ?? undefined,
@@ -2734,7 +2731,7 @@ function EditorStageView({
             <canvas
               ref={canvasRef}
               aria-label="Capture annotation canvas"
-              className="image-editor-preview"
+              className="block h-full w-full object-fill pointer-events-none"
             />
             {displayCrop ? (
               <CropSelectionOverlay
@@ -2760,17 +2757,18 @@ function EditorStageView({
         </div>
       ) : null}
       {src && zoom !== 1 ? (
-        <div className="image-editor-viewbar">
-          <button
+        <div className="absolute right-3 top-3 z-[6] flex gap-1.5">
+          <Button
             type="button"
-            className="image-editor-viewbar-btn"
+            variant="secondary"
+            size="sm"
             title="Fit to window"
             aria-label="Fit to window"
             onClick={onFitZoom}
           >
             <ScanIcon aria-hidden size={15} />
             <span>{Math.round(zoom * 100)}%</span>
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

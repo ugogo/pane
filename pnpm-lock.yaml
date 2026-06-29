@@ -172,6 +172,9 @@ importers:
       '@tauri-apps/plugin-updater':
         specifier: ^2.10.1
         version: 2.10.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
       lucide-react:
         specifier: ^1.21.0
         version: 1.21.0(react@19.1.0)
@@ -190,6 +193,9 @@ importers:
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
+      tailwind-merge:
+        specifier: ^3.3.1
+        version: 3.6.0
     devDependencies:
       '@tailwindcss/vite':
         specifier: 4.3.0
