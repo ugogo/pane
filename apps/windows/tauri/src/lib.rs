@@ -10,6 +10,7 @@ use commands::capture::{CaptureEditSessions, LatestCapture};
 use commands::metrics::StartTime;
 use std::time::Instant;
 use tauri::Manager;
+use tauri_plugin_window_state::StateFlags;
 
 pub(crate) const APP_DISPLAY_NAME: &str = if cfg!(debug_assertions) {
     "Pane (dev)"
@@ -29,6 +30,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
             tauri_plugin_window_state::Builder::default()
+                .with_state_flags(StateFlags::SIZE | StateFlags::POSITION)
                 .with_denylist(&[
                     "capture-preview",
                     "capture-zoom",
