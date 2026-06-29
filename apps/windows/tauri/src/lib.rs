@@ -67,6 +67,13 @@ pub fn run() {
             accent_popup::register(app.handle().clone());
             commands::audio::start_watch(app.handle().clone());
             commands::companion::init(app.handle());
+            let warm_windows_app = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                if let Err(e) = commands::windows::prepare_capture_windows(warm_windows_app).await {
+                    eprintln!("[startup] failed to warm capture windows: {e}");
+                }
+            });
             // Push persisted color/brightness back to each device so the
             // hardware matches what the UI displays. Cold-boot launches may
             // race USB enumeration, so give devices a moment to settle —
@@ -181,6 +188,7 @@ pub fn run() {
             commands::audio::set_input_mute,
             commands::accent::accent_select,
             commands::accent::accent_dismiss,
+            commands::accent::accent_popup_ready,
             commands::accent::get_accent_popup_enabled,
             commands::accent::set_accent_popup_enabled,
         ])

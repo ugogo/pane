@@ -8,7 +8,7 @@
 //! unaffected.
 
 #[cfg(windows)]
-pub use imp::{commit_char, dismiss, is_enabled, register, set_enabled};
+pub use imp::{commit_char, dismiss, is_enabled, mark_ready, register, set_enabled};
 
 #[cfg(not(windows))]
 pub fn register(_app: tauri::AppHandle) {}
@@ -23,6 +23,9 @@ pub fn dismiss() {}
 pub fn is_enabled() -> bool {
     false
 }
+
+#[cfg(not(windows))]
+pub fn mark_ready() {}
 
 #[cfg(not(windows))]
 pub fn set_enabled(_app: &tauri::AppHandle, _enabled: bool) {}
@@ -77,6 +80,8 @@ mod imp {
     static APP: OnceCell<AppHandle> = OnceCell::new();
     // true while the popup window is visible
     static POPUP_VISIBLE: AtomicBool = AtomicBool::new(false);
+    // true after the warmed webview has installed its direct JS update hooks.
+    static POPUP_READY: AtomicBool = AtomicBool::new(false);
     // Master on/off switch, persisted to disk and toggled from the main UI.
     static ENABLED: AtomicBool = AtomicBool::new(true);
     // After a selection/dismissal, the originating letter key is often still
@@ -142,13 +147,17 @@ mod imp {
         std::thread::spawn(timer_loop);
         // Pre-create the popup window so it's loaded before the first long-press.
         tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
             warmup_popup(&app);
         });
     }
 
     pub fn is_enabled() -> bool {
         ENABLED.load(Ordering::Relaxed)
+    }
+
+    pub fn mark_ready() {
+        POPUP_READY.store(true, Ordering::Release);
     }
 
     /// Toggles the feature and persists the choice. Disabling also tears down any
@@ -158,6 +167,11 @@ mod imp {
         save_enabled(app, enabled);
         if !enabled {
             dismiss();
+        } else {
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                warmup_popup(&app);
+            });
         }
     }
 
@@ -488,7 +502,13 @@ mod imp {
         };
 
         let window = match app.get_webview_window(POPUP_LABEL) {
-            Some(w) => w,
+            Some(w) => {
+                if !POPUP_READY.load(Ordering::Acquire) {
+                    POPUP_READY.store(false, Ordering::Release);
+                    let _ = w.navigate(target.clone());
+                }
+                w
+            }
             None => {
                 match WebviewWindowBuilder::new(
                     app,
@@ -531,6 +551,10 @@ mod imp {
         // keyboard-navigation highlight on the first variant.
         *CURRENT_ACCENTS.lock().unwrap() = accents.clone();
         SELECTED_INDEX.store(0, Ordering::Relaxed);
+
+        if let Ok(chars) = serde_json::to_string(&accents) {
+            let _ = window.eval(format!("window.__accentShow&&window.__accentShow({chars})"));
+        }
 
         POPUP_VISIBLE.store(true, Ordering::Relaxed);
         // Show without activating (WebView2 still renders visible, non-focused

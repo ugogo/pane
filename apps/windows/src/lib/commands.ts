@@ -651,6 +651,10 @@ export function accentDismiss() {
   return invoke<void>('accent_dismiss');
 }
 
+export function accentPopupReady() {
+  return invoke<void>('accent_popup_ready');
+}
+
 export function getAccentPopupEnabled() {
   return invoke<boolean>('get_accent_popup_enabled');
 }

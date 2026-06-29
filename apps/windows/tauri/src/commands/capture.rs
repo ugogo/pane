@@ -4,10 +4,14 @@ use image::{imageops::FilterType, ImageBuffer, ImageFormat, Rgba};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::io::Cursor;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager, State};
 use xcap::Monitor;
+
+static NEXT_CAPTURE_ID: AtomicU64 = AtomicU64::new(1);
+static FULL_PREWARM_RUNNING: AtomicBool = AtomicBool::new(false);
 
 /// Holds the most recent capture so the preview window can fetch it after open.
 #[derive(Default)]
@@ -52,6 +56,7 @@ impl CaptureEditSessions {
 
 #[derive(Clone)]
 pub struct StoredCapture {
+    id: u64,
     pub result: CaptureResult,
     pub rgba: Vec<u8>,
     pub width: u32,
@@ -227,6 +232,15 @@ fn preview_image(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> ImageBuffer<Rgba<u8>, 
     scale_to_max_edge(img, 320, FilterType::Nearest)
 }
 
+fn next_capture_id() -> u64 {
+    let id = NEXT_CAPTURE_ID.fetch_add(1, Ordering::Relaxed);
+    if id == 0 {
+        NEXT_CAPTURE_ID.fetch_add(1, Ordering::Relaxed)
+    } else {
+        id
+    }
+}
+
 pub fn make_stored_capture(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<StoredCapture, String> {
     let preview = preview_image(img);
     let result = CaptureResult {
@@ -236,6 +250,7 @@ pub fn make_stored_capture(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<Store
     };
 
     Ok(StoredCapture {
+        id: next_capture_id(),
         result,
         rgba: img.as_raw().clone(),
         width: img.width(),
@@ -274,6 +289,68 @@ fn enlarged_data_url(capture: &StoredCapture) -> Result<String, String> {
         .write_to(&mut Cursor::new(&mut buf), ImageFormat::Png)
         .map_err(|e| e.to_string())?;
     Ok(format!("data:image/png;base64,{}", B64.encode(&buf)))
+}
+
+fn same_capture(a: &StoredCapture, b: &StoredCapture) -> bool {
+    a.id == b.id
+}
+
+fn latest_needs_full(app: &AppHandle) -> bool {
+    let latest = app.state::<LatestCapture>();
+    let guard = latest.0.lock().unwrap();
+    guard
+        .as_ref()
+        .is_some_and(|capture| capture.full_data_url.is_none())
+}
+
+pub fn prewarm_latest_capture_full(app: AppHandle) {
+    if FULL_PREWARM_RUNNING.swap(true, Ordering::AcqRel) {
+        return;
+    }
+
+    std::thread::spawn(move || {
+        loop {
+            let snapshot = {
+                let latest = app.state::<LatestCapture>();
+                let guard = latest.0.lock().unwrap();
+                let Some(capture) = guard.as_ref() else {
+                    break;
+                };
+                if capture.full_data_url.is_some() {
+                    break;
+                }
+                capture.clone()
+            };
+
+            let data_url = match enlarged_data_url(&snapshot) {
+                Ok(data_url) => data_url,
+                Err(e) => {
+                    eprintln!("[capture] failed to warm enlarged preview: {e}");
+                    break;
+                }
+            };
+
+            let latest = app.state::<LatestCapture>();
+            let mut guard = latest.0.lock().unwrap();
+            let Some(current) = guard.as_mut() else {
+                break;
+            };
+            if same_capture(current, &snapshot) {
+                if current.full_data_url.is_none() {
+                    current.full_data_url = Some(data_url);
+                }
+                break;
+            }
+            if current.full_data_url.is_some() {
+                break;
+            }
+        }
+
+        FULL_PREWARM_RUNNING.store(false, Ordering::Release);
+        if latest_needs_full(&app) {
+            prewarm_latest_capture_full(app);
+        }
+    });
 }
 
 fn encode_png_bytes(capture: &StoredCapture) -> Result<Vec<u8>, String> {
@@ -319,6 +396,7 @@ pub fn perform_fullscreen_capture(app: &AppHandle) -> Result<CaptureResult, Stri
     let stored = make_stored_capture(&img)?;
     let result = stored.result.clone();
     *app.state::<LatestCapture>().0.lock().unwrap() = Some(stored);
+    prewarm_latest_capture_full(app.clone());
     Ok(result)
 }
 
@@ -360,6 +438,7 @@ pub fn capture_region(
     let stored = make_stored_capture(&cropped)?;
     let result = stored.result.clone();
     *latest.0.lock().unwrap() = Some(stored);
+    prewarm_latest_capture_full(app.clone());
     capture_sound::play_capture_sound(&app);
     Ok(result)
 }
@@ -387,17 +466,40 @@ pub fn take_latest_capture_full(
         &window,
         &["capture-zoom", "capture-preview", "image-editor", "main"],
     )?;
+    let snapshot = {
+        let guard = latest.0.lock().unwrap();
+        let capture = guard
+            .as_ref()
+            .ok_or_else(|| "No capture available.".to_string())?;
+        if let Some(data_url) = &capture.full_data_url {
+            return Ok(CaptureResult {
+                data_url: data_url.clone(),
+                width: capture.width,
+                height: capture.height,
+            });
+        }
+        capture.clone()
+    };
+
+    let data_url = enlarged_data_url(&snapshot)?;
     let mut guard = latest.0.lock().unwrap();
-    let capture = guard
-        .as_mut()
-        .ok_or_else(|| "No capture available.".to_string())?;
-    if capture.full_data_url.is_none() {
-        capture.full_data_url = Some(enlarged_data_url(capture)?);
+    if let Some(current) = guard.as_mut() {
+        if same_capture(current, &snapshot) {
+            if current.full_data_url.is_none() {
+                current.full_data_url = Some(data_url.clone());
+            }
+            return Ok(CaptureResult {
+                data_url: current.full_data_url.clone().unwrap_or(data_url),
+                width: current.width,
+                height: current.height,
+            });
+        }
     }
+
     Ok(CaptureResult {
-        data_url: capture.full_data_url.clone().unwrap_or_default(),
-        width: capture.width,
-        height: capture.height,
+        data_url,
+        width: snapshot.width,
+        height: snapshot.height,
     })
 }
 
@@ -507,6 +609,7 @@ pub async fn commit_latest_capture_edit(
         },
     });
     *latest.0.lock().unwrap() = Some(stored);
+    prewarm_latest_capture_full(app.clone());
     let _ = app.emit_to("capture-preview", "refresh-capture", ());
     Ok(())
 }
@@ -612,6 +715,7 @@ pub fn replace_latest_capture_with_edit(
     force_opaque(&mut img);
     let stored = make_stored_capture(&img)?;
     *latest.0.lock().unwrap() = Some(stored);
+    prewarm_latest_capture_full(app.clone());
     let _ = app.emit_to("capture-preview", "refresh-capture", ());
     Ok(())
 }
